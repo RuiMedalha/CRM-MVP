@@ -1,0 +1,281 @@
+{
+  "collections": [
+    {
+      "collection": "lead_capture_forms",
+      "meta": {
+        "icon": "dynamic_form",
+        "note": "Web-to-lead embeddable forms (public URL /c/<slug>). Cada submissao cria um lead com source_label.",
+        "display_template": "{{name}} ({{slug}})",
+        "singleton": false,
+        "sort_field": "date_created"
+      },
+      "schema": {
+        "name": "lead_capture_forms"
+      },
+      "fields": [
+        {
+          "field": "id",
+          "type": "uuid",
+          "meta": {
+            "hidden": true
+          },
+          "schema": {
+            "is_primary_key": true
+          }
+        },
+        {
+          "field": "status",
+          "type": "string",
+          "meta": {
+            "interface": "select-dropdown",
+            "display_name": "Estado",
+            "options": {
+              "choices": [
+                {
+                  "text": "Rascunho",
+                  "value": "draft"
+                },
+                {
+                  "text": "Publicado",
+                  "value": "published"
+                },
+                {
+                  "text": "Arquivado",
+                  "value": "archived"
+                }
+              ]
+            }
+          },
+          "schema": {
+            "default_value": "draft"
+          }
+        },
+        {
+          "field": "date_created",
+          "type": "timestamp",
+          "meta": {
+            "readonly": true,
+            "hidden": true
+          }
+        },
+        {
+          "field": "date_updated",
+          "type": "timestamp",
+          "meta": {
+            "readonly": true,
+            "hidden": true
+          }
+        },
+        {
+          "field": "user_created",
+          "type": "uuid",
+          "meta": {
+            "hidden": true
+          }
+        },
+        {
+          "field": "user_updated",
+          "type": "uuid",
+          "meta": {
+            "hidden": true
+          }
+        },
+        {
+          "field": "tenant_id",
+          "type": "string",
+          "meta": {
+            "interface": "input",
+            "display_name": "Tenant (opcional, FK)"
+          },
+          "schema": {
+            "is_nullable": true
+          }
+        },
+        {
+          "field": "name",
+          "type": "string",
+          "meta": {
+            "required": true,
+            "interface": "input",
+            "display_name": "Nome interno"
+          }
+        },
+        {
+          "field": "slug",
+          "type": "string",
+          "meta": {
+            "required": true,
+            "interface": "input",
+            "display_name": "Slug (URL publica)"
+          }
+        },
+        {
+          "field": "source_label",
+          "type": "string",
+          "meta": {
+            "required": true,
+            "interface": "input",
+            "display_name": "source_label (vai para leads.source)"
+          },
+          "schema": {
+            "default_value": "Web Form"
+          }
+        },
+        {
+          "field": "description",
+          "type": "text",
+          "meta": {
+            "interface": "textarea",
+            "display_name": "Descricao"
+          }
+        },
+        {
+          "field": "fields",
+          "type": "json",
+          "meta": {
+            "required": true,
+            "interface": "list",
+            "display_name": "Campos do form",
+            "note": "Array de {name, label, type, required, options, placeholder}"
+          }
+        },
+        {
+          "field": "success_message",
+          "type": "text",
+          "meta": {
+            "required": true,
+            "interface": "textarea",
+            "display_name": "Mensagem de sucesso"
+          },
+          "schema": {
+            "default_value": "Obrigado! Entraremos em contacto em breve."
+          }
+        },
+        {
+          "field": "redirect_url",
+          "type": "string",
+          "meta": {
+            "interface": "input",
+            "display_name": "Redirect URL (opcional)"
+          },
+          "schema": {
+            "is_nullable": true
+          }
+        },
+        {
+          "field": "notification_email",
+          "type": "string",
+          "meta": {
+            "interface": "input",
+            "display_name": "Email de notificacao"
+          },
+          "schema": {
+            "is_nullable": true
+          }
+        },
+        {
+          "field": "webhook_url",
+          "type": "string",
+          "meta": {
+            "interface": "input",
+            "display_name": "Webhook URL (opcional, dispara POST com payload)"
+          },
+          "schema": {
+            "is_nullable": true
+          }
+        },
+        {
+          "field": "assign_to_employee_id",
+          "type": "uuid",
+          "meta": {
+            "interface": "select-dropdown-m2o",
+            "display_name": "Atribuir a (funcionario)"
+          },
+          "schema": {
+            "foreign_key_table": "employees",
+            "is_nullable": true
+          }
+        },
+        {
+          "field": "round_robin_pool",
+          "type": "json",
+          "meta": {
+            "interface": "list",
+            "display_name": "Pool Round-Robin (employee_ids)",
+            "note": "Se assign_to_employee_id null, atribui por rotacao"
+          }
+        },
+        {
+          "field": "is_active",
+          "type": "boolean",
+          "meta": {
+            "interface": "boolean",
+            "display_name": "Ativo"
+          },
+          "schema": {
+            "default_value": true
+          }
+        },
+        {
+          "field": "embed_code_html",
+          "type": "text",
+          "meta": {
+            "interface": "textarea",
+            "readonly": true,
+            "display_name": "Embed (HTML snippet)"
+          }
+        },
+        {
+          "field": "embed_code_iframe",
+          "type": "text",
+          "meta": {
+            "interface": "textarea",
+            "readonly": true,
+            "display_name": "Embed (iframe)"
+          }
+        },
+        {
+          "field": "submit_count",
+          "type": "integer",
+          "meta": {
+            "interface": "input",
+            "readonly": true,
+            "display_name": "Total submissoes"
+          },
+          "schema": {
+            "default_value": 0
+          }
+        },
+        {
+          "field": "last_submitted_at",
+          "type": "timestamp",
+          "meta": {
+            "interface": "datetime",
+            "readonly": true,
+            "display_name": "Ultima submissao"
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "collection": "lead_capture_forms",
+          "fields": [
+            "slug"
+          ],
+          "unique": true
+        },
+        {
+          "collection": "lead_capture_forms",
+          "fields": [
+            "is_active"
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Importar em Settings > Data Model > Import (Directus).",
+    "Publica o slug em /c/<slug> para o formulario publico embeddable.",
+    "Cada submissao: cria lead em leads com source=source_label e assign via round-robin se assign_to_employee_id=null."
+  ]
+}
