@@ -1,4 +1,4 @@
-import { directusRequest } from "@/integrations/directus/client";
+﻿import { directusRequest } from "@/integrations/directus/client";
 import { qs } from "@/integrations/directus/utils";
 
 export const DIRECTUS_COMPANY_SETTINGS_COLLECTION =
@@ -42,6 +42,11 @@ export interface CompanySettingsItem {
 
   email_template_subject?: string | null;
   email_template_html?: string | null;
+  theme_accent?: string | null;
+  theme_mode?: string | null;
+  theme_radius?: string | null;
+  theme_density?: string | null;
+  theme_logo_url?: string | null;
 }
 
 const FIELDS = [
@@ -78,6 +83,11 @@ const FIELDS = [
   "email_template_subject",
   "email_template_html",
   "email_signature_html",
+  "theme_accent",
+  "theme_mode",
+  "theme_radius",
+  "theme_density",
+  "theme_logo_url",
   "email_assistencia_interna",
   "ai_email_prompts",
   "ai_model",
@@ -115,6 +125,11 @@ const SAFE_FIELDS = [
   "email_template_subject",
   "email_template_html",
   "email_signature_html",
+  "theme_accent",
+  "theme_mode",
+  "theme_radius",
+  "theme_density",
+  "theme_logo_url",
   "email_assistencia_interna",
   "ai_email_prompts",
   "ai_model",
@@ -226,4 +241,6 @@ export function getWebhookSettings(): WebhookSettings {
 export function saveWebhookSettings(settings: WebhookSettings) {
   localStorage.setItem(WEBHOOK_STORAGE_KEY, JSON.stringify(settings));
 }
+
+
 
