@@ -49,7 +49,8 @@ function getRuntimeDirectusUrl(): string {
     // ignore
   }
 
-  const envUrl = normalizeBaseUrl(import.meta.env.VITE_DIRECTUS_URL || "");
+  const env = (typeof import.meta !== "undefined" && import.meta.env) || (typeof process !== "undefined" ? process.env : {}) || {};
+  const envUrl = normalizeBaseUrl(env.VITE_DIRECTUS_URL || "");
   const inferred = inferDirectusUrlFromLocation();
 
   // If env is missing OR points to localhost in production, prefer inferred URL.
@@ -66,11 +67,12 @@ function getRuntimeDirectusUrl(): string {
 
 export const DIRECTUS_URL: string = getRuntimeDirectusUrl();
 
+const safeEnv = (typeof import.meta !== "undefined" && import.meta.env) || (typeof process !== "undefined" ? process.env : {}) || {};
 // Optional fallback token (service-token mode). Prefer user session token.
-const DIRECTUS_FALLBACK_TOKEN: string = import.meta.env.VITE_DIRECTUS_TOKEN || "";
+const DIRECTUS_FALLBACK_TOKEN: string = safeEnv.VITE_DIRECTUS_TOKEN || "";
 
 /** Token admin directo para operações de comunicações (lido de VITE_DIRECTUS_ADMIN_TOKEN). */
-export const DIRECTUS_ADMIN_TOKEN = (import.meta.env.VITE_DIRECTUS_ADMIN_TOKEN as string || "").trim();
+export const DIRECTUS_ADMIN_TOKEN = ((safeEnv.VITE_DIRECTUS_ADMIN_TOKEN as string) || "").trim();
 
 /** Helper para fetch directo com token admin (bypass session). */
 export async function directusAdminFetch<T>(
