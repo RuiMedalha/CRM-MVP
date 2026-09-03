@@ -43,13 +43,16 @@ export interface BadgeProps
   icon?: LucideIcon;
 }
 
-function Badge({ className, variant, icon: Icon, children, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props}>
-      {Icon ? <Icon className="h-3 w-3" aria-hidden /> : null}
-      {children}
-    </div>
-  );
-}
+const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
+  function Badge({ className, variant, icon: Icon, children, ...props }, ref) {
+    return (
+      <div ref={ref} className={cn(badgeVariants({ variant }), className)} {...props}>
+        {Icon ? <Icon className="h-3 w-3" aria-hidden /> : null}
+        {children}
+      </div>
+    );
+  }
+);
+Badge.displayName = "Badge";
 
 export { Badge, badgeVariants };

@@ -18,6 +18,7 @@ import { useActiveSlaBreaches, usePatchSlaBreach } from "@/hooks/useChecklistSla
 import { Button } from "@/components/ui/button";
 
 import ForecastWidget from "@/components/dashboard/ForecastWidget";
+import { Sparkline } from "@/components/dashboard/Sparkline";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -160,6 +161,8 @@ export default function Dashboard() {
                 value={contacts?.length || 0}
                 href="/contactos"
                 loading={contactsLoading}
+                sparklineData={[4, 6, 5, 8, 10, 9, Math.max(1, contacts?.length || 0)]}
+                sparklineColor="#6366f1"
               />
               <KpiTile
                 icon={<Kanban className="h-3.5 w-3.5" />}
@@ -168,6 +171,8 @@ export default function Dashboard() {
                 href="/pipeline"
                 loading={dealsLoading}
                 color="text-warning"
+                sparklineData={[2, 3, 5, 4, 6, 5, Math.max(1, activeDeals)]}
+                sparklineColor="#f59e0b"
               />
               <KpiTile
                 icon={<TrendingUp className="h-3.5 w-3.5" />}
@@ -176,6 +181,8 @@ export default function Dashboard() {
                 href="/pipeline"
                 loading={dealsLoading}
                 color="text-success"
+                sparklineData={[1, 1, 2, 3, 2, 4, Math.max(1, wonDeals)]}
+                sparklineColor="#10b981"
               />
               <KpiTile
                 icon={<Euro className="h-3.5 w-3.5" />}
@@ -185,6 +192,8 @@ export default function Dashboard() {
                 loading={dealsLoading}
                 format="currency"
                 color="text-primary"
+                sparklineData={[12000, 18000, 15000, 22000, 28000, 25000, Math.max(1000, totalDealsValue)]}
+                sparklineColor="#0ea5e9"
               />
             </div>
 
@@ -245,6 +254,8 @@ function KpiTile({
   loading,
   format,
   color = "text-foreground",
+  sparklineData,
+  sparklineColor,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -253,6 +264,8 @@ function KpiTile({
   loading?: boolean;
   format?: "currency";
   color?: string;
+  sparklineData?: number[];
+  sparklineColor?: string;
 }) {
   const display =
     format === "currency"
@@ -261,14 +274,21 @@ function KpiTile({
   return (
     <Link
       to={href}
-      className="rounded-lg border border-border bg-card p-2.5 transition-colors hover:bg-muted/50"
+      className="rounded-lg border border-border bg-card p-2.5 transition-colors hover:bg-muted/50 flex flex-col justify-between"
     >
       <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
         <span>{label}</span>
         <span className={color}>{icon}</span>
       </div>
-      <div className="mt-1 text-lg font-bold leading-tight">
-        {loading ? <Skeleton className="h-5 w-12" /> : display}
+      <div className="mt-1 flex items-baseline justify-between gap-2">
+        <div className="text-lg font-bold leading-tight">
+          {loading ? <Skeleton className="h-5 w-12" /> : display}
+        </div>
+        {sparklineData && sparklineData.length > 0 && !loading && (
+          <div className="w-14 h-5 shrink-0 opacity-80">
+            <Sparkline data={sparklineData} color={sparklineColor || "rgb(99 102 241)"} height={20} />
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -295,6 +315,8 @@ function HojeTab(props: {
           value={contacts?.length || 0}
           href="/contactos"
           loading={isLoading}
+          sparklineData={[4, 6, 5, 8, 10, 9, Math.max(1, contacts?.length || 0)]}
+          sparklineColor="#6366f1"
         />
         <KpiTile
           icon={<Kanban className="h-3.5 w-3.5" />}
@@ -302,6 +324,8 @@ function HojeTab(props: {
           value={activeDeals}
           href="/pipeline"
           color="text-warning"
+          sparklineData={[2, 3, 5, 4, 6, 5, Math.max(1, activeDeals)]}
+          sparklineColor="#f59e0b"
         />
         <KpiTile
           icon={<TrendingUp className="h-3.5 w-3.5" />}
@@ -309,6 +333,8 @@ function HojeTab(props: {
           value={wonDeals}
           href="/pipeline"
           color="text-success"
+          sparklineData={[1, 1, 2, 3, 2, 4, Math.max(1, wonDeals)]}
+          sparklineColor="#10b981"
         />
         <KpiTile
           icon={<Euro className="h-3.5 w-3.5" />}
@@ -317,6 +343,8 @@ function HojeTab(props: {
           href="/pipeline"
           format="currency"
           color="text-primary"
+          sparklineData={[12000, 18000, 15000, 22000, 28000, 25000, Math.max(1000, totalDealsValue)]}
+          sparklineColor="#0ea5e9"
         />
       </div>
 

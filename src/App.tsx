@@ -12,6 +12,7 @@ import { useLeadListener360 } from "@/hooks/useLeadListener360";
 import { useChannelSettingsSync } from "@/hooks/useChannelSettingsSync";
 import { useFollowUpNotifications } from "@/hooks/useFollowUpNotifications";
 import { useNewEmailNotifications } from "@/hooks/useNewEmailNotifications";
+import { ThemeProvider } from "@/hooks/useTheme";
 import { Loader2 } from "lucide-react";
 
 // Lazy-loaded pages (code splitting)
@@ -28,6 +29,7 @@ const Fornecedores = lazy(() => import("./pages/Fornecedores"));
 const Integracoes = lazy(() => import("./pages/Integracoes"));
 const Definicoes = lazy(() => import("./pages/Definicoes"));
 const FichaClienteConfig = lazy(() => import("./pages/FichaClienteConfig"));
+const Appearance = lazy(() => import("./pages/settings/Appearance"));
 const WhatsappInstances = lazy(() => import("./pages/settings/WhatsappInstances"));
 const IaProviders = lazy(() => import("./pages/settings/IaProviders"));
 const AiSettings = lazy(() => import("./pages/settings/AiSettings"));
@@ -51,6 +53,7 @@ const ComunicacoesPage = lazy(() => import("./pages/Comunicacoes"));
 const Telecof = lazy(() => import("./pages/Telecof"));
 const Social = lazy(() => import("./pages/Social"));
 const Email = lazy(() => import("./pages/Email"));
+const Customer360 = lazy(() => import("./pages/Customer360"));
 const Customer360Shell = lazy(() => import("./pages/Customer360Shell"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
@@ -90,6 +93,7 @@ const AppContent = () => {
         <Route path="/dashboard360" element={<ProtectedRoute><Navigate to="/customer360-shell" replace /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
         <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
+        <Route path="/pipelines" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
         <Route path="/loja" element={<ProtectedRoute><Loja /></ProtectedRoute>} />
         <Route path="/pedidos" element={<ProtectedRoute><Pedidos /></ProtectedRoute>} />
         <Route path="/carrinhos" element={<ProtectedRoute><Carrinhos /></ProtectedRoute>} />
@@ -116,6 +120,7 @@ const AppContent = () => {
         <Route path="/integracoes" element={<ProtectedRoute><Integracoes /></ProtectedRoute>} />
         <Route path="/definicoes" element={<ProtectedRoute><Definicoes /></ProtectedRoute>} />
         <Route path="/definicoes/ficha-cliente" element={<ProtectedRoute><FichaClienteConfig /></ProtectedRoute>} />
+        <Route path="/definicoes/aparencia" element={<ProtectedRoute><Appearance /></ProtectedRoute>} />
         <Route path="/definicoes/whatsapp" element={<ProtectedRoute><WhatsappInstances /></ProtectedRoute>} />
         <Route path="/definicoes/ia-providers" element={<ProtectedRoute><IaProviders /></ProtectedRoute>} />
         <Route path="/definicoes/ia-settings" element={<ProtectedRoute><AiSettings /></ProtectedRoute>} />
@@ -127,6 +132,8 @@ const AppContent = () => {
         <Route path="/menu" element={<ProtectedRoute><MenuMobile /></ProtectedRoute>} />
         <Route path="/customer360-shell" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
         <Route path="/customer360-shell/:id" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
+        <Route path="/customer360/:id" element={<ProtectedRoute><Customer360 /></ProtectedRoute>} />
+        <Route path="/customer360" element={<ProtectedRoute><Navigate to="/contactos" replace /></ProtectedRoute>} />
         <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
         <Route path="/developer-tools" element={<ProtectedRoute><DeveloperTools /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
@@ -148,13 +155,15 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </BrowserRouter>
+        <ThemeProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </BrowserRouter>
+        </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>

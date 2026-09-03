@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Paintbrush, RotateCcw, Check, Sun, Moon, Monitor, Tablet, GripVertical, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useThemeContext, type ThemeAccent, type ThemeMode, type ThemeRadius, type ThemeDensity } from '@/hooks/useTheme';
+import { cn } from '@/lib/utils';
 
 const ACCENT_COLORS: { id: ThemeAccent; label: string; hex: string }[] = [
   { id: 'indigo', label: 'Indigo', hex: '#4F46E5' },
@@ -47,7 +48,7 @@ function ModePreview({ mode }: { mode: ThemeMode }) {
   if (!opt) return null;
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="'w-full h-20 rounded-md flex items-center justify-center transition-colors ' + opt.preview">
+      <div className={cn("w-full h-20 rounded-md flex items-center justify-center transition-colors", opt.preview)}>
         <span className="text-xs font-medium">{opt.label}</span>
       </div>
     </div>
@@ -220,7 +221,7 @@ export default function Appearance() {
                       key={opt.id}
                       type="button"
                       onClick={() => setTheme({ mode: opt.id })}
-                      className="lex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all cursor-pointer touch-manipulation"
+                      className="flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all cursor-pointer touch-manipulation"
                     >
                       <div className="w-full h-14 rounded-md flex items-center justify-center transition-colors">
                         {opt.icon}
@@ -257,7 +258,7 @@ export default function Appearance() {
                       key={opt.id}
                       type="button"
                       onClick={() => setTheme({ radius: opt.id })}
-                      className="lex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all cursor-pointer touch-manipulation"
+                      className="flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all cursor-pointer touch-manipulation"
                     >
                       <RadiusPreview radius={opt.id} />
                       <span className="text-[10px] text-muted-foreground">{opt.label}</span>
@@ -275,7 +276,7 @@ export default function Appearance() {
                       key={opt.id}
                       type="button"
                       onClick={() => setTheme({ density: opt.id })}
-                      className="lex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all cursor-pointer touch-manipulation"
+                      className="flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all cursor-pointer touch-manipulation"
                     >
                       <DensityPreview density={opt.id} />
                       <span className="text-xs font-medium">{opt.label}</span>

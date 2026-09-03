@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Building2, Webhook, FileText, RefreshCw, ShoppingCart, Search, Database, Copy, ArrowDownToLine, MessageCircle, Upload, Trash2, Loader2, Sparkles, Cpu, Zap } from "lucide-react";
+import { Save, Building2, Webhook, FileText, RefreshCw, ShoppingCart, Search, Database, Copy, ArrowDownToLine, MessageCircle, Upload, Trash2, Loader2, Sparkles, Cpu, Zap, Paintbrush } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PushNotificationsCard } from "@/components/PushNotificationsCard";
 import { useMessageTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate, type MessageTemplate } from "@/hooks/useMessageTemplates";
@@ -290,7 +290,7 @@ export default function Definicoes() {
         {/* Push Notifications */}
         <PushNotificationsCard />
 
-        {/* Ficha de Cliente â€” editor de campos/dropdowns (pÃ¡gina prÃ³pria) */}
+        {/* Ficha de Cliente — editor de campos/dropdowns (página própria) */}
         <Link to="/definicoes/ficha-cliente">
           <Card className="transition-colors hover:bg-muted/40 cursor-pointer">
             <CardContent className="flex items-center justify-between py-4">
@@ -301,6 +301,26 @@ export default function Definicoes() {
                 </p>
               </div>
               <FileText className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Aparência & Tema (Card 18) */}
+        <Link to="/definicoes/aparencia">
+          <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-indigo-500/30 dark:border-indigo-500/20">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">Personalizar Tema & Aparência</p>
+                  <span className="text-[10px] font-semibold uppercase bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-2 py-0.5 rounded-full">
+                    Design Tokens & Cores
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Modo claro/escuro, cores de marca, raio dos cantos e densidade
+                </p>
+              </div>
+              <Paintbrush className="h-5 w-5 text-indigo-500" />
             </CardContent>
           </Card>
         </Link>

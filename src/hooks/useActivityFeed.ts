@@ -110,7 +110,7 @@ export function useTodayStats() {
       const since = todayIso();
       const [ordersCountRes, ordersSumRes, contactsRes, convosRes] = await Promise.all([
         directusAdminFetch<{ data: Array<{ count: string }> }>(`/items/site_orders${qs({ "aggregate[count]": "*", "filter[date_ordered][_gte]": since })}`).catch(() => ({ data: [{ count: "0" }] })),
-        directusAdminFetch<{ data: Array<{ sum: { total: string } } }>(`/items/site_orders${qs({ "aggregate[sum]": "total", "filter[date_ordered][_gte]": since })}`).catch(() => ({ data: [{ sum: { total: "0" } }] })),
+        directusAdminFetch<{ data: Array<{ sum: { total: string } }> }>(`/items/site_orders${qs({ "aggregate[sum]": "total", "filter[date_ordered][_gte]": since })}`).catch(() => ({ data: [{ sum: { total: "0" } }] })),
         directusAdminFetch<{ data: Array<{ count: string }> }>(`/items/contacts${qs({ "aggregate[count]": "*", "filter[date_created][_gte]": since })}`).catch(() => ({ data: [{ count: "0" }] })),
         directusAdminFetch<{ data: Array<{ count: string }> }>(`/items/conversations${qs({ "aggregate[count]": "*", "filter[status][_in]": "open,handoff" })}`).catch(() => ({ data: [{ count: "0" }] })),
       ]);
