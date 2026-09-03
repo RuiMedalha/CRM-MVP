@@ -54,6 +54,9 @@ const Customer360Shell = lazy(() => import("./pages/Customer360Shell"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const CallsAI = lazy(() => import("./pages/CallsAI"));
+const LeadCaptureFormsSettings = lazy(() => import("./pages/settings/LeadCaptureForms"));
+const PublicLeadCapture = lazy(() => import("./pages/c/[slug]"));
+const Onboarding = lazy(() => import("./pages/onboarding"));
 
 function PageLoader() {
   return (
@@ -120,6 +123,9 @@ const AppContent = () => {
         <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
         <Route path="/calls-ai" element={<ProtectedRoute><CallsAI /></ProtectedRoute>} />
         <Route path="/developer-tools" element={<ProtectedRoute><DeveloperTools /></ProtectedRoute>} />
+        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+        <Route path="/definicoes/lead-capture" element={<ProtectedRoute><LeadCaptureFormsSettings /></ProtectedRoute>} />
+        <Route path="/c/:slug" element={<PublicLeadCapture />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
