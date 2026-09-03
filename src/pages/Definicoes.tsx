@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Building2, Webhook, FileText, RefreshCw, ShoppingCart, Search, Database, Copy, ArrowDownToLine, MessageCircle, Upload, Trash2, Loader2, Sparkles, Cpu, Zap } from "lucide-react";
+import { Save, Building2, Webhook, FileText, RefreshCw, ShoppingCart, Search, Database, Copy, ArrowDownToLine, MessageCircle, Upload, Trash2, Loader2, Sparkles, Cpu, Zap, Paintbrush } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PushNotificationsCard } from "@/components/PushNotificationsCard";
 import { useMessageTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate, type MessageTemplate } from "@/hooks/useMessageTemplates";
@@ -380,7 +380,16 @@ export default function Definicoes() {
               </Button>
             </Link>
 
-            <Link to="/definicoes/ia-settings">
+            <Link to="/definicoes/aparencia">
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-3">
+                      <Paintbrush className="h-4 w-4" />
+                      <div className="text-left">
+                        <p className="text-sm font-medium">Apar&ecirc;ncia</p>
+                        <p className="text-xs text-muted-foreground">Tema, cores e densidade</p>
+                      </div>
+                    </Button>
+                  </Link>
+                  <Link to="/definicoes/ia-settings">
           <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-primary/30 dark:border-primary/20">
             <CardContent className="flex items-center justify-between py-4">
               <div>

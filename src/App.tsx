@@ -1,4 +1,5 @@
-﻿import { lazy, Suspense } from "react";
+﻿import { ThemeProvider } from '@/hooks/useTheme';
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -57,6 +58,7 @@ const CallsAI = lazy(() => import("./pages/CallsAI"));
 const LeadCaptureFormsSettings = lazy(() => import("./pages/settings/LeadCaptureForms"));
 const PublicLeadCapture = lazy(() => import("./pages/c/[slug]"));
 const Onboarding = lazy(() => import("./pages/onboarding"));
+const Appearance = lazy(() => import("./pages/settings/Appearance"));
 
 function PageLoader() {
   return (
@@ -131,6 +133,7 @@ const AppContent = () => {
         <Route path="/developer-tools" element={<ProtectedRoute><DeveloperTools /></ProtectedRoute>} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
         <Route path="/definicoes/lead-capture" element={<ProtectedRoute><LeadCaptureFormsSettings /></ProtectedRoute>} />
+        <Route path="/definicoes/aparencia" element={<ProtectedRoute><Appearance /></ProtectedRoute>} />
         <Route path="/c/:slug" element={<PublicLeadCapture />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -149,7 +152,8 @@ const AppContent = () => {
 
 const App = () => (
   <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -160,9 +164,17 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
-  </ErrorBoundary>
+      </ThemeProvider>
+    </ErrorBoundary>
 );
 
 export default App;
+
+
+
+
+
+
+
 
 
