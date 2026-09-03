@@ -12,6 +12,7 @@ import { useLeadListener360 } from "@/hooks/useLeadListener360";
 import { useChannelSettingsSync } from "@/hooks/useChannelSettingsSync";
 import { useFollowUpNotifications } from "@/hooks/useFollowUpNotifications";
 import { useNewEmailNotifications } from "@/hooks/useNewEmailNotifications";
+import { ThemeProvider } from "next-themes";
 import { Loader2 } from "lucide-react";
 
 // Lazy-loaded pages (code splitting)
@@ -138,15 +139,17 @@ const AppContent = () => {
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );
