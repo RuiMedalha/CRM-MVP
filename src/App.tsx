@@ -31,6 +31,8 @@ const FichaClienteConfig = lazy(() => import("./pages/FichaClienteConfig"));
 const WhatsappInstances = lazy(() => import("./pages/settings/WhatsappInstances"));
 const IaProviders = lazy(() => import("./pages/settings/IaProviders"));
 const AiSettings = lazy(() => import("./pages/settings/AiSettings"));
+const PipelineTemplates = lazy(() => import("./pages/settings/PipelineTemplates"));
+const PipelineTemplateWizard = lazy(() => import("./pages/settings/PipelineTemplateWizard"));
 const UtilizadoresDirectus = lazy(() => import("./pages/UtilizadoresDirectus"));
 const MenuMobile = lazy(() => import("./pages/MenuMobile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -116,6 +118,9 @@ const AppContent = () => {
         <Route path="/definicoes/whatsapp" element={<ProtectedRoute><WhatsappInstances /></ProtectedRoute>} />
         <Route path="/definicoes/ia-providers" element={<ProtectedRoute><IaProviders /></ProtectedRoute>} />
         <Route path="/definicoes/ia-settings" element={<ProtectedRoute><AiSettings /></ProtectedRoute>} />
+        <Route path="/definicoes/pipelines" element={<ProtectedRoute><PipelineTemplates /></ProtectedRoute>} />
+        <Route path="/definicoes/pipelines/templates" element={<ProtectedRoute><PipelineTemplates /></ProtectedRoute>} />
+        <Route path="/definicoes/pipelines/new" element={<ProtectedRoute><PipelineTemplateWizard /></ProtectedRoute>} />
         <Route path="/utilizadores" element={<ProtectedRoute><UtilizadoresDirectus /></ProtectedRoute>} />
         <Route path="/menu" element={<ProtectedRoute><MenuMobile /></ProtectedRoute>} />
         <Route path="/customer360-shell" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
