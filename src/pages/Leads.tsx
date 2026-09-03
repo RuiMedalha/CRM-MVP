@@ -9,12 +9,20 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { directusRequest } from "@/integrations/directus/client";
 import { createContact, listContacts } from "@/integrations/directus/contacts";
-import { Search, UserPlus, ArrowRight, Phone, Mail, History } from "lucide-react";
+import { CreateContactForm } from "@/components/customer360/edit/CreateContactForm";
+import { Search, UserPlus, ArrowRight, Phone, Mail, History, Plus, RefreshCw, AlertCircle } from "lucide-react";
 import { LeadTimelineModal } from "@/components/contacts/LeadTimelineModal";
 import { format } from "date-fns/format";
 import { pt } from "date-fns/locale";
@@ -72,8 +80,15 @@ export default function Leads() {
   const [showConverted, setShowConverted] = useState(false);
   const [promoting, setPromoting] = useState<string | number | null>(null);
   const [timelineLead, setTimelineLead] = useState<LeadRow | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: leads = [], isLoading } = useQuery({
+  const {
+    data: leads = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["leads-page"],
     queryFn: async () => {
       const res = await directusRequest<{ data: LeadRow[] }>(
@@ -179,15 +194,23 @@ export default function Leads() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        {/* Header — em landscape phone (orientation:landscape + max-height:500px)
-           escondemos o h1+subtitle para dar toda a altura à lista de cards.
-           A contagem fica acessível via badge no canto superior direito. */}
-        <div className="flex items-center justify-between gap-4 crm-leads-header">
+        {/* Header com botão inline "+ Novo Lead" — full-width em mobile, compacto em desktop */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 crm-leads-header">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Leads</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Leads</h1>
             <p className="text-sm text-muted-foreground">
               {pendingCount} por converter · {filtered.length} visíveis
             </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setCreateOpen(true)}
+              className="w-full sm:w-auto h-9 gap-2 shadow-sm font-medium"
+              data-testid="create-lead-header-btn"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Lead
+            </Button>
           </div>
         </div>
 
@@ -235,15 +258,49 @@ export default function Leads() {
           </button>
         </div>
 
-        {/* List — virtualizada para suportar 500+ leads sem 1000+ botões no DOM */}
+        {/* List — virtualizada para suportar 500+ leads sem gargalo no DOM */}
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+            {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-16 w-full rounded-md" />)}
           </div>
+        ) : isError ? (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="py-8 text-center space-y-3">
+              <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+              <p className="text-sm font-medium text-destructive">Erro ao carregar leads da base de dados</p>
+              <p className="text-xs text-muted-foreground">
+                {(error as Error)?.message || "Não foi possível carregar os leads do Directus."}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+                <RefreshCw className="h-3.5 w-3.5" />
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
         ) : filtered.length === 0 ? (
           <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              Sem leads com estes filtros.
+            <CardContent className="py-12 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {search || sourceFilter || statusFilter ? "Sem leads com estes filtros." : "Ainda não existem leads registadas."}
+              </p>
+              {search || sourceFilter || statusFilter ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearch("");
+                    setSourceFilter("");
+                    setStatusFilter("");
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Criar Primeiro Lead
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -255,6 +312,51 @@ export default function Leads() {
           />
         )}
       </div>
+
+      {/* Floating Action Button (FAB) no Mobile com safe-area-inset respeitada */}
+      <div className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 sm:hidden">
+        <Button
+          onClick={() => setCreateOpen(true)}
+          size="icon"
+          className="h-12 w-12 rounded-full shadow-lg gap-0"
+          title="Novo Lead"
+          data-testid="create-lead-fab-btn"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      </div>
+
+      {/* Dialog de Criação de Lead com CreateContactForm reutilizado */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Novo Lead
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Criação rápida de lead no Directus. Atualiza a lista sem recarregar a página.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-2">
+            <CreateContactForm
+              isDialog={true}
+              defaultMode="lead"
+              onSuccess={() => {
+                setCreateOpen(false);
+                toast({
+                  title: "Lead criada com sucesso",
+                  description: "A lista de leads foi atualizada em tempo real.",
+                });
+                qc.invalidateQueries({ queryKey: ["leads-page"] });
+                qc.invalidateQueries({ queryKey: ["leads"] });
+                qc.invalidateQueries({ queryKey: ["leads-pending-count"] });
+              }}
+              onCancel={() => setCreateOpen(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Lead Timeline Modal */}
       {timelineLead && (
