@@ -1,4 +1,4 @@
-import { directusRequest } from "@/integrations/directus/client";
+﻿import { directusRequest } from "@/integrations/directus/client";
 import { qs } from "@/integrations/directus/utils";
 
 export const DIRECTUS_DEALS_COLLECTION = import.meta.env.VITE_DIRECTUS_DEALS_COLLECTION || "deals";
@@ -26,6 +26,8 @@ export interface DealItemRow {
 }
 
 export interface DealRow {
+  pipeline_id?: string | null;
+  stage_id?: string | null;
   id: string;
   title?: string | null;
   status?: DealStatus | null;
