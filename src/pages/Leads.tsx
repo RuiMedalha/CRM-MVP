@@ -24,6 +24,7 @@ import { createContact, listContacts } from "@/integrations/directus/contacts";
 import { CreateContactForm } from "@/components/customer360/edit/CreateContactForm";
 import { Search, UserPlus, ArrowRight, Phone, Mail, History, Plus, RefreshCw, AlertCircle, Zap } from "lucide-react";
 import { LeadTimelineModal } from "@/components/contacts/LeadTimelineModal";
+import { LeadAiBadge } from "@/components/leads/LeadAiBadge";
 import { format } from "date-fns/format";
 import { pt } from "date-fns/locale";
 import { buildContactCreationUrl } from "@/lib/buildContactCreationUrl";
@@ -563,6 +564,7 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, newLeadIds 
                       <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusConf.color}`}>
                         {statusConf.label}
                       </Badge>
+                      <LeadAiBadge lead={lead} />
                       {lead.source && (
                         <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
                           {SOURCE_LABELS[lead.source] || lead.source}
