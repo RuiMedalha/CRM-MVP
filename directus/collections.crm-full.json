@@ -213,7 +213,29 @@
         { "field": "notes", "type": "text", "meta": { "interface": "textarea", "display_name": "Notas" } },
         { "field": "claimed_by", "type": "string", "meta": { "interface": "input", "display_name": "Atendido por" } },
         { "field": "claimed_at", "type": "timestamp", "meta": { "interface": "datetime", "display_name": "Atendido em" } },
-        { "field": "discarded_at", "type": "timestamp", "meta": { "interface": "datetime", "display_name": "Descartado em" } }
+        { "field": "discarded_at", "type": "timestamp", "meta": { "interface": "datetime", "display_name": "Descartado em" } },
+
+        { "field": "score", "type": "integer", "meta": { "interface": "input", "display_name": "Score (0-100)" }, "schema": { "default_value": 0 } },
+        { "field": "score_factors", "type": "json", "meta": { "interface": "json", "display_name": "Fatores do Score" } },
+        { "field": "score_computed_at", "type": "timestamp", "meta": { "interface": "datetime", "display_name": "Score calculado em" } },
+        { "field": "score_model_version", "type": "string", "meta": { "interface": "input", "display_name": "Versão do Modelo" } }
+      ]
+    },
+    {
+      "collection": "lead_score_history",
+      "meta": {
+        "icon": "history",
+        "note": "Histórico append-only de scores — auditoria e A/B testing.",
+        "display_template": "{{lead_id.display_name}} — {{score}} ({{computed_at}})"
+      },
+      "schema": { "name": "lead_score_history" },
+      "fields": [
+        { "field": "id", "type": "uuid", "meta": { "hidden": true }, "schema": { "is_primary_key": true } },
+        { "field": "lead_id", "type": "uuid", "meta": { "interface": "select-dropdown-m2o", "display_name": "Lead" }, "schema": { "foreign_key_table": "leads" } },
+        { "field": "score", "type": "integer", "meta": { "interface": "input", "display_name": "Score" } },
+        { "field": "factors", "type": "json", "meta": { "interface": "json", "display_name": "Fatores" } },
+        { "field": "model_version", "type": "string", "meta": { "interface": "input", "display_name": "Versão Modelo" } },
+        { "field": "computed_at", "type": "timestamp", "meta": { "interface": "datetime", "display_name": "Calculado em" } }
       ]
     },
     {

@@ -24,7 +24,6 @@ import { createContact, listContacts } from "@/integrations/directus/contacts";
 import { CreateContactForm } from "@/components/customer360/edit/CreateContactForm";
 import { Search, UserPlus, ArrowRight, Phone, Mail, History, Plus, RefreshCw, AlertCircle, Zap } from "lucide-react";
 import { LeadTimelineModal } from "@/components/contacts/LeadTimelineModal";
-import { LeadAiBadge } from "@/components/leads/LeadAiBadge";
 import { format } from "date-fns/format";
 import { pt } from "date-fns/locale";
 import { buildContactCreationUrl } from "@/lib/buildContactCreationUrl";
@@ -104,6 +103,21 @@ export default function Leads() {
   const [createOpen, setCreateOpen] = useState(false);
   const [scoreFilter, setScoreFilter] = useState<ScoreBucket | "all">("all");
   const [breakdownLead, setBreakdownLead] = useState<LeadRow | null>(null);
+
+  const newLeads = useCrossTabBus((s) => s.newLeads);
+  const clearNewLeads = useCrossTabBus((s) => s.clearNewLeads);
+  const newLeadIds = useMemo(() => new Set(newLeads.map((l) => String(l.id))), [newLeads]);
+
+  // Directus & Cross-tab Realtime Subscription
+  const { emit } = useRealtime("leads", {
+    onEvent: (payload) => {
+      if (payload.event === "create" && payload.data) {
+        const item = Array.isArray(payload.data) ? payload.data[0] : payload.data;
+        const name = item?.display_name || item?.contact_name || item?.contact_phone || "Novo Lead";
+        notifyRealtimeLead(name, payload.meta?.userName);
+      }
+    },
+  });
 
   const newLeads = useCrossTabBus((s) => s.newLeads);
   const clearNewLeads = useCrossTabBus((s) => s.clearNewLeads);
@@ -564,7 +578,6 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, newLeadIds 
                       <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusConf.color}`}>
                         {statusConf.label}
                       </Badge>
-                      <LeadAiBadge lead={lead} />
                       {lead.source && (
                         <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
                           {SOURCE_LABELS[lead.source] || lead.source}
