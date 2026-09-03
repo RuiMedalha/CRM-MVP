@@ -1,4 +1,4 @@
-﻿import { directusRequest } from "./client";
+import { directusRequest } from "./client";
 import { AIProviderMeta, AIProviderType, AISettings } from "../../services/ai/types";
 
 const LOCAL_STORAGE_PROVIDERS_KEY = "crm_ai_providers";
@@ -52,6 +52,18 @@ export const DEFAULT_AI_PROVIDERS: AIProviderMeta[] = [
     api_key: "",
     default_model: "deepseek-chat",
     enabled: true,
+    tenant_id: null,
+    date_created: new Date().toISOString(),
+    date_updated: new Date().toISOString(),
+  },
+  {
+    id: "default-kimi",
+    label: "Kimi AI (Moonshot)",
+    type: "kimi",
+    base_url: "https://api.moonshot.cn/v1/chat/completions",
+    api_key: "",
+    default_model: "moonshot-v1-8k",
+    enabled: false,
     tenant_id: null,
     date_created: new Date().toISOString(),
     date_updated: new Date().toISOString(),

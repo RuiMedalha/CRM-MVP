@@ -18,6 +18,7 @@ export interface AICompletionOptions {
 
 export interface AICompletionResult {
   text: string;
+  reasoning?: string;
   tokens: number;
   latency: number;
   providerId?: string;

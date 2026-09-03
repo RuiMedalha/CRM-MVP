@@ -1,4 +1,4 @@
-﻿import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
+import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
 import { withRetry } from "./utils";
 
 export class DeepSeekAdapter implements AIProvider {
@@ -75,11 +75,14 @@ export class DeepSeekAdapter implements AIProvider {
       }
 
       const data = await res.json();
-      const text = data.choices?.[0]?.message?.content || "";
+      const choice = data.choices?.[0]?.message;
+      const reasoning = choice?.reasoning_content || undefined;
+      const text = choice?.content || (reasoning ? "" : "");
       const tokens = data.usage?.total_tokens || 0;
 
       return {
         text: text.trim(),
+        reasoning: reasoning?.trim(),
         tokens,
         latency,
         providerId: this.id,
