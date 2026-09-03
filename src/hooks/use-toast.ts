@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
-const TOAST_LIMIT = 1;
+const TOAST_LIMIT = 3;
 const TOAST_REMOVE_DELAY = 1000000;
 
 type ToasterToast = ToastProps & {
@@ -181,6 +181,20 @@ function useToast() {
     toast,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   };
+}
+
+export function notifyRealtimeLead(leadName: string, author?: string) {
+  return toast({
+    title: "⚡ Novo Lead em tempo real",
+    description: author ? `Criado por ${author}: ${leadName}` : `Novo lead recebido: ${leadName}`,
+  });
+}
+
+export function notifyRealtimeDeal(dealTitle: string, stageName: string, author?: string) {
+  return toast({
+    title: "⚡ Negócio Atualizado",
+    description: author ? `Movido para "${stageName}" por ${author}: ${dealTitle}` : `Movido para "${stageName}": ${dealTitle}`,
+  });
 }
 
 export { useToast, toast };
