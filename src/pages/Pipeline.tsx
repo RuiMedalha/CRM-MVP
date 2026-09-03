@@ -26,6 +26,8 @@ import { Plus, Euro, ChevronLeft, ChevronRight, Filter, X, Search, Zap } from "l
 import { cn } from "@/lib/utils";
 import { DealDialog } from "@/components/deals/DealDialog";
 import { DealCard } from "@/components/deals/DealCard";
+import { useStageTasks, useActiveSlaBreaches } from "@/hooks/useChecklistSla";
+import { getSlaBreachState } from "@/integrations/directus/checklistSla";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast, notifyRealtimeDeal } from "@/hooks/use-toast";
 import { useSearchParams } from "react-router-dom";
@@ -62,6 +64,8 @@ export default function Pipeline() {
   const [isNewDealOpen, setIsNewDealOpen] = useState(false);
   const [collapsedColumns, setCollapsedColumns] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const { data: slaBreaches } = useActiveSlaBreaches();
+  const breachedDealIds = useMemo(() => new Set((slaBreaches || []).map((b) => b.deal_id)), [slaBreaches]);
 
   // Cross-tab Realtime deals subscription
   const { emit } = useRealtime("deals", {
@@ -450,6 +454,8 @@ export default function Pipeline() {
                                         deal={deal as any}
                                         onClick={() => setSelectedDealId(deal.id)}
                                         isDragging={snapshot.isDragging}
+                                        pendingTasks={0}
+                                        slaBreached={breachedDealIds.has(deal.id)}
                                       />
                                     </div>
                                   )}
