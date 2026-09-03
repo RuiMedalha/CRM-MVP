@@ -464,11 +464,104 @@
         { "field": "summary", "type": "string", "meta": { "interface": "input", "display_name": "Resumo" } },
         { "field": "payload", "type": "json", "meta": { "interface": "json", "display_name": "Payload (raw)" } }
       ]
+    },
+    {
+      "collection": "workflows",
+      "meta": {
+        "icon": "account_tree",
+        "note": "Visual Workflow Automation (if-this-then-that)",
+        "display_template": "{{name}} ({{trigger_collection}}:{{trigger_event}})"
+      },
+      "schema": { "name": "workflows" },
+      "fields": [
+        { "field": "id", "type": "uuid", "meta": { "hidden": true }, "schema": { "is_primary_key": true } },
+        { "field": "date_created", "type": "timestamp", "meta": { "readonly": true, "hidden": true } },
+        { "field": "date_updated", "type": "timestamp", "meta": { "readonly": true, "hidden": true } },
+        { "field": "name", "type": "string", "meta": { "required": true, "interface": "input", "display_name": "Nome do Workflow" } },
+        { "field": "description", "type": "text", "meta": { "interface": "textarea", "display_name": "Descrição" } },
+        {
+          "field": "trigger_collection",
+          "type": "string",
+          "meta": {
+            "required": true,
+            "interface": "select-dropdown",
+            "display_name": "Coleção de Trigger",
+            "options": {
+              "choices": [
+                { "text": "Leads", "value": "leads" },
+                { "text": "Deals / Oportunidades", "value": "deals" },
+                { "text": "Contactos", "value": "contacts" },
+                { "text": "Orçamentos / Propostas", "value": "quotations" },
+                { "text": "Follow-ups", "value": "follow_ups" },
+                { "text": "Atividades", "value": "activity" }
+              ]
+            }
+          }
+        },
+        {
+          "field": "trigger_event",
+          "type": "string",
+          "meta": {
+            "required": true,
+            "interface": "select-dropdown",
+            "display_name": "Evento de Trigger",
+            "options": {
+              "choices": [
+                { "text": "Item Criado (create)", "value": "create" },
+                { "text": "Item Atualizado (update)", "value": "update" },
+                { "text": "Item Apagado (delete)", "value": "delete" },
+                { "text": "Etapa / Estado Alterado (stage_changed)", "value": "stage_changed" },
+                { "text": "Sem Follow-up X Dias (no_followup_days)", "value": "no_followup_days" }
+              ]
+            }
+          }
+        },
+        { "field": "trigger_conditions", "type": "json", "meta": { "interface": "json", "display_name": "Condições (JSON array)" } },
+        { "field": "actions", "type": "json", "meta": { "interface": "json", "display_name": "Ações (JSON array)" } },
+        { "field": "is_active", "type": "boolean", "meta": { "interface": "boolean", "display_name": "Ativo" }, "schema": { "default_value": true } },
+        { "field": "created_by", "type": "uuid", "meta": { "interface": "select-dropdown-m2o", "display_name": "Criado por" }, "schema": { "foreign_key_table": "directus_users" } }
+      ]
+    },
+    {
+      "collection": "workflow_executions",
+      "meta": {
+        "icon": "receipt_long",
+        "note": "Histórico e logs de execução dos workflows",
+        "display_template": "Execução {{id}} ({{status}})"
+      },
+      "schema": { "name": "workflow_executions" },
+      "fields": [
+        { "field": "id", "type": "uuid", "meta": { "hidden": true }, "schema": { "is_primary_key": true } },
+        { "field": "date_created", "type": "timestamp", "meta": { "readonly": true, "hidden": true } },
+        { "field": "workflow_id", "type": "uuid", "meta": { "required": true, "interface": "select-dropdown-m2o", "display_name": "Workflow" }, "schema": { "foreign_key_table": "workflows" } },
+        { "field": "trigger_item_id", "type": "string", "meta": { "interface": "input", "display_name": "ID Item Trigger" } },
+        {
+          "field": "status",
+          "type": "string",
+          "meta": {
+            "required": true,
+            "interface": "select-dropdown",
+            "display_name": "Estado",
+            "options": {
+              "choices": [
+                { "text": "Pendente", "value": "pending" },
+                { "text": "Em Execução", "value": "running" },
+                { "text": "Concluído", "value": "completed" },
+                { "text": "Falhou", "value": "failed" }
+              ]
+            }
+          }
+        },
+        { "field": "started_at", "type": "timestamp", "meta": { "interface": "datetime", "display_name": "Iniciado em" } },
+        { "field": "completed_at", "type": "timestamp", "meta": { "interface": "datetime", "display_name": "Concluído em" } },
+        { "field": "log", "type": "json", "meta": { "interface": "json", "display_name": "Logs das Ações (JSON)" } },
+        { "field": "error", "type": "text", "meta": { "interface": "textarea", "display_name": "Mensagem de Erro" } }
+      ]
     }
   ],
   "notes": [
     "Importa este ficheiro no Directus em Settings > Data Model > Import.",
-    "Coleções incluídas (frontend Directus-only): contacts, newsletter_subscriptions, newsletter_identity_map, leads, employees, manufacturers, company_settings, deals, deal_items, quotations, quotation_items, interactions.",
+    "Coleções incluídas: contacts, newsletter_subscriptions, newsletter_identity_map, leads, employees, manufacturers, company_settings, deals, deal_items, quotations, quotation_items, interactions, workflows, workflow_executions.",
     "O frontend usa employees.role para roles (admin/gestor/vendedor/visualizador).",
     "Se já tens coleções com estes nomes, confirma se os campos batem certo antes de fazer overwrite."
   ]
