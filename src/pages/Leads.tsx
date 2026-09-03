@@ -119,21 +119,6 @@ export default function Leads() {
     },
   });
 
-  const newLeads = useCrossTabBus((s) => s.newLeads);
-  const clearNewLeads = useCrossTabBus((s) => s.clearNewLeads);
-  const newLeadIds = useMemo(() => new Set(newLeads.map((l) => String(l.id))), [newLeads]);
-
-  // Directus & Cross-tab Realtime Subscription
-  const { emit } = useRealtime("leads", {
-    onEvent: (payload) => {
-      if (payload.event === "create" && payload.data) {
-        const item = Array.isArray(payload.data) ? payload.data[0] : payload.data;
-        const name = item?.display_name || item?.contact_name || item?.contact_phone || "Novo Lead";
-        notifyRealtimeLead(name, payload.meta?.userName);
-      }
-    },
-  });
-
   const {
     data: leads = [],
     isLoading,

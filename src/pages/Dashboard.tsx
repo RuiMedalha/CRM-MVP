@@ -522,7 +522,7 @@ function SlaBreachesWidget() {
         <li key={b.id} className="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0">
           <svg className="h-3 w-3 shrink-0 text-destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01M10.29 3.86l-8.2 14.18A1.5 1.5 0 003.3 20h17.4a1.5 1.5 0 001.21-1.96l-8.2-14.18a1.84 1.84 0 00-3.22 0z" /></svg>
           <div className="flex-1 min-w-0">
-            <p className="truncate text-xs font-medium">Negocio #{b.deal_id[:8]}</p>
+            <p className="truncate text-xs font-medium">Negocio #{String(b.deal_id).slice(0, 8)}</p>
             <p className="text-[10px] text-muted-foreground">{b.sla_hours}h SLA excedido</p>
           </div>
           <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => { patchBreach.mutate({ id: b.id, notified: true }); navigate("/pipeline?dealId=" + b.deal_id); }}>Ver</Button>
