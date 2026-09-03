@@ -531,3 +531,148 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline }: LeadsVirt
     </div>
   );
 }
+
+// ─── Score Badge + Breakdown Dialog (Card 7) ───────────────────────────────
+
+function ScoreBadge({ score, onClick }: { score: number; onClick?: (e: React.MouseEvent) => void }) {
+  const bucket = scoreBucket(score);
+  const conf = SCORE_BUCKET_LABELS[bucket];
+  const Icon = conf.Icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`Score ${score} — ${conf.label}. Click para ver breakdown.`}
+      data-testid="lead-score-badge"
+      data-score={score}
+      data-bucket={bucket}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold shrink-0 min-w-[52px] justify-center transition ${conf.color}`}
+    >
+      <Icon className="h-3 w-3" />
+      <span className="tabular-nums">{score}</span>
+    </button>
+  );
+}
+
+function ScoreBreakdownDialog({
+  lead,
+  onClose,
+}: {
+  lead: LeadRow | null;
+  onClose: () => void;
+}) {
+  const open = !!lead;
+  const breakdown = useMemo(() => {
+    if (!lead) return null;
+    const live = breakdownScore({
+      phone: lead.contact_phone || lead.phone,
+      email: lead.email,
+      nif: lead.nif,
+      status: lead.status,
+      last_activity_at: lead.last_attempt_at || lead.date_created,
+      whatsapp_replies: lead.whatsapp_replies,
+      email_opens: lead.email_opens,
+    });
+    const stored = lead.score ?? 0;
+    return {
+      live,
+      stored,
+      factors: lead.score_factors ?? live.factors,
+      computed_at: lead.score_computed_at,
+      model_version: lead.score_model_version ?? live.model_version,
+    };
+  }, [lead]);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+            Score breakdown
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            {lead?.display_name || lead?.contact_name || lead?.contact_phone || "Lead"}
+            {" · "}
+            <span className="font-mono">v{breakdown?.model_version ?? SCORE_MODEL_VERSION}</span>
+            {breakdown?.computed_at && (
+              <> · calculado {format(new Date(breakdown.computed_at), "d MMM HH:mm", { locale: pt })}</>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {breakdown && (
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-3">
+              <div
+                className={`inline-flex items-center gap-2 rounded-full border-2 px-4 py-1.5 text-2xl font-bold tabular-nums ${scoreBadgeClass(breakdown.stored)}`}
+                data-testid="breakdown-score-display"
+              >
+                {breakdown.stored}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Bucket: <span className="font-medium">{SCORE_BUCKET_LABELS[scoreBucket(breakdown.stored)].label}</span>
+                <br />
+                Range: 0-100
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Componentes</p>
+              {Object.entries(breakdown.factors)
+                .filter(([, v]) => v !== 0)
+                .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                .map(([key, value]) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between text-xs border-b border-border/40 py-1"
+                  >
+                    <span className="text-muted-foreground">{SCORE_FACTOR_LABELS[key] ?? key}</span>
+                    <span
+                      className={`tabular-nums font-semibold ${
+                        value > 0 ? "text-green-700" : "text-red-700"
+                      }`}
+                    >
+                      {value > 0 ? `+${value}` : value}
+                    </span>
+                  </div>
+                ))}
+              {Object.values(breakdown.factors).every((v) => v === 0) && (
+                <p className="text-xs text-muted-foreground italic">Sem factores aplicáveis.</p>
+              )}
+            </div>
+
+            <div className="border-t pt-2 text-xs space-y-0.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Positivos</span>
+                <span className="tabular-nums text-green-700 font-medium">
+                  +{breakdown.live.positive}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Negativos</span>
+                <span className="tabular-nums text-red-700 font-medium">
+                  {breakdown.live.negative}
+                </span>
+              </div>
+              <div className="flex justify-between font-semibold pt-1 border-t">
+                <span>Score final (clamp 0-100)</span>
+                <span className="tabular-nums">{breakdown.stored}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const SCORE_FACTOR_LABELS: Record<string, string> = {
+  has_phone: "Telefone (+25)",
+  has_email: "Email (+15)",
+  has_nif: "NIF (+10)",
+  whatsapp_replies: "WhatsApp respostas (+20 cada)",
+  email_opens: "Email aberturas (+15 cada)",
+  status_qualified: "Status qualified (+10)",
+  decay_per_day_after_7d: "Idle >7d (−5/dia)",
+  penalty_discarded_or_spam: "Status discarded/spam (−50)",
+};
