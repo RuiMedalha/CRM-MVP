@@ -89,7 +89,39 @@ export interface QuotationItem {
   comparison_group?: string; // ex: "A", "B" — produtos com o mesmo grupo são comparados
   is_recommended?: boolean;
   comparison_specs?: Array<{ label: string; value: string }>;
+
+  /** Sub-itens (ex: acessórios de um produto, opções aninhadas). */
+  items?: QuotationLineItem[];
 }
+
+/**
+ * Line item mais simples, usado pelo builder/proposal wizard onde
+ * os campos ricos (AI description, datasheet, etc.) ainda não estão
+ * preenchidos.
+ */
+export interface QuotationLineItem {
+  id?: number | string;
+  product_id?: string | number;
+  product_name: string;
+  sku?: string;
+  quantity: number;
+  unit_price: number;
+  discount_percent?: number;
+  line_total: number;
+  notes?: string;
+}
+
+/**
+ * Alias para compatibilidade com o ProposalBuilder / quotation-builder
+ * que importa `QuotationBuilderItem` em vez de `QuotationItem`.
+ */
+export type QuotationBuilderItem = QuotationItem;
+
+/**
+ * Alias de `QuotationItem` para compat — algumas áreas do código
+ * ainda importam `LineItem` em vez de `QuotationItem`.
+ */
+export type LineItem = QuotationItem;
 
 // ─── Quotation (main entity) ─────────────────────────────────────────────────
 
