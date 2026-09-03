@@ -21,6 +21,8 @@ import {
   Target,
   Mail,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useForecast } from "@/features/forecast/useForecast";
 
 function delta(current: number, previous: number) {
   if (previous === 0) return current > 0 ? 100 : 0;
