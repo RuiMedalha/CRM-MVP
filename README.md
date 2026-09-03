@@ -489,3 +489,28 @@ Mantém Directus como base.
 Usa React para uma experiência mais rápida.
 
 Organiza integrações sem comprometer a continuidade do sistema atual.
+
+## Checklist antes de publicar
+
+- Confirmar que o build termina sem erros relevantes.
+- Confirmar que as variáveis de ambiente não foram versionadas.
+- Confirmar permissões Directus das coleções alteradas.
+- Confirmar que integrações externas usam configuração do ambiente.
+- Confirmar que migrations foram revistas e têm sequência clara.
+- Confirmar que não há segredos em exports, JSON ou workflows.
+- Confirmar que o fluxo principal foi testado no ambiente certo.
+- Confirmar que rollback e impacto operacional foram considerados.
+
+## Glossário
+
+**Customer 360** é a vista consolidada da relação com um contacto.
+
+**Activity Ledger** é o registo transversal de eventos e ações comerciais.
+
+**Multi-Pipeline** permite processos comerciais com etapas independentes.
+
+**Adapter** é a camada que normaliza um fornecedor externo para o CRM.
+
+**Side-by-side** é a convivência deliberada entre MVP e laboratório.
+
+**Sprint 0** é a fase inicial de entrega e validação das fundações do MVP.
