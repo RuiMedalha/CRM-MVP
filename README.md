@@ -514,3 +514,5 @@ Organiza integrações sem comprometer a continuidade do sistema atual.
 **Side-by-side** é a convivência deliberada entre MVP e laboratório.
 
 **Sprint 0** é a fase inicial de entrega e validação das fundações do MVP.
+
+Este README é o ponto de entrada técnico e operacional do repositório.
