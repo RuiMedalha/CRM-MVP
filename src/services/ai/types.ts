@@ -1,10 +1,11 @@
-﻿export type AIProviderType =
+export type AIProviderType =
   | "anthropic"
   | "openai"
   | "openrouter"
   | "opencode"
   | "minimax"
   | "deepseek"
+  | "kimi"
   | "openai_compatible";
 
 export interface AICompletionOptions {

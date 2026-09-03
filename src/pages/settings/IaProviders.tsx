@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
@@ -87,9 +87,15 @@ const PROVIDER_PRESETS: Record<
     placeholderKey: "sk-or-v1-...",
   },
   deepseek: {
-    label: "DeepSeek AI",
+    label: "DeepSeek AI (V3 / R1 Reasoner)",
     defaultModel: "deepseek-chat",
     defaultBaseUrl: "https://api.deepseek.com/v1/chat/completions",
+    placeholderKey: "sk-...",
+  },
+  kimi: {
+    label: "Kimi AI (Moonshot / Kimi 3)",
+    defaultModel: "moonshot-v1-8k",
+    defaultBaseUrl: "https://api.moonshot.cn/v1/chat/completions",
     placeholderKey: "sk-...",
   },
   opencode: {
@@ -99,7 +105,7 @@ const PROVIDER_PRESETS: Record<
     placeholderKey: "sk-...",
   },
   minimax: {
-    label: "MiniMax AI",
+    label: "MiniMax AI (MiniMax-Text-01 / 01)",
     defaultModel: "MiniMax-Text-01",
     defaultBaseUrl: "https://api.minimax.chat/v1/text/chatcompletion_v2",
     placeholderKey: "ey...",
@@ -325,6 +331,8 @@ export default function IaProviders() {
         return <Layers className="h-5 w-5 text-indigo-500" />;
       case "deepseek":
         return <Flame className="h-5 w-5 text-blue-500" />;
+      case "kimi":
+        return <BrainCircuit className="h-5 w-5 text-rose-500" />;
       case "opencode":
         return <BrainCircuit className="h-5 w-5 text-purple-500" />;
       case "minimax":
@@ -341,6 +349,7 @@ export default function IaProviders() {
       openai: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300",
       openrouter: "bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300",
       deepseek: "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border-blue-300",
+      kimi: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-300 border-rose-300",
       opencode: "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border-purple-300",
       minimax: "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-300 border-orange-300",
       openai_compatible: "bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-300 border-teal-300",
@@ -661,9 +670,10 @@ export default function IaProviders() {
                       <SelectItem value="anthropic">Anthropic Claude (Messages API)</SelectItem>
                       <SelectItem value="openai">OpenAI GPT (Chat Completions)</SelectItem>
                       <SelectItem value="openrouter">OpenRouter Hub (Multi-Model)</SelectItem>
-                      <SelectItem value="deepseek">DeepSeek AI (DeepSeek API)</SelectItem>
+                      <SelectItem value="deepseek">DeepSeek AI (DeepSeek API - V3 / R1)</SelectItem>
+                      <SelectItem value="kimi">Kimi AI / Moonshot (Kimi 3 / K1.5)</SelectItem>
+                      <SelectItem value="minimax">MiniMax AI (Text Chat - 01)</SelectItem>
                       <SelectItem value="opencode">OpenCode Engine</SelectItem>
-                      <SelectItem value="minimax">MiniMax AI (Text Chat)</SelectItem>
                       <SelectItem value="openai_compatible">
                         OpenAI Compatível (Ollama / Local / vLLM)
                       </SelectItem>

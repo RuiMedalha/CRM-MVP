@@ -1,4 +1,4 @@
-﻿import { AIProvider, AIProviderMeta } from "../types";
+import { AIProvider, AIProviderMeta } from "../types";
 import { AnthropicAdapter } from "./anthropic";
 import { OpenAIAdapter } from "./openai";
 import { OpenRouterAdapter } from "./openrouter";
@@ -31,6 +31,12 @@ export function createAIAdapter(meta: AIProviderMeta): AIProvider {
       return new MinimaxAdapter(meta);
     case "deepseek":
       return new DeepSeekAdapter(meta);
+    case "kimi":
+      return new OpenAICompatibleAdapter({
+        ...meta,
+        base_url: meta.base_url || "https://api.moonshot.cn/v1/chat/completions",
+        default_model: meta.default_model || "moonshot-v1-8k",
+      });
     case "openai_compatible":
     default:
       return new OpenAICompatibleAdapter(meta);
