@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@directus/sdk": "^25.0.1",
     "@fullcalendar/daygrid": "^6.1.21",
     "@fullcalendar/interaction": "^6.1.21",
     "@fullcalendar/react": "^6.1.21",
@@ -53,6 +54,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "dompurify": "^3.4.11",
+    "framer-motion": "^13.2.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.462.0",
