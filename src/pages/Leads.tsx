@@ -16,17 +16,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
+import { toast, notifyRealtimeLead } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { directusRequest } from "@/integrations/directus/client";
 import { createContact, listContacts } from "@/integrations/directus/contacts";
 import { CreateContactForm } from "@/components/customer360/edit/CreateContactForm";
-import { Search, UserPlus, ArrowRight, Phone, Mail, History, Plus, RefreshCw, AlertCircle } from "lucide-react";
+import { Search, UserPlus, ArrowRight, Phone, Mail, History, Plus, RefreshCw, AlertCircle, Zap } from "lucide-react";
 import { LeadTimelineModal } from "@/components/contacts/LeadTimelineModal";
 import { format } from "date-fns/format";
 import { pt } from "date-fns/locale";
 import { buildContactCreationUrl } from "@/lib/buildContactCreationUrl";
+import { useRealtime } from "@/hooks/useRealtime";
+import { useCrossTabBus } from "@/store/crossTabBus";
 
 // Em portrait/desktop cada Card de lead tem ~96px (linha + metadata).
 // Em landscape phone (~56px) é mais compacto. Detectamos com matchMedia.
@@ -81,6 +83,21 @@ export default function Leads() {
   const [promoting, setPromoting] = useState<string | number | null>(null);
   const [timelineLead, setTimelineLead] = useState<LeadRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+
+  const newLeads = useCrossTabBus((s) => s.newLeads);
+  const clearNewLeads = useCrossTabBus((s) => s.clearNewLeads);
+  const newLeadIds = useMemo(() => new Set(newLeads.map((l) => String(l.id))), [newLeads]);
+
+  // Directus & Cross-tab Realtime Subscription
+  const { emit } = useRealtime("leads", {
+    onEvent: (payload) => {
+      if (payload.event === "create" && payload.data) {
+        const item = Array.isArray(payload.data) ? payload.data[0] : payload.data;
+        const name = item?.display_name || item?.contact_name || item?.contact_phone || "Novo Lead";
+        notifyRealtimeLead(name, payload.meta?.userName);
+      }
+    },
+  });
 
   const {
     data: leads = [],
@@ -197,7 +214,22 @@ export default function Leads() {
         {/* Header com botão inline "+ Novo Lead" — full-width em mobile, compacto em desktop */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 crm-leads-header">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Leads</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Leads</h1>
+              {newLeads.length > 0 && (
+                <Badge
+                  variant="outline"
+                  onClick={() => {
+                    qc.invalidateQueries({ queryKey: ["leads-page"] });
+                    clearNewLeads();
+                  }}
+                  className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 cursor-pointer flex items-center gap-1 text-xs py-0.5 px-2 animate-pulse"
+                >
+                  <Zap className="h-3 w-3 text-emerald-600" />
+                  {newLeads.length} novo(s) em tempo real
+                </Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
               {pendingCount} por converter · {filtered.length} visíveis
             </p>
@@ -309,6 +341,7 @@ export default function Leads() {
             promoting={promoting}
             onPromote={handlePromote}
             onTimeline={setTimelineLead}
+            newLeadIds={newLeadIds}
           />
         )}
       </div>
@@ -342,7 +375,7 @@ export default function Leads() {
             <CreateContactForm
               isDialog={true}
               defaultMode="lead"
-              onSuccess={() => {
+              onSuccess={(created) => {
                 setCreateOpen(false);
                 toast({
                   title: "Lead criada com sucesso",
@@ -351,6 +384,7 @@ export default function Leads() {
                 qc.invalidateQueries({ queryKey: ["leads-page"] });
                 qc.invalidateQueries({ queryKey: ["leads"] });
                 qc.invalidateQueries({ queryKey: ["leads-pending-count"] });
+                emit("create", created || { status: "incoming", date_created: new Date().toISOString() });
               }}
               onCancel={() => setCreateOpen(false)}
             />
@@ -382,9 +416,10 @@ interface LeadsVirtualListProps {
   promoting: string | number | null;
   onPromote: (lead: LeadRow) => void;
   onTimeline: (lead: LeadRow) => void;
+  newLeadIds?: Set<string>;
 }
 
-function LeadsVirtualList({ leads, promoting, onPromote, onTimeline }: LeadsVirtualListProps) {
+function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, newLeadIds }: LeadsVirtualListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   // Detecta landscape phone para usar row compacta. Sem isto, 499 cards
   // a 96px dão 47904px de altura virtualizada; em landscape cabem só 6
@@ -416,15 +451,6 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline }: LeadsVirt
     <div
       ref={parentRef}
       className="overflow-auto rounded-md border border-border bg-background"
-      /* height: viewport − chrome (topbar 48-80 + bottom-nav 64-96 + tab bar
-         + filtros 100 + paddings). Em landscape curto o pai .crm-layout-content
-         também tem overflow:auto !important — o que criava duplo scroll
-         (47k px). Usando 100dvh com offset suficiente para o chrome real,
-         o virtualizador contém o scroll INTERNAMENTE; o pai fica sem overflow.
-         Fallback min-height: 400 para viewports muito pequenos.
-         Padding-right em landscape phone impede que cards com botão
-         'Promover' (à direita do card) sejam tapados pela bottom-nav
-         coluna fixa (x=792, w=52 em 844x390). */
       style={{ height: "calc(100dvh - 180px)", minHeight: 320, maxHeight: "calc(100dvh - 80px)", paddingRight: "calc(3.25rem + 0.25rem)" }}
       data-testid="leads-virtual-list"
     >
@@ -439,6 +465,7 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline }: LeadsVirt
           const lead = leads[virtualRow.index];
           const statusConf = STATUS_LABELS[lead.status] || { label: lead.status, color: "bg-gray-100 text-gray-600" };
           const isConverted = lead.status === "converted";
+          const isRealtimeNew = newLeadIds?.has(String(lead.id));
           return (
             <div
               key={lead.id}
@@ -453,7 +480,7 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline }: LeadsVirt
               }}
             >
               <Card
-                className={`${isConverted ? "opacity-60" : "cursor-pointer hover:border-primary/40 transition-colors"} mb-2`}
+                className={`${isConverted ? "opacity-60" : "cursor-pointer hover:border-primary/40 transition-colors"} ${isRealtimeNew ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10 shadow-sm" : ""} mb-2`}
                 onClick={() => {
                   if (isConverted && lead.contact_id) {
                     window.location.href = `/customer360-shell/${lead.contact_id}`;
@@ -463,16 +490,18 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline }: LeadsVirt
                   }
                 }}
               >
-                {/* Landscape phone (max-height:500px): card compacto p-2 em vez de
-                   p-4, esconde o metadata (fonte, badges, timestamp) — só
-                   nome + status visíveis. Classe crm-lead-card permite
-                   override via CSS @media. */}
                 <CardContent className="p-3 flex items-center gap-3 crm-lead-card md:p-4 md:gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm truncate">
                         {lead.display_name || lead.contact_name || lead.contact_phone || "Lead"}
                       </p>
+                      {isRealtimeNew && (
+                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-1.5 py-0 flex items-center gap-0.5 animate-pulse">
+                          <Zap className="h-2.5 w-2.5" />
+                          NOVO
+                        </Badge>
+                      )}
                       <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusConf.color}`}>
                         {statusConf.label}
                       </Badge>

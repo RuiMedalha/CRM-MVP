@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { directusRequest } from "@/integrations/directus/client";
 import { createContact } from "@/integrations/directus/contacts";
 import { patchLead, createLead } from "@/integrations/directus/leads";
+import { realtimeClient } from "@/services/realtime/client";
 import { SectionCard } from "../ui/SectionCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -133,6 +134,7 @@ export function CreateContactForm({
       }
 
       setSuccess(true);
+      realtimeClient.broadcast("contacts", "create", created);
       queryClient.invalidateQueries({ queryKey: ["customer360"] });
       queryClient.invalidateQueries({ queryKey: ["contacts-directus"] });
 
@@ -176,6 +178,7 @@ export function CreateContactForm({
         status: "incoming",
       });
       setSuccess(true);
+      realtimeClient.broadcast("leads", "create", created);
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.invalidateQueries({ queryKey: ["leads-page"] });
       queryClient.invalidateQueries({ queryKey: ["leads-pending-count"] });

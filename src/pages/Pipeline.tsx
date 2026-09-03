@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useDeals, useUpdateDeal } from "@/hooks/useDeals";
 import { usePipelines, useStages } from "@/hooks/usePipelines";
@@ -22,15 +22,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, Euro, ChevronLeft, ChevronRight, Filter, X, Search } from "lucide-react";
+import { Plus, Euro, ChevronLeft, ChevronRight, Filter, X, Search, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DealDialog } from "@/components/deals/DealDialog";
 import { DealCard } from "@/components/deals/DealCard";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { toast } from "@/hooks/use-toast";
+import { toast, notifyRealtimeDeal } from "@/hooks/use-toast";
 import { useSearchParams } from "react-router-dom";
 import { SavedFiltersPopover } from "@/components/SavedFiltersPopover";
 import type { PipelineStageRow } from "@/integrations/directus/pipelines";
+import { useRealtime } from "@/hooks/useRealtime";
+import { useCrossTabBus } from "@/store/crossTabBus";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PIPELINE_COLORS: Record<string, string> = {
   "lead": "border-t-yellow-400",
@@ -46,6 +49,7 @@ function getStageColor(stage: PipelineStageRow): string {
 }
 
 export default function Pipeline() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const { data: deals, isLoading: dealsLoading } = useDeals();
   const { data: pipelines } = usePipelines();
@@ -58,6 +62,18 @@ export default function Pipeline() {
   const [isNewDealOpen, setIsNewDealOpen] = useState(false);
   const [collapsedColumns, setCollapsedColumns] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Cross-tab Realtime deals subscription
+  const { emit } = useRealtime("deals", {
+    onEvent: (payload) => {
+      if (payload.event === "update" && payload.data) {
+        const item = Array.isArray(payload.data) ? payload.data[0] : payload.data;
+        const dealTitle = item?.title || "Negócio";
+        const stageName = payload.meta?.stageName || item?.stage_id || "nova etapa";
+        notifyRealtimeDeal(dealTitle, stageName, payload.meta?.userName);
+      }
+    },
+  });
 
   // Filtros
   const [filters, setFilters] = useState({
@@ -169,11 +185,17 @@ export default function Pipeline() {
         } as any);
         const stageLabel = stages?.find((s) => s.id === targetStageId)?.name ?? targetStageId;
         toast({ title: `Movido para ${stageLabel}`, duration: 2000 });
+        emit(
+          "update",
+          { id: draggableId, stage_id: targetStageId, title: deal.title, total_amount: deal.total_amount },
+          "deals",
+          { userName: user?.email || "Utilizador", stageName: stageLabel }
+        );
       } catch {
         toast({ title: "Erro ao mover negócio", variant: "destructive", duration: 3000 });
       }
     },
-    [deals, stages, activePipelineId, updateDeal],
+    [deals, stages, activePipelineId, updateDeal, emit, user],
   );
 
   const activePipeline = pipelines?.find((p) => p.id === activePipelineId);
