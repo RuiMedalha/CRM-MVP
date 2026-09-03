@@ -1,0 +1,38 @@
+﻿{
+  "collection": "ai_call_runs",
+  "meta": {
+    "collection": "ai_call_runs",
+    "icon": "bot",
+    "note": "Transcricoes e analises AI de chamadas Telecof",
+    "singleton": false,
+    "sort_field": null,
+    "accountability": "all",
+    "color": null
+  },
+  "schema": {
+    "name": "ai_call_runs"
+  },
+  "fields": [
+    {"field": "id", "type": "integer", "meta": {"hidden": true, "interface": "input", "readonly": true}, "schema": {"is_primary_key": true, "has_auto_increment": true}},
+    {"field": "status", "type": "string", "meta": {"hidden": false, "interface": "select-dropdown", "options": {"choices": [{"text": "Pending", "value": "pending"}, {"text": "Processing", "value": "processing"}, {"text": "Done", "value": "done"}, {"text": "Failed", "value": "failed"}]}}, "schema": {"default_value": "pending"}},
+    {"field": "call_id", "type": "integer", "meta": {"hidden": false, "interface": "input", "readonly": false}, "schema": {"is_nullable": true, "foreign_key": {"table": "Historico_Chamadas", "field": "id"}}},
+    {"field": "provider", "type": "string", "meta": {"hidden": false, "interface": "select-dropdown", "options": {"choices": [{"text": "OpenAI Whisper", "value": "openai_whisper"}, {"text": "Deepgram", "value": "deepgram"}, {"text": "Claude", "value": "claude"}, {"text": "OpenAI GPT", "value": "openai_gpt"}]}}, "schema": {"default_value": "openai_whisper"}},
+    {"field": "model", "type": "string", "meta": {"hidden": false, "interface": "input"}, "schema": {"is_nullable": true}},
+    {"field": "transcript", "type": "text", "meta": {"hidden": false, "interface": "input-multiline"}, "schema": {"is_nullable": true}},
+    {"field": "summary", "type": "text", "meta": {"hidden": false, "interface": "input-multiline"}, "schema": {"is_nullable": true}},
+    {"field": "sentiment", "type": "string", "meta": {"hidden": false, "interface": "select-dropdown", "options": {"choices": [{"text": "Positive", "value": "positive"}, {"text": "Neutral", "value": "neutral"}, {"text": "Negative", "value": "negative"}, {"text": "Unknown", "value": "unknown"}]}}, "schema": {"default_value": "unknown"}},
+    {"field": "next_action", "type": "text", "meta": {"hidden": false, "interface": "input"}, "schema": {"is_nullable": true}},
+    {"field": "key_topics", "type": "json", "meta": {"hidden": false, "interface": "input-json"}, "schema": {"is_nullable": true}},
+    {"field": "tokens_used", "type": "integer", "meta": {"hidden": false, "interface": "input"}, "schema": {"default_value": 0, "is_nullable": true}},
+    {"field": "cost_estimate", "type": "decimal", "meta": {"hidden": false, "interface": "input"}, "schema": {"default_value": "0.0000", "is_nullable": true, "numeric_precision": 10, "numeric_scale": 4}},
+    {"field": "latency_ms", "type": "integer", "meta": {"hidden": false, "interface": "input"}, "schema": {"is_nullable": true}},
+    {"field": "raw_response", "type": "json", "meta": {"hidden": false, "interface": "input-json"}, "schema": {"is_nullable": true}},
+    {"field": "error_message", "type": "text", "meta": {"hidden": false, "interface": "input-multiline"}, "schema": {"is_nullable": true}},
+    {"field": "date_created", "type": "timestamp", "meta": {"hidden": true, "interface": "datetime", "readonly": true}, "schema": {"default_value": "$now"}},
+    {"field": "date_updated", "type": "timestamp", "meta": {"hidden": true, "interface": "datetime", "readonly": true}, "schema": {"default_value": "$now"}}
+  ],
+  "indices": [
+    {"field": "call_id", "type": "btree", "unique": false},
+    {"field": "sentiment", "type": "btree", "unique": false}
+  ]
+}
