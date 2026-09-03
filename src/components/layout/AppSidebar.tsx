@@ -61,6 +61,12 @@ const navSections: Array<{ label: string; items: NavItem[] }> = [
       { icon: Users, label: "Contactos", path: "/contactos" },
     ],
   },
+  {
+    label: "Definições",
+    items: [
+      { icon: Building2, label: "Definições", path: "/definicoes" },
+    ],
+  },
 ]
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar:v2:collapsed"
@@ -147,7 +153,7 @@ export function AppSidebar() {
         <nav className="flex-1 overflow-x-hidden overflow-y-auto px-1.5 py-2 scrollbar-thin">
           {navSections.map((section, sectionIndex) => (
             <div key={section.label} className={cn(sectionIndex > 0 && "mt-2 border-t border-sidebar-border/60 pt-2")}>
-              {!collapsed && <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">{section.label}</p>}
+              {!collapsed && <p className="sidebar-group-label px-2.5 pb-1.5 pt-1">{section.label}</p>}
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon

@@ -1,0 +1,65 @@
+/* Card 18 — Theme Customizer: accent colors, radius and density. */
+
+[data-theme-accent="indigo"] {
+  --accent: 79 70 229;
+  --accent-primary: #4F46E5;
+  --accent-primary-fg: #ffffff;
+  --accent-light: #E0E7FF;
+  --accent-dark: #312E81;
+}
+
+[data-theme-accent="emerald"] { --accent: 16 185 129; --accent-primary: #10B981; --accent-primary-fg: #ffffff; --accent-light: #D1FAE5; --accent-dark: #064E3B; }
+[data-theme-accent="amber"] { --accent: 245 158 11; --accent-primary: #F59E0B; --accent-primary-fg: #000000; --accent-light: #FEF3C7; --accent-dark: #78350F; }
+[data-theme-accent="rose"] { --accent: 244 63 94; --accent-primary: #F43F5E; --accent-primary-fg: #ffffff; --accent-light: #FFE4E6; --accent-dark: #881337; }
+[data-theme-accent="violet"] { --accent: 139 92 246; --accent-primary: #8B5CF6; --accent-primary-fg: #ffffff; --accent-light: #EDE9FE; --accent-dark: #4C1D95; }
+[data-theme-accent="slate"] { --accent: 100 116 139; --accent-primary: #64748B; --accent-primary-fg: #ffffff; --accent-light: #E2E8F0; --accent-dark: #1E293B; }
+
+[data-theme-accent] {
+  /* Shadcn/Tailwind consume these variables inside hsl(...), so use triplets. */
+  --primary: var(--accent);
+  --primary-foreground: 0 0% 100%;
+  --ring: var(--accent);
+}
+
+[data-theme-accent="amber"] {
+  --primary-foreground: 0 0% 0%;
+}
+
+[data-theme-radius="none"] { --radius-override: 0px; }
+[data-theme-radius="sm"] { --radius-override: 4px; }
+[data-theme-radius="md"] { --radius-override: 8px; }
+[data-theme-radius="lg"] { --radius-override: 12px; }
+
+[data-theme-density="comfortable"] { --density-gap: 1rem; --density-padding: 1rem; --density-text: 0.875rem; }
+[data-theme-density="compact"] { --density-gap: 0.5rem; --density-padding: 0.625rem; --density-text: 0.8125rem; }
+
+.dark {
+  --bg-page: hsl(222 47% 6%);
+  --bg-card: hsl(222 47% 8%);
+  --bg-elevated: hsl(222 47% 10%);
+  --border-subtle: hsl(222 40% 14%);
+  --border-default: hsl(222 35% 20%);
+  --text-primary: hsl(220 14% 96%);
+  --text-secondary: hsl(220 10% 72%);
+  --text-muted: hsl(220 8% 56%);
+}
+
+.dark body {
+  background: linear-gradient(180deg, hsl(222 47% 4%) 0%, hsl(222 47% 6%) 100%);
+  background-attachment: fixed;
+}
+
+.dark .card,
+.dark [class*="bg-card"],
+.dark [class*="Card"] {
+  border-color: hsl(222 35% 16% / 0.8) !important;
+  box-shadow: 0 1px 2px hsl(222 40% 4% / 0.3);
+}
+
+[data-theme-radius] .rounded-md,
+[data-theme-radius] [class*="rounded"],
+[data-theme-radius] button:not([class*="rounded-full"]),
+[data-theme-radius] input,
+[data-theme-radius] select:not([class*="rounded-full"]) {
+  border-radius: var(--radius-override) !important;
+}

@@ -65,7 +65,7 @@ export function TopBar() {
   const initials = initialsOf(userName);
 
   return (
-    <div className="crm-topbar sticky top-0 z-30 flex h-12 shrink-0 items-center gap-1 border-b border-border/60 bg-background/85 px-2 backdrop-blur sm:px-4 md:px-6">
+    <div className="crm-topbar topbar-brand-gradient sticky top-0 z-30 flex h-12 shrink-0 items-center gap-1 px-2 sm:px-4 md:px-6">
       <button
         type="button"
         aria-label="Abrir menu"

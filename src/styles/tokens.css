@@ -1,0 +1,363 @@
+/* =============================================================================
+ *  CRMMVP — Visual Design Tokens (Card 17)
+ *  Base 4px spacing · navy/indigo brand · emerald/amber/rose accents
+ *  Tabular nums for monetary/numeric · Inter Variable + Geist fallback
+ * ============================================================================= */
+
+/* Inter + Geist (legacy) — must come before @tailwind so utilities see the family */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ---------- Brand · navy/indigo (não é o indigo-500 default) ---------- */
+  --brand-50:  238 242 255;   /* #EEF2FF */
+  --brand-100: 224 231 255;   /* #E0E7FF */
+  --brand-200: 199 210 254;   /* #C7D2FE */
+  --brand-300: 165 180 252;   /* #A5B4FC */
+  --brand-400: 129 140 248;   /* #818CF8 */
+  --brand-500:  99 102 241;   /* #6366F1 indigo (HSL ~239 84 67) */
+  --brand-600:  79  70 229;   /* #4F46E5  ⇽ primary */
+  --brand-700:  67  56 202;   /* #4338CA */
+  --brand-800:  55  48 163;   /* #3730A3 */
+  --brand-900:  49  46 129;   /* #312E81 */
+  --brand-950:  30  27  75;   /* #1E1B4B */
+
+  /* ---------- Semantic accents (HSL triplets for tailwind opacity) ---------- */
+  --success-500: 16 185 129;   /* #10B981 emerald */
+  --success-600:  5 150 105;   /* #059669 */
+  --warning-500: 245 158  11;  /* #F59E0B amber */
+  --warning-600: 217 119   6;  /* #D97706 */
+  --danger-500:  244  63  94;  /* #F43F5E rose */
+  --danger-600:  225  29  72;  /* #E11D48 */
+
+  /* ---------- Surfaces · layered off-white / slate ---------- */
+  --surface-0:   0  0% 100%;      /* card / paper */
+  --surface-1: 220 25% 98%;       /* page bg (off-white) */
+  --surface-2: 220 20% 95%;       /* inset / muted */
+  --surface-3: 220 18% 92%;       /* hover / skeleton */
+
+  /* Dark mode surfaces */
+  --surface-0-d: 222 47% 8%;      /* card */
+  --surface-1-d: 222 47% 6%;      /* page bg */
+  --surface-2-d: 222 40% 12%;
+  --surface-3-d: 222 35% 16%;
+
+  /* ---------- Spacing scale (4px base) ---------- */
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---------- Typography scale ---------- */
+  --font-sans: 'Inter', 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Inter', 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+
+  --text-display: 36px;
+  --text-h1: 30px;
+  --text-h2: 24px;
+  --text-h3: 20px;
+  --text-h4: 18px;
+  --text-body: 15px;
+  --text-small: 13px;
+  --text-tiny: 11px;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+
+  /* ---------- Shadows · tinted by brand ---------- */
+  --shadow-color-rgb: 79 70 229;
+  --shadow-xs: 0 1px 2px rgba(15 23 42 / 0.05);
+  --shadow-sm: 0 1px 2px rgba(15 23 42 / 0.06), 0 1px 3px rgba(15 23 42 / 0.04);
+  --shadow-md: 0 2px 4px rgba(15 23 42 / 0.04), 0 4px 12px rgba(15 23 42 / 0.06);
+  --shadow-lg: 0 8px 16px rgba(15 23 42 / 0.06), 0 12px 28px rgba(15 23 42 / 0.08);
+  --shadow-xl: 0 16px 24px rgba(15 23 42 / 0.08), 0 24px 48px rgba(15 23 42 / 0.10);
+
+  --shadow-brand-sm: 0 1px 2px rgba(var(--shadow-color-rgb) / 0.10), 0 2px 6px rgba(var(--shadow-color-rgb) / 0.06);
+  --shadow-brand-md: 0 4px 10px rgba(var(--shadow-color-rgb) / 0.12), 0 8px 20px rgba(var(--shadow-color-rgb) / 0.08);
+  --shadow-brand-lg: 0 12px 28px rgba(var(--shadow-color-rgb) / 0.16), 0 24px 56px rgba(var(--shadow-color-rgb) / 0.10);
+
+  /* ---------- Radii ---------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-pill: 9999px;
+
+  /* ---------- Motion ---------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+}
+
+/* =============================================================================
+ *  Page / typography defaults
+ * ============================================================================= */
+html,
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: hsl(var(--surface-1));
+  color: hsl(var(--brand-900));
+}
+
+.dark body {
+  background-color: hsl(var(--surface-1-d));
+  color: hsl(220 14% 96%);
+}
+
+/* Tabular nums utility — para valores monetários e contagens */
+.tabular-nums,
+[data-tabular] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* =============================================================================
+ *  Shimmer loading
+ * ============================================================================= */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.shimmer {
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--brand-500) / 0.06) 50%,
+      transparent 100%
+    );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.dark .shimmer {
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--brand-300) / 0.10) 50%,
+      transparent 100%
+    );
+  background-size: 200% 100%;
+}
+
+/* Skeleton base — wraps shadcn Skeleton for richer animation */
+.shimmer-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: hsl(var(--surface-3));
+  border-radius: var(--radius-sm);
+}
+
+.shimmer-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--brand-500) / 0.10),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.dark .shimmer-skeleton {
+  background-color: hsl(var(--surface-2-d));
+}
+.dark .shimmer-skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--brand-300) / 0.10),
+    transparent
+  );
+  background-size: 200% 100%;
+}
+
+/* =============================================================================
+ *  Page transitions — fade-in for routed content
+ * ============================================================================= */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-fade-in var(--dur-base) var(--ease-out);
+}
+
+/* =============================================================================
+ *  Card hover lift — gentle, tactile
+ * ============================================================================= */
+.card-hover-lift {
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+  will-change: transform;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-brand-md);
+  border-color: hsl(var(--brand-200));
+}
+
+.dark .card-hover-lift:hover {
+  border-color: hsl(var(--brand-700));
+}
+
+/* =============================================================================
+ *  Input focus ring — animated
+ * ============================================================================= */
+@keyframes focus-ring-grow {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.input-focus-ring {
+  position: relative;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.input-focus-ring:focus-visible {
+  outline: none;
+  border-color: hsl(var(--brand-500));
+  box-shadow: 0 0 0 4px hsl(var(--brand-500) / 0.12), 0 0 0 1px hsl(var(--brand-500));
+}
+
+/* =============================================================================
+ *  Bottom-nav pill indicator (animated slide between items)
+ * =============================================================================
+   The pill is positioned absolutely; we transform via CSS var so the
+   active item only needs to set --pill-x. */
+.bottom-nav-pill {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  width: 64px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--brand-100)) 0%,
+    hsl(var(--brand-50)) 100%
+  );
+  box-shadow: 0 1px 2px hsl(var(--brand-500) / 0.15);
+  transform: translateX(var(--pill-x, 0px));
+  transition: transform var(--dur-slow) var(--ease-spring);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark .bottom-nav-pill {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--brand-700) / 0.30) 0%,
+    hsl(var(--brand-800) / 0.25) 100%
+  );
+}
+
+/* =============================================================================
+ *  Bottom-sheet drag handle — visible cue + safe area
+ * ============================================================================= */
+.bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--surface-3));
+  margin: 8px auto 4px;
+}
+
+.dark .bottom-sheet-handle {
+  background-color: hsl(var(--surface-3-d));
+}
+
+.bottom-sheet-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), var(--space-4));
+}
+
+/* =============================================================================
+ *  Topbar brand gradient — subtle, full-bleed
+ * ============================================================================= */
+.topbar-brand-gradient {
+  background:
+    linear-gradient(
+      180deg,
+      hsl(var(--brand-50) / 0.85) 0%,
+      hsl(var(--surface-0) / 0.85) 60%
+    );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid hsl(var(--brand-100));
+}
+
+.dark .topbar-brand-gradient {
+  background:
+    linear-gradient(
+      180deg,
+      hsl(var(--brand-900) / 0.35) 0%,
+      hsl(var(--surface-0-d) / 0.85) 60%
+    );
+  border-bottom-color: hsl(var(--brand-800));
+}
+
+/* =============================================================================
+ *  Sidebar group labels (uppercase, tracked) — typography override
+ * ============================================================================= */
+.sidebar-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--brand-500) / 0.55);
+}
+
+.dark .sidebar-group-label {
+  color: hsl(var(--brand-200) / 0.55);
+}
+
+/* =============================================================================
+ *  Reduced motion — respect OS setting
+ * ============================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer,
+  .shimmer-skeleton::after,
+  .page-enter,
+  .card-hover-lift,
+  .input-focus-ring,
+  .bottom-nav-pill {
+    animation: none !important;
+    transition: none !important;
+  }
+}
