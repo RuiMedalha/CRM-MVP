@@ -1,4 +1,5 @@
-﻿import { directusRequest } from "./client";
+import { directusRequest } from "./client";
+import { createActivity } from "./activities";
 import type {
   WhatsAppMessage,
   WhatsAppMessageDirection,
@@ -71,6 +72,28 @@ export async function recordWhatsAppMessage(
   } catch (err) {
     console.warn("Directus /items/whatsapp_messages save failed, persisting locally:", err);
   }
+
+  // Dual-write ao activity ledger existente (activity) sem criar novas coleções
+  createActivity({
+    type: "whatsapp",
+    channel: (payload.raw_payload as any)?.provider === "meta" ? "meta" : "evolution",
+    direction: payload.direction === "inbound" ? "in" : "out",
+    status: record.status,
+    summary: payload.body ? payload.body.slice(0, 255) : "Mensagem WhatsApp",
+    occurred_at: record.timestamp,
+    lead_id: payload.lead_id ? String(payload.lead_id) : null,
+    contact_id: payload.lead_id ? String(payload.lead_id) : null,
+    conversation_id: payload.conversation_id ? String(payload.conversation_id) : null,
+    source_collection: "whatsapp_messages",
+    source_id: record.id,
+    payload: {
+      whatsapp_id: record.whatsapp_id,
+      from: record.from_number,
+      to: record.to_number,
+      media_type: record.media_type,
+      media_url: record.media_url,
+    },
+  }).catch(() => {});
 
   const list = getLocalMessages();
   list.unshift(record);
