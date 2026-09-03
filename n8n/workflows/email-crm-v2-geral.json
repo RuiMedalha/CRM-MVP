@@ -1,0 +1,2086 @@
+{
+  "updatedAt": "2026-07-15T18:24:33.276Z",
+  "createdAt": "2026-06-29T23:32:58.205Z",
+  "id": "LIGCJw1vKFKzMsB9",
+  "name": "HotelEquip · Email → CRM v2 (geral) [Graph API]",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "A cada minuto",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        112,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://login.microsoftonline.com/f27c295b-2490-4101-9ae3-6db45ffd9489/oauth2/v2.0/token",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/x-www-form-urlencoded",
+        "body": "grant_type=client_credentials&client_id=a03c97a2-50c6-4302-a466-4c254fb8cad9&client_secret=REDACTED_REPLACE_WITH_AZURE_APP_SECRET&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default",
+        "options": {}
+      },
+      "id": "get-token",
+      "name": "Obter token MS Graph",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.microsoft.com/v1.0/users/geral@hotelequip.pt/mailFolders/inbox/messages?$filter=isRead eq false&$orderby=receivedDateTime asc&$top=3&$select=id,subject,bodyPreview,body,from,toRecipients,conversationId,receivedDateTime,hasAttachments,isRead",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-emails",
+      "name": "Buscar emails novos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        544,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst emails = $input.first().json.value || [];\nif (!emails.length) return [];\nreturn emails.map(email => ({ json: email }));\n"
+      },
+      "id": "split-emails",
+      "name": "Processar cada email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "mailbox",
+              "value": "geral@hotelequip.pt",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "graphMessageId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "threadIdExt",
+              "value": "={{ $json.conversationId }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "subject",
+              "value": "={{ $json.subject || '(sem assunto)' }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "fromAddress",
+              "value": "={{ $json.from?.emailAddress?.address || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "fromName",
+              "value": "={{ $json.from?.emailAddress?.name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a7",
+              "name": "toAddress",
+              "value": "geral@hotelequip.pt",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "bodyText",
+              "value": "={{ ($json.body?.content || $json.bodyPreview || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 60000) }}",
+              "type": "string"
+            },
+            {
+              "id": "a9",
+              "name": "bodyHtml",
+              "value": "={{ $json.body?.contentType === 'html' ? $json.body?.content : null }}",
+              "type": "string"
+            },
+            {
+              "id": "a10",
+              "name": "receivedAt",
+              "value": "={{ $json.receivedDateTime || null }}",
+              "type": "string"
+            },
+            {
+              "id": "a11",
+              "name": "hasAttachments",
+              "value": "={{ $json.hasAttachments || false }}",
+              "type": "boolean"
+            },
+            {
+              "id": "a12",
+              "name": "msToken",
+              "value": "={{ $('Obter token MS Graph').first().json.access_token }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-fields",
+      "name": "Normalizar campos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "=true",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-external",
+      "name": "É email externo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.hotelequip.pt/items/email_threads?filter[thread_id_ext][_nnull]=true&filter[thread_id_ext][_eq]={{ encodeURIComponent($json.threadIdExt) }}&fields=id,thread_id_ext,status&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-thread",
+      "name": "Thread já existe?",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1424,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://graph.microsoft.com/v1.0/users/geral@hotelequip.pt/messages/{{$json.graphMessageId}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Normalizar campos').first().json.msToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "{\"isRead\": true}",
+        "options": {}
+      },
+      "id": "mark-read",
+      "name": "Marcar como lido",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1424,
+        432
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "id": "t1",
+              "leftValue": "={{ $json.data.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "thread-if",
+      "name": "Thread existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hotelequip.pt/items/email_messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ thread_id: $('Thread já existe?').first().json.data[0].id, direction: 'inbound', from_address: $('Normalizar campos').first().json.fromAddress, subject: $('Normalizar campos').first().json.subject, body_text: $('Normalizar campos').first().json.bodyText, body_html: $('Normalizar campos').first().json.bodyHtml || null, received_at: $('Normalizar campos').first().json.receivedAt, message_id_ext: $('Normalizar campos').first().json.graphMessageId, is_draft: false }) }}",
+        "options": {}
+      },
+      "id": "add-msg-existing",
+      "name": "Directus · Mensagem em thread existente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1872,
+        128
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.hotelequip.pt/webhook/ai-proxy",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-proxy-token",
+              "value": "hotelequip-ai-2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 700, system: [{ type: 'text', text: \"\\u00c9s o classificador de email da Hotelequip (equipamento hoteleiro B2B, Portugal).\\nAnalisa o email e devolve APENAS JSON v\\u00e1lido sem markdown:\\n{\\\"category\\\":\\\"...\\\",\\\"urgency\\\":\\\"low|normal|high|critical\\\",\\\"summary\\\":\\\"resumo em PT de 1 linha\\\",\\\"contact_name\\\":\\\"nome da pessoa ou null\\\",\\\"contact_phone\\\":\\\"telefone ou null\\\",\\\"nif\\\":\\\"NIF ou null\\\",\\\"address\\\":\\\"morada ou null\\\",\\\"city\\\":\\\"localidade ou null\\\",\\\"postal_code\\\":\\\"codigo postal ou null\\\",\\\"website\\\":\\\"website ou null\\\",\\\"request_type\\\":\\\"orcamento|encomenda|proposta|reclamacao|assistencia_tecnica|informacao|outro ou null\\\",\\\"requested_items\\\":\\\"lista curta separada por virgulas dos produtos/equipamentos mencionados, texto livre, ou null\\\",\\\"contact_role\\\":\\\"cliente|fornecedor|parceiro ou null\\\"}\\n\\nCategorias: pedido_orcamento|followup_cliente|reclamacao|compra_cliente|fornecedor_sourcing|fornecedor_novidade|tabela_precos_fornecedor|compra_fornecedor|fatura_administrativo|spam|outro\\n\\nfornecedor_sourcing = fornecedor a tentar vender-nos algo, tentativa comercial fria.\\nfornecedor_novidade = fornecedor conhecido a comunicar novidade de produto, catalogo, ou newsletter informativa (nao e spam, pode ser util para conteudo/blog, mas nao e uma venda).\\n\\nUrg\\u00eancia: critical=emerg\\u00eancia/cancelamento; high=urgente/asap/hoje; normal=email comercial; low=newsletter/autom\\u00e1tico\\n\\nDados de contacto: extrai SEMPRE que existirem no corpo ou assinatura do email (nome, telefone, NIF, morada, cidade, codigo postal, website). Usa null se n\\u00e3o encontrares. contact_role: \\\"cliente\\\" se esta a pedir/comprar algo \\u00e0 Hotelequip; \\\"fornecedor\\\" se esta a vender/oferecer algo (fatura, catalogo, proposta de fornecimento); \\\"parceiro\\\"; ou null se nao for claro.\\n\\nNao incluas nenhuma chave de rascunho de resposta. Nao geres texto de resposta nesta classificacao.\", cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: 'ASSUNTO: ' + $('Normalizar campos').first().json.subject + '\\nDE: ' + $('Normalizar campos').first().json.fromAddress + '\\nNOME: ' + $('Normalizar campos').first().json.fromName + '\\nCORPO:\\n' + ($('Normalizar campos').first().json.bodyText || '').slice(0, 2500) }] }) }}",
+        "options": {}
+      },
+      "id": "claude-classify",
+      "name": "Claude · Classificar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1648,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const norm = $('Normalizar campos').first().json;\nconst aiRaw = $json.content?.[0]?.text || '{}';\n\n// Limpar markdown se presente\nlet cleaned = aiRaw.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\nlet ai = {};\ntry {\n  ai = JSON.parse(cleaned);\n} catch(e) {\n  // Tentar extrair JSON com regex\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (match) {\n    try { ai = JSON.parse(match[0]); } catch(e2) {\n      ai = { category: 'outro', urgency: 'normal', summary: 'Erro ao processar IA' };\n    }\n  } else {\n    ai = { category: 'outro', urgency: 'normal', summary: 'IA não devolveu JSON válido' };\n  }\n}\n\nconst slaMap = {\n  pedido_orcamento:4, reclamacao:2, followup_cliente:8,\n  compra_cliente:4, compra_fornecedor:24, fornecedor_sourcing:72,\n  fornecedor_novidade:9999, tabela_precos_fornecedor:72, fatura_administrativo:48, spam:9999, outro:24\n};\nconst hrs = slaMap[ai.category] || 24;\nconst sla = (ai.category === 'spam' || ai.category === 'fornecedor_novidade') ? null : new Date(Date.now() + hrs * 3600000).toISOString();\n\nreturn [{json: {\n  mailbox: norm.mailbox,\n  subject: norm.subject,\n  fromAddress: norm.fromAddress,\n  toAddress: norm.toAddress,\n  bodyText: norm.bodyText,\n  receivedAt: norm.receivedAt,\n  graphMessageId: norm.graphMessageId,\n  threadIdExt: norm.threadIdExt,\n  msToken: norm.msToken,\n  category: ai.category || 'outro',\n  urgency: ai.urgency || 'normal',\n  ai_summary: ai.summary || '',\n  ai_draft: null,\n  sla_due_at: sla,\n  contact_name: ai.contact_name || null,\n  contact_phone: ai.contact_phone || null,\n  nif: ai.nif || null,\n  address: ai.address || null,\n  city: ai.city || null,\n  postal_code: ai.postal_code || null,\n  website: ai.website || null,\n  request_type: ai.request_type || null,\n  requested_items: ai.requested_items || null,\n  contact_role: ai.contact_role || null\n}}];\n"
+      },
+      "id": "process-ai",
+      "name": "Tratar IA + calcular SLA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hotelequip.pt/items/email_threads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ subject: $json.subject, from_address: $json.fromAddress, to_address: $json.toAddress, mailbox: $json.mailbox, thread_id_ext: $json.threadIdExt, category: $json.category, status: 'queued', urgency: $json.urgency, sla_due_at: $json.sla_due_at, ai_summary: $json.ai_summary, ai_draft: $json.ai_draft, source_raw: { graphMessageId: $json.graphMessageId, receivedAt: $json.receivedAt }, contact_id: ($('Check/Create Lead').first().json.found === 'contact' ? $('Check/Create Lead').first().json.id : null) }) }}",
+        "options": {}
+      },
+      "id": "create-thread",
+      "name": "Directus · Criar thread",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        384
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hotelequip.pt/items/email_messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ thread_id: $('Directus · Criar thread').first().json.data.id, direction: 'inbound', from_address: $('Tratar IA + calcular SLA').first().json.fromAddress, to_address: $('Tratar IA + calcular SLA').first().json.toAddress, subject: $('Tratar IA + calcular SLA').first().json.subject, body_text: $('Tratar IA + calcular SLA').first().json.bodyText, body_html: $('Normalizar campos').first().json.bodyHtml || null, received_at: $('Tratar IA + calcular SLA').first().json.receivedAt || null, message_id_ext: $('Tratar IA + calcular SLA').first().json.graphMessageId || null, is_draft: false }) }}",
+        "options": {}
+      },
+      "id": "create-msg",
+      "name": "Directus · Criar mensagem (inbound)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2304,
+        384
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://graph.microsoft.com/v1.0/users/' + $('Tratar IA + calcular SLA').first().json.mailbox + '/messages/' + $('Tratar IA + calcular SLA').first().json.graphMessageId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Tratar IA + calcular SLA').first().json.msToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "{\"isRead\": true}",
+        "options": {}
+      },
+      "id": "mark-read-new",
+      "name": "Marcar como lido (novo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2304,
+        512
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "u1",
+              "leftValue": "={{ $('Tratar IA + calcular SLA').first().json.urgency }}",
+              "rightValue": "high",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "u2",
+              "leftValue": "={{ $('Tratar IA + calcular SLA').first().json.urgency }}",
+              "rightValue": "critical",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-urgent",
+      "name": "É urgente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "-5089158784",
+        "text": "=🚨 *Email urgente — {{ $('Tratar IA + calcular SLA').first().json.urgency === 'critical' ? 'CRÍTICO' : 'ALTO' }}*\n\n📬 *Caixa:* {{ $('Tratar IA + calcular SLA').first().json.mailbox }}\n👤 *De:* {{ $('Tratar IA + calcular SLA').first().json.fromAddress }}\n📋 *Assunto:* {{ $('Tratar IA + calcular SLA').first().json.subject }}\n🏷️ *Categoria:* {{ $('Tratar IA + calcular SLA').first().json.category }}\n💬 {{ $('Tratar IA + calcular SLA').first().json.ai_summary }}\n\n👉 https://crm.hotelequip.pt/email",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-alert",
+      "name": "Telegram · Alerta urgência",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2752,
+        304
+      ],
+      "webhookId": "e9accd8a-4c5a-4e0f-b96b-6afdf44e7f76",
+      "credentials": {
+        "telegramApi": {
+          "id": "pMX38cHxgePkLoDS",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.microsoft.com/v1.0/$batch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.msToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ requests: [{ id: '1', method: 'PATCH', url: '/users/geral@hotelequip.pt/messages/' + $json.graphMessageId, body: { isRead: true }, headers: { 'Content-Type': 'application/json' } }] }) }}",
+        "options": {}
+      },
+      "id": "mark-read-immediate",
+      "name": "Marcar lido imediatamente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1328,
+        592
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    messageId: $json.data.id,\n    graphMessageId: $('Normalizar campos').first().json.graphMessageId,\n    accessToken: $('Obter token MS Graph').first().json.access_token,\n    hasAttachments: $('Normalizar campos').first().json.hasAttachments || false,\n    directusToken: '26p4fEMFaSZ6N15Br649mMSGkSmkofJo',\n  }\n}];\n"
+      },
+      "id": "prep-att-b-g",
+      "name": "Prep Attachments (novo)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2564,
+        604
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    messageId: $json.data.id,\n    graphMessageId: $('Normalizar campos').first().json.graphMessageId,\n    accessToken: $('Obter token MS Graph').first().json.access_token,\n    hasAttachments: $('Normalizar campos').first().json.hasAttachments || false,\n    directusToken: '26p4fEMFaSZ6N15Br649mMSGkSmkofJo',\n  }\n}];\n"
+      },
+      "id": "prep-att-a-g",
+      "name": "Prep Attachments (existente)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        604
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.hasAttachments }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-att-g",
+      "name": "IF Has Attachments",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2234,
+        604
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.microsoft.com/v1.0/users/geral@hotelequip.pt/messages/{{ $json.graphMessageId }}/attachments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "get-att-list-g",
+      "name": "GET Attachments List (Graph)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2484,
+        604
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst out = [];\n\n// messageId e directusToken perdem-se ao passar pelo nó HTTP \"GET Attachments \n// List (Graph)\" (que substitui $json pela resposta da Graph API) — por isso\n// vamos buscá-los directamente ao nó de origem (Prep Attachments), não ao \n// input imediato.\nlet ctx;\ntry {\n  ctx = $('Prep Attachments (novo)').first().json;\n} catch (e) {\n  ctx = $('Prep Attachments (existente)').first().json;\n}\n\nfor (const item of items) {\n  const attachments = item.json.value || item.json.attachments || [];\n  for (const att of attachments) {\n    if (att['@odata.type'] !== '#microsoft.graph.fileAttachment') continue;\n    if (!att.contentBytes) continue;\n    const buffer = Buffer.from(att.contentBytes, 'base64');\n    const binaryData = await this.helpers.prepareBinaryData(\n      buffer,\n      att.name || 'anexo',\n      att.contentType || 'application/octet-stream'\n    );\n    out.push({\n      json: {\n        messageId: ctx.messageId,\n        directusToken: ctx.directusToken,\n        filename: att.name || 'anexo',\n        size: att.size || buffer.length,\n      },\n      binary: { file: binaryData },\n    });\n  }\n}\nif (out.length === 0) {\n  return [{ json: { skip: true, messageId: ctx.messageId } }];\n}\nreturn out;\n"
+      },
+      "id": "prepare-att-bin-g",
+      "name": "Prepare Attachment Binaries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2684,
+        604
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hotelequip.pt/files",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.directusToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "upload-att-directus-g",
+      "name": "Upload Attachment to Directus",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2904,
+        604
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const uploads = $input.all();\nconst prep = $('Prepare Attachment Binaries').all();\nconst messageId = prep[0]?.json?.messageId || uploads[0]?.json?.messageId;\nconst attachments = [];\nfor (let i = 0; i < uploads.length; i++) {\n  const u = uploads[i].json;\n  if (u.error || !u.data?.id) continue;\n  const meta = prep[i]?.json || {};\n  attachments.push({ file: u.data.id, filename: meta.filename || u.data.filename_download, size: meta.size || Number(u.data.filesize) || 0 });\n}\nreturn [{ json: { messageId, attachments } }];\n"
+      },
+      "id": "aggregate-uploads-g",
+      "name": "Aggregate Uploaded Attachments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3124,
+        604
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.hotelequip.pt/items/email_messages/{{ $json.messageId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "options": {
+          "timeout": 15000
+        },
+        "specifyBody": "json",
+        "jsonBody": "={{ { attachments: $json.attachments } }}"
+      },
+      "id": "patch-msg-att-g",
+      "name": "PATCH Message Attachments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3344,
+        604
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const directusUrl = 'https://api.hotelequip.pt';\nconst directusToken = process.env.DIRECTUS_N8N_TOKEN || '__REDACTED_SEE_N8N_CREDENTIALS__'; // NOTA: token real vive só no n8n; nunca commitar em claro\n\nconst ia = $('Tratar IA + calcular SLA').first().json;\nconst fromAddress = ($json.fromAddress || '').trim().toLowerCase();\nconst mailbox = $json.mailbox || '';\n\n// Caixas próprias da Hotelequip — nunca criar lead se o remetente for uma delas\nconst OWN_MAILBOXES = ['geral@hotelequip.pt', 'apoio.cliente@hotelequip.pt'];\n\nif (!fromAddress || fromAddress === mailbox.toLowerCase() || OWN_MAILBOXES.includes(fromAddress)) {\n  return [{ json: { skipped: true, reason: 'sem remetente válido ou é caixa própria' } }];\n}\n\n// Gate de encaminhamento por categoria — só estas categorias criam/actualizam lead\nconst NO_LEAD_CATEGORIES = ['spam', 'fatura_administrativo', 'tabela_precos_fornecedor', 'fornecedor_sourcing', 'fornecedor_novidade', 'compra_fornecedor'];\nconst category = ia.category || 'outro';\n\nif (NO_LEAD_CATEGORIES.includes(category)) {\n  return [{ json: { skipped: true, reason: `categoria '${category}' não cria lead` } }];\n}\n\ntry {\n  // 1) já é contacto?\n  const contactRes = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${directusUrl}/items/contacts`,\n    qs: { 'filter[email][_eq]': fromAddress, limit: 1, fields: 'id,company_name' },\n    headers: { Authorization: `Bearer ${directusToken}` },\n    json: true,\n  });\n  if (contactRes?.data?.length) {\n    return [{ json: { found: 'contact', id: contactRes.data[0].id } }];\n  }\n\n  // 2) já é lead (não descartado)?\n  const leadRes = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${directusUrl}/items/leads`,\n    qs: { 'filter[email][_eq]': fromAddress, 'filter[status][_neq]': 'discarded', limit: 1, fields: 'id' },\n    headers: { Authorization: `Bearer ${directusToken}` },\n    json: true,\n  });\n  if (leadRes?.data?.length) {\n    return [{ json: { found: 'lead', id: leadRes.data[0].id } }];\n  }\n\n  // 3) desconhecido: cria lead nova, já povoada com tudo o que a IA extraiu\n  const fallbackName = fromAddress.split('@')[0].replace(/[._-]/g, ' ');\n  const displayName = (ia.contact_name || fallbackName || '').slice(0, 120);\n\n  const notesParts = [];\n  if (ia.request_type) notesParts.push(`Tipo: ${ia.request_type}`);\n  if (ia.requested_items) notesParts.push(`Itens: ${ia.requested_items}`);\n  if (ia.contact_role) notesParts.push(`Papel: ${ia.contact_role}`);\n  const notes = notesParts.length > 0 ? notesParts.join(' | ') : undefined;\n\n  const leadPayload = {\n    email: fromAddress,\n    display_name: displayName,\n    source: 'email_inbound',\n    status: 'new',\n    contact_name: ia.contact_name || undefined,\n    contact_phone: ia.contact_phone || undefined,\n    nif: ia.nif || undefined,\n    city: ia.city || undefined,\n    postal_code: ia.postal_code || undefined,\n    website: ia.website || undefined,\n    notes,\n    lead_data: {\n      company_name: ia.contact_name && ia.contact_name !== displayName ? undefined : displayName,\n      contact_name: ia.contact_name || undefined,\n      phone: ia.contact_phone || undefined,\n      address: ia.address || undefined,\n      city: ia.city || undefined,\n      postal_code: ia.postal_code || undefined,\n      website: ia.website || undefined,\n      contact_role: ia.contact_role || undefined,\n      request_type: ia.request_type || undefined,\n      requested_items: ia.requested_items || undefined,\n      email_thread_category: category,\n    },\n  };\n\n  const createRes = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${directusUrl}/items/leads`,\n    headers: { Authorization: `Bearer ${directusToken}`, 'Content-Type': 'application/json' },\n    body: leadPayload,\n    json: true,\n  });\n  return [{ json: { found: 'none', createdLeadId: createRes?.data?.id || null } }];\n} catch (err) {\n  return [{ json: { error: (err?.message || String(err)).slice(0, 200) } }];\n}\n"
+      },
+      "id": "check-create-lead-node",
+      "name": "Check/Create Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2132,
+        164
+      ]
+    }
+  ],
+  "connections": {
+    "A cada minuto": {
+      "main": [
+        [
+          {
+            "node": "Obter token MS Graph",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obter token MS Graph": {
+      "main": [
+        [
+          {
+            "node": "Buscar emails novos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar emails novos": {
+      "main": [
+        [
+          {
+            "node": "Processar cada email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar cada email": {
+      "main": [
+        [
+          {
+            "node": "Normalizar campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar campos": {
+      "main": [
+        [
+          {
+            "node": "Marcar lido imediatamente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É email externo?": {
+      "main": [
+        [
+          {
+            "node": "Thread já existe?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Thread já existe?": {
+      "main": [
+        [
+          {
+            "node": "Thread existe?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Thread existe?": {
+      "main": [
+        [
+          {
+            "node": "Directus · Mensagem em thread existente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Claude · Classificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude · Classificar": {
+      "main": [
+        [
+          {
+            "node": "Tratar IA + calcular SLA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tratar IA + calcular SLA": {
+      "main": [
+        [
+          {
+            "node": "Directus · Criar thread",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check/Create Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Directus · Criar thread": {
+      "main": [
+        [
+          {
+            "node": "Directus · Criar mensagem (inbound)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Marcar como lido (novo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Directus · Criar mensagem (inbound)": {
+      "main": [
+        [
+          {
+            "node": "É urgente?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prep Attachments (novo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É urgente?": {
+      "main": [
+        [
+          {
+            "node": "Telegram · Alerta urgência",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Marcar lido imediatamente": {
+      "main": [
+        [
+          {
+            "node": "É email externo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Directus · Mensagem em thread existente": {
+      "main": [
+        [
+          {
+            "node": "Prep Attachments (existente)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Attachments (novo)": {
+      "main": [
+        [
+          {
+            "node": "IF Has Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Attachments (existente)": {
+      "main": [
+        [
+          {
+            "node": "IF Has Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Attachments": {
+      "main": [
+        [
+          {
+            "node": "GET Attachments List (Graph)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "GET Attachments List (Graph)": {
+      "main": [
+        [
+          {
+            "node": "Prepare Attachment Binaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Attachment Binaries": {
+      "main": [
+        [
+          {
+            "node": "Upload Attachment to Directus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Attachment to Directus": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Uploaded Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Uploaded Attachments": {
+      "main": [
+        [
+          {
+            "node": "PATCH Message Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:A cada minuto": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "28ea4d1c-5869-49cd-b01b-d5f48b500144",
+  "activeVersionId": "28ea4d1c-5869-49cd-b01b-d5f48b500144",
+  "versionCounter": 97,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-29T23:32:58.205Z",
+      "createdAt": "2026-06-29T23:32:58.205Z",
+      "role": "workflow:owner",
+      "workflowId": "LIGCJw1vKFKzMsB9",
+      "projectId": "LQVE0EJppjYM9CkR",
+      "project": {
+        "updatedAt": "2025-12-17T19:52:29.966Z",
+        "createdAt": "2025-12-17T19:44:28.194Z",
+        "id": "LQVE0EJppjYM9CkR",
+        "name": "Vendas vendas@hotelequip.pt <vendas@hotelequip.pt>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "7640a84c-cf2e-40cc-a115-4b4207a13acc"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-15T18:24:33.281Z",
+    "createdAt": "2026-07-15T18:24:33.281Z",
+    "versionId": "28ea4d1c-5869-49cd-b01b-d5f48b500144",
+    "workflowId": "LIGCJw1vKFKzMsB9",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 1
+              }
+            ]
+          }
+        },
+        "id": "schedule",
+        "name": "A cada minuto",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          112,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://login.microsoftonline.com/f27c295b-2490-4101-9ae3-6db45ffd9489/oauth2/v2.0/token",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/x-www-form-urlencoded",
+          "body": "grant_type=client_credentials&client_id=a03c97a2-50c6-4302-a466-4c254fb8cad9&client_secret=REDACTED_REPLACE_WITH_AZURE_APP_SECRET&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default",
+          "options": {}
+        },
+        "id": "get-token",
+        "name": "Obter token MS Graph",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "url": "https://graph.microsoft.com/v1.0/users/geral@hotelequip.pt/mailFolders/inbox/messages?$filter=isRead eq false&$orderby=receivedDateTime asc&$top=3&$select=id,subject,bodyPreview,body,from,toRecipients,conversationId,receivedDateTime,hasAttachments,isRead",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $json.access_token }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "get-emails",
+        "name": "Buscar emails novos",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          544,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "\nconst emails = $input.first().json.value || [];\nif (!emails.length) return [];\nreturn emails.map(email => ({ json: email }));\n"
+        },
+        "id": "split-emails",
+        "name": "Processar cada email",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          768,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "a1",
+                "name": "mailbox",
+                "value": "geral@hotelequip.pt",
+                "type": "string"
+              },
+              {
+                "id": "a2",
+                "name": "graphMessageId",
+                "value": "={{ $json.id }}",
+                "type": "string"
+              },
+              {
+                "id": "a3",
+                "name": "threadIdExt",
+                "value": "={{ $json.conversationId }}",
+                "type": "string"
+              },
+              {
+                "id": "a4",
+                "name": "subject",
+                "value": "={{ $json.subject || '(sem assunto)' }}",
+                "type": "string"
+              },
+              {
+                "id": "a5",
+                "name": "fromAddress",
+                "value": "={{ $json.from?.emailAddress?.address || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "a6",
+                "name": "fromName",
+                "value": "={{ $json.from?.emailAddress?.name || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "a7",
+                "name": "toAddress",
+                "value": "geral@hotelequip.pt",
+                "type": "string"
+              },
+              {
+                "id": "a8",
+                "name": "bodyText",
+                "value": "={{ ($json.body?.content || $json.bodyPreview || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 60000) }}",
+                "type": "string"
+              },
+              {
+                "id": "a9",
+                "name": "bodyHtml",
+                "value": "={{ $json.body?.contentType === 'html' ? $json.body?.content : null }}",
+                "type": "string"
+              },
+              {
+                "id": "a10",
+                "name": "receivedAt",
+                "value": "={{ $json.receivedDateTime || null }}",
+                "type": "string"
+              },
+              {
+                "id": "a11",
+                "name": "hasAttachments",
+                "value": "={{ $json.hasAttachments || false }}",
+                "type": "boolean"
+              },
+              {
+                "id": "a12",
+                "name": "msToken",
+                "value": "={{ $('Obter token MS Graph').first().json.access_token }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "set-fields",
+        "name": "Normalizar campos",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          992,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "=true",
+                "rightValue": "true",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "filter-external",
+        "name": "É email externo?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1200,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "url": "=https://api.hotelequip.pt/items/email_threads?filter[thread_id_ext][_nnull]=true&filter[thread_id_ext][_eq]={{ encodeURIComponent($json.threadIdExt) }}&fields=id,thread_id_ext,status&limit=1",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "check-thread",
+        "name": "Thread já existe?",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1424,
+          208
+        ]
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://graph.microsoft.com/v1.0/users/geral@hotelequip.pt/messages/{{$json.graphMessageId}}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Normalizar campos').first().json.msToken }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "{\"isRead\": true}",
+          "options": {}
+        },
+        "id": "mark-read",
+        "name": "Marcar como lido",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1424,
+          432
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true
+            },
+            "conditions": [
+              {
+                "id": "t1",
+                "leftValue": "={{ $json.data.length }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "thread-if",
+        "name": "Thread existe?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1648,
+          208
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.hotelequip.pt/items/email_messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ thread_id: $('Thread já existe?').first().json.data[0].id, direction: 'inbound', from_address: $('Normalizar campos').first().json.fromAddress, subject: $('Normalizar campos').first().json.subject, body_text: $('Normalizar campos').first().json.bodyText, body_html: $('Normalizar campos').first().json.bodyHtml || null, received_at: $('Normalizar campos').first().json.receivedAt, message_id_ext: $('Normalizar campos').first().json.graphMessageId, is_draft: false }) }}",
+          "options": {}
+        },
+        "id": "add-msg-existing",
+        "name": "Directus · Mensagem em thread existente",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1872,
+          128
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://n8n.hotelequip.pt/webhook/ai-proxy",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-proxy-token",
+                "value": "hotelequip-ai-2026"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 700, system: [{ type: 'text', text: \"\\u00c9s o classificador de email da Hotelequip (equipamento hoteleiro B2B, Portugal).\\nAnalisa o email e devolve APENAS JSON v\\u00e1lido sem markdown:\\n{\\\"category\\\":\\\"...\\\",\\\"urgency\\\":\\\"low|normal|high|critical\\\",\\\"summary\\\":\\\"resumo em PT de 1 linha\\\",\\\"contact_name\\\":\\\"nome da pessoa ou null\\\",\\\"contact_phone\\\":\\\"telefone ou null\\\",\\\"nif\\\":\\\"NIF ou null\\\",\\\"address\\\":\\\"morada ou null\\\",\\\"city\\\":\\\"localidade ou null\\\",\\\"postal_code\\\":\\\"codigo postal ou null\\\",\\\"website\\\":\\\"website ou null\\\",\\\"request_type\\\":\\\"orcamento|encomenda|proposta|reclamacao|assistencia_tecnica|informacao|outro ou null\\\",\\\"requested_items\\\":\\\"lista curta separada por virgulas dos produtos/equipamentos mencionados, texto livre, ou null\\\",\\\"contact_role\\\":\\\"cliente|fornecedor|parceiro ou null\\\"}\\n\\nCategorias: pedido_orcamento|followup_cliente|reclamacao|compra_cliente|fornecedor_sourcing|fornecedor_novidade|tabela_precos_fornecedor|compra_fornecedor|fatura_administrativo|spam|outro\\n\\nfornecedor_sourcing = fornecedor a tentar vender-nos algo, tentativa comercial fria.\\nfornecedor_novidade = fornecedor conhecido a comunicar novidade de produto, catalogo, ou newsletter informativa (nao e spam, pode ser util para conteudo/blog, mas nao e uma venda).\\n\\nUrg\\u00eancia: critical=emerg\\u00eancia/cancelamento; high=urgente/asap/hoje; normal=email comercial; low=newsletter/autom\\u00e1tico\\n\\nDados de contacto: extrai SEMPRE que existirem no corpo ou assinatura do email (nome, telefone, NIF, morada, cidade, codigo postal, website). Usa null se n\\u00e3o encontrares. contact_role: \\\"cliente\\\" se esta a pedir/comprar algo \\u00e0 Hotelequip; \\\"fornecedor\\\" se esta a vender/oferecer algo (fatura, catalogo, proposta de fornecimento); \\\"parceiro\\\"; ou null se nao for claro.\\n\\nNao incluas nenhuma chave de rascunho de resposta. Nao geres texto de resposta nesta classificacao.\", cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: 'ASSUNTO: ' + $('Normalizar campos').first().json.subject + '\\nDE: ' + $('Normalizar campos').first().json.fromAddress + '\\nNOME: ' + $('Normalizar campos').first().json.fromName + '\\nCORPO:\\n' + ($('Normalizar campos').first().json.bodyText || '').slice(0, 2500) }] }) }}",
+          "options": {}
+        },
+        "id": "claude-classify",
+        "name": "Claude · Classificar",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1648,
+          384
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const norm = $('Normalizar campos').first().json;\nconst aiRaw = $json.content?.[0]?.text || '{}';\n\n// Limpar markdown se presente\nlet cleaned = aiRaw.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\nlet ai = {};\ntry {\n  ai = JSON.parse(cleaned);\n} catch(e) {\n  // Tentar extrair JSON com regex\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (match) {\n    try { ai = JSON.parse(match[0]); } catch(e2) {\n      ai = { category: 'outro', urgency: 'normal', summary: 'Erro ao processar IA' };\n    }\n  } else {\n    ai = { category: 'outro', urgency: 'normal', summary: 'IA não devolveu JSON válido' };\n  }\n}\n\nconst slaMap = {\n  pedido_orcamento:4, reclamacao:2, followup_cliente:8,\n  compra_cliente:4, compra_fornecedor:24, fornecedor_sourcing:72,\n  fornecedor_novidade:9999, tabela_precos_fornecedor:72, fatura_administrativo:48, spam:9999, outro:24\n};\nconst hrs = slaMap[ai.category] || 24;\nconst sla = (ai.category === 'spam' || ai.category === 'fornecedor_novidade') ? null : new Date(Date.now() + hrs * 3600000).toISOString();\n\nreturn [{json: {\n  mailbox: norm.mailbox,\n  subject: norm.subject,\n  fromAddress: norm.fromAddress,\n  toAddress: norm.toAddress,\n  bodyText: norm.bodyText,\n  receivedAt: norm.receivedAt,\n  graphMessageId: norm.graphMessageId,\n  threadIdExt: norm.threadIdExt,\n  msToken: norm.msToken,\n  category: ai.category || 'outro',\n  urgency: ai.urgency || 'normal',\n  ai_summary: ai.summary || '',\n  ai_draft: null,\n  sla_due_at: sla,\n  contact_name: ai.contact_name || null,\n  contact_phone: ai.contact_phone || null,\n  nif: ai.nif || null,\n  address: ai.address || null,\n  city: ai.city || null,\n  postal_code: ai.postal_code || null,\n  website: ai.website || null,\n  request_type: ai.request_type || null,\n  requested_items: ai.requested_items || null,\n  contact_role: ai.contact_role || null\n}}];\n"
+        },
+        "id": "process-ai",
+        "name": "Tratar IA + calcular SLA",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1872,
+          384
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.hotelequip.pt/items/email_threads",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ subject: $json.subject, from_address: $json.fromAddress, to_address: $json.toAddress, mailbox: $json.mailbox, thread_id_ext: $json.threadIdExt, category: $json.category, status: 'queued', urgency: $json.urgency, sla_due_at: $json.sla_due_at, ai_summary: $json.ai_summary, ai_draft: $json.ai_draft, source_raw: { graphMessageId: $json.graphMessageId, receivedAt: $json.receivedAt }, contact_id: ($('Check/Create Lead').first().json.found === 'contact' ? $('Check/Create Lead').first().json.id : null) }) }}",
+          "options": {}
+        },
+        "id": "create-thread",
+        "name": "Directus · Criar thread",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2080,
+          384
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.hotelequip.pt/items/email_messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ thread_id: $('Directus · Criar thread').first().json.data.id, direction: 'inbound', from_address: $('Tratar IA + calcular SLA').first().json.fromAddress, to_address: $('Tratar IA + calcular SLA').first().json.toAddress, subject: $('Tratar IA + calcular SLA').first().json.subject, body_text: $('Tratar IA + calcular SLA').first().json.bodyText, body_html: $('Normalizar campos').first().json.bodyHtml || null, received_at: $('Tratar IA + calcular SLA').first().json.receivedAt || null, message_id_ext: $('Tratar IA + calcular SLA').first().json.graphMessageId || null, is_draft: false }) }}",
+          "options": {}
+        },
+        "id": "create-msg",
+        "name": "Directus · Criar mensagem (inbound)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2304,
+          384
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ 'https://graph.microsoft.com/v1.0/users/' + $('Tratar IA + calcular SLA').first().json.mailbox + '/messages/' + $('Tratar IA + calcular SLA').first().json.graphMessageId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Tratar IA + calcular SLA').first().json.msToken }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "{\"isRead\": true}",
+          "options": {}
+        },
+        "id": "mark-read-new",
+        "name": "Marcar como lido (novo)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2304,
+          512
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {},
+            "conditions": [
+              {
+                "id": "u1",
+                "leftValue": "={{ $('Tratar IA + calcular SLA').first().json.urgency }}",
+                "rightValue": "high",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "u2",
+                "leftValue": "={{ $('Tratar IA + calcular SLA').first().json.urgency }}",
+                "rightValue": "critical",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "or"
+          },
+          "options": {}
+        },
+        "id": "if-urgent",
+        "name": "É urgente?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2528,
+          384
+        ]
+      },
+      {
+        "parameters": {
+          "chatId": "-5089158784",
+          "text": "=🚨 *Email urgente — {{ $('Tratar IA + calcular SLA').first().json.urgency === 'critical' ? 'CRÍTICO' : 'ALTO' }}*\n\n📬 *Caixa:* {{ $('Tratar IA + calcular SLA').first().json.mailbox }}\n👤 *De:* {{ $('Tratar IA + calcular SLA').first().json.fromAddress }}\n📋 *Assunto:* {{ $('Tratar IA + calcular SLA').first().json.subject }}\n🏷️ *Categoria:* {{ $('Tratar IA + calcular SLA').first().json.category }}\n💬 {{ $('Tratar IA + calcular SLA').first().json.ai_summary }}\n\n👉 https://crm.hotelequip.pt/email",
+          "additionalFields": {
+            "parse_mode": "Markdown"
+          }
+        },
+        "id": "telegram-alert",
+        "name": "Telegram · Alerta urgência",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          2752,
+          304
+        ],
+        "webhookId": "e9accd8a-4c5a-4e0f-b96b-6afdf44e7f76",
+        "credentials": {
+          "telegramApi": {
+            "id": "pMX38cHxgePkLoDS",
+            "name": "Telegram account"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://graph.microsoft.com/v1.0/$batch",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $json.msToken }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ requests: [{ id: '1', method: 'PATCH', url: '/users/geral@hotelequip.pt/messages/' + $json.graphMessageId, body: { isRead: true }, headers: { 'Content-Type': 'application/json' } }] }) }}",
+          "options": {}
+        },
+        "id": "mark-read-immediate",
+        "name": "Marcar lido imediatamente",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1328,
+          592
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "return [{\n  json: {\n    messageId: $json.data.id,\n    graphMessageId: $('Normalizar campos').first().json.graphMessageId,\n    accessToken: $('Obter token MS Graph').first().json.access_token,\n    hasAttachments: $('Normalizar campos').first().json.hasAttachments || false,\n    directusToken: '26p4fEMFaSZ6N15Br649mMSGkSmkofJo',\n  }\n}];\n"
+        },
+        "id": "prep-att-b-g",
+        "name": "Prep Attachments (novo)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2564,
+          604
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "return [{\n  json: {\n    messageId: $json.data.id,\n    graphMessageId: $('Normalizar campos').first().json.graphMessageId,\n    accessToken: $('Obter token MS Graph').first().json.access_token,\n    hasAttachments: $('Normalizar campos').first().json.hasAttachments || false,\n    directusToken: '26p4fEMFaSZ6N15Br649mMSGkSmkofJo',\n  }\n}];\n"
+        },
+        "id": "prep-att-a-g",
+        "name": "Prep Attachments (existente)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1904,
+          604
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ $json.hasAttachments }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-has-att-g",
+        "name": "IF Has Attachments",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2234,
+          604
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://graph.microsoft.com/v1.0/users/geral@hotelequip.pt/messages/{{ $json.graphMessageId }}/attachments",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $json.accessToken }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "get-att-list-g",
+        "name": "GET Attachments List (Graph)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2484,
+          604
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst out = [];\n\n// messageId e directusToken perdem-se ao passar pelo nó HTTP \"GET Attachments \n// List (Graph)\" (que substitui $json pela resposta da Graph API) — por isso\n// vamos buscá-los directamente ao nó de origem (Prep Attachments), não ao \n// input imediato.\nlet ctx;\ntry {\n  ctx = $('Prep Attachments (novo)').first().json;\n} catch (e) {\n  ctx = $('Prep Attachments (existente)').first().json;\n}\n\nfor (const item of items) {\n  const attachments = item.json.value || item.json.attachments || [];\n  for (const att of attachments) {\n    if (att['@odata.type'] !== '#microsoft.graph.fileAttachment') continue;\n    if (!att.contentBytes) continue;\n    const buffer = Buffer.from(att.contentBytes, 'base64');\n    const binaryData = await this.helpers.prepareBinaryData(\n      buffer,\n      att.name || 'anexo',\n      att.contentType || 'application/octet-stream'\n    );\n    out.push({\n      json: {\n        messageId: ctx.messageId,\n        directusToken: ctx.directusToken,\n        filename: att.name || 'anexo',\n        size: att.size || buffer.length,\n      },\n      binary: { file: binaryData },\n    });\n  }\n}\nif (out.length === 0) {\n  return [{ json: { skip: true, messageId: ctx.messageId } }];\n}\nreturn out;\n"
+        },
+        "id": "prepare-att-bin-g",
+        "name": "Prepare Attachment Binaries",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2684,
+          604
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.hotelequip.pt/files",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $json.directusToken }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "multipart-form-data",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "parameterType": "formBinaryData",
+                "name": "file",
+                "inputDataFieldName": "file"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "upload-att-directus-g",
+        "name": "Upload Attachment to Directus",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2904,
+          604
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const uploads = $input.all();\nconst prep = $('Prepare Attachment Binaries').all();\nconst messageId = prep[0]?.json?.messageId || uploads[0]?.json?.messageId;\nconst attachments = [];\nfor (let i = 0; i < uploads.length; i++) {\n  const u = uploads[i].json;\n  if (u.error || !u.data?.id) continue;\n  const meta = prep[i]?.json || {};\n  attachments.push({ file: u.data.id, filename: meta.filename || u.data.filename_download, size: meta.size || Number(u.data.filesize) || 0 });\n}\nreturn [{ json: { messageId, attachments } }];\n"
+        },
+        "id": "aggregate-uploads-g",
+        "name": "Aggregate Uploaded Attachments",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3124,
+          604
+        ]
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://api.hotelequip.pt/items/email_messages/{{ $json.messageId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer 26p4fEMFaSZ6N15Br649mMSGkSmkofJo"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "options": {
+            "timeout": 15000
+          },
+          "specifyBody": "json",
+          "jsonBody": "={{ { attachments: $json.attachments } }}"
+        },
+        "id": "patch-msg-att-g",
+        "name": "PATCH Message Attachments",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3344,
+          604
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const directusUrl = 'https://api.hotelequip.pt';\nconst directusToken = '26p4fEMFaSZ6N15Br649mMSGkSmkofJo';\n\nconst ia = $('Tratar IA + calcular SLA').first().json;\nconst fromAddress = ($json.fromAddress || '').trim().toLowerCase();\nconst mailbox = $json.mailbox || '';\n\n// Caixas próprias da Hotelequip — nunca criar lead se o remetente for uma delas\nconst OWN_MAILBOXES = ['geral@hotelequip.pt', 'apoio.cliente@hotelequip.pt'];\n\nif (!fromAddress || fromAddress === mailbox.toLowerCase() || OWN_MAILBOXES.includes(fromAddress)) {\n  return [{ json: { skipped: true, reason: 'sem remetente válido ou é caixa própria' } }];\n}\n\n// Gate de encaminhamento por categoria — só estas categorias criam/actualizam lead\nconst NO_LEAD_CATEGORIES = ['spam', 'fatura_administrativo', 'tabela_precos_fornecedor', 'fornecedor_sourcing', 'fornecedor_novidade', 'compra_fornecedor'];\nconst category = ia.category || 'outro';\n\nif (NO_LEAD_CATEGORIES.includes(category)) {\n  return [{ json: { skipped: true, reason: `categoria '${category}' não cria lead` } }];\n}\n\ntry {\n  // 1) já é contacto?\n  const contactRes = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${directusUrl}/items/contacts`,\n    qs: { 'filter[email][_eq]': fromAddress, limit: 1, fields: 'id,company_name' },\n    headers: { Authorization: `Bearer ${directusToken}` },\n    json: true,\n  });\n  if (contactRes?.data?.length) {\n    return [{ json: { found: 'contact', id: contactRes.data[0].id } }];\n  }\n\n  // 2) já é lead (não descartado)?\n  const leadRes = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${directusUrl}/items/leads`,\n    qs: { 'filter[email][_eq]': fromAddress, 'filter[status][_neq]': 'discarded', limit: 1, fields: 'id' },\n    headers: { Authorization: `Bearer ${directusToken}` },\n    json: true,\n  });\n  if (leadRes?.data?.length) {\n    return [{ json: { found: 'lead', id: leadRes.data[0].id } }];\n  }\n\n  // 3) desconhecido: cria lead nova, já povoada com tudo o que a IA extraiu\n  const fallbackName = fromAddress.split('@')[0].replace(/[._-]/g, ' ');\n  const displayName = (ia.contact_name || fallbackName || '').slice(0, 120);\n\n  const notesParts = [];\n  if (ia.request_type) notesParts.push(`Tipo: ${ia.request_type}`);\n  if (ia.requested_items) notesParts.push(`Itens: ${ia.requested_items}`);\n  if (ia.contact_role) notesParts.push(`Papel: ${ia.contact_role}`);\n  const notes = notesParts.length > 0 ? notesParts.join(' | ') : undefined;\n\n  const leadPayload = {\n    email: fromAddress,\n    display_name: displayName,\n    source: 'email_inbound',\n    status: 'new',\n    contact_name: ia.contact_name || undefined,\n    contact_phone: ia.contact_phone || undefined,\n    nif: ia.nif || undefined,\n    city: ia.city || undefined,\n    postal_code: ia.postal_code || undefined,\n    website: ia.website || undefined,\n    notes,\n    lead_data: {\n      company_name: ia.contact_name && ia.contact_name !== displayName ? undefined : displayName,\n      contact_name: ia.contact_name || undefined,\n      phone: ia.contact_phone || undefined,\n      address: ia.address || undefined,\n      city: ia.city || undefined,\n      postal_code: ia.postal_code || undefined,\n      website: ia.website || undefined,\n      contact_role: ia.contact_role || undefined,\n      request_type: ia.request_type || undefined,\n      requested_items: ia.requested_items || undefined,\n      email_thread_category: category,\n    },\n  };\n\n  const createRes = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${directusUrl}/items/leads`,\n    headers: { Authorization: `Bearer ${directusToken}`, 'Content-Type': 'application/json' },\n    body: leadPayload,\n    json: true,\n  });\n  return [{ json: { found: 'none', createdLeadId: createRes?.data?.id || null } }];\n} catch (err) {\n  return [{ json: { error: (err?.message || String(err)).slice(0, 200) } }];\n}\n"
+        },
+        "id": "check-create-lead-node",
+        "name": "Check/Create Lead",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2132,
+          164
+        ]
+      }
+    ],
+    "connections": {
+      "A cada minuto": {
+        "main": [
+          [
+            {
+              "node": "Obter token MS Graph",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obter token MS Graph": {
+        "main": [
+          [
+            {
+              "node": "Buscar emails novos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar emails novos": {
+        "main": [
+          [
+            {
+              "node": "Processar cada email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Processar cada email": {
+        "main": [
+          [
+            {
+              "node": "Normalizar campos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalizar campos": {
+        "main": [
+          [
+            {
+              "node": "Marcar lido imediatamente",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "É email externo?": {
+        "main": [
+          [
+            {
+              "node": "Thread já existe?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Thread já existe?": {
+        "main": [
+          [
+            {
+              "node": "Thread existe?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Thread existe?": {
+        "main": [
+          [
+            {
+              "node": "Directus · Mensagem em thread existente",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Claude · Classificar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude · Classificar": {
+        "main": [
+          [
+            {
+              "node": "Tratar IA + calcular SLA",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tratar IA + calcular SLA": {
+        "main": [
+          [
+            {
+              "node": "Directus · Criar thread",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Check/Create Lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Directus · Criar thread": {
+        "main": [
+          [
+            {
+              "node": "Directus · Criar mensagem (inbound)",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Marcar como lido (novo)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Directus · Criar mensagem (inbound)": {
+        "main": [
+          [
+            {
+              "node": "É urgente?",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Prep Attachments (novo)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "É urgente?": {
+        "main": [
+          [
+            {
+              "node": "Telegram · Alerta urgência",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Marcar lido imediatamente": {
+        "main": [
+          [
+            {
+              "node": "É email externo?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Directus · Mensagem em thread existente": {
+        "main": [
+          [
+            {
+              "node": "Prep Attachments (existente)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prep Attachments (novo)": {
+        "main": [
+          [
+            {
+              "node": "IF Has Attachments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prep Attachments (existente)": {
+        "main": [
+          [
+            {
+              "node": "IF Has Attachments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Has Attachments": {
+        "main": [
+          [
+            {
+              "node": "GET Attachments List (Graph)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "GET Attachments List (Graph)": {
+        "main": [
+          [
+            {
+              "node": "Prepare Attachment Binaries",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Attachment Binaries": {
+        "main": [
+          [
+            {
+              "node": "Upload Attachment to Directus",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload Attachment to Directus": {
+        "main": [
+          [
+            {
+              "node": "Aggregate Uploaded Attachments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aggregate Uploaded Attachments": {
+        "main": [
+          [
+            {
+              "node": "PATCH Message Attachments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Vendas vendas@hotelequip.pt",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-15T18:24:43.232Z",
+        "id": 963,
+        "workflowId": "LIGCJw1vKFKzMsB9",
+        "versionId": "28ea4d1c-5869-49cd-b01b-d5f48b500144",
+        "event": "activated",
+        "userId": "7640a84c-cf2e-40cc-a115-4b4207a13acc"
+      }
+    ]
+  }
+}

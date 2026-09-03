@@ -1,0 +1,46 @@
+# CLAUDE CODE RULES — HotelEquip CRM OS
+# Este ficheiro define regras obrigatórias para o Claude Code.
+# NUNCA apagar ou modificar este ficheiro.
+
+## FICHEIROS PROTEGIDOS — NUNCA TOCAR
+protected_files:
+  - src/components/telecof/TelecofAttendanceWorkbench.tsx
+  - src/components/telecof/TelecofCallsList.tsx
+  - src/components/telecof/TelecofBanner.tsx
+  - src/components/telecof/TelecofCallCard.tsx
+  - src/components/telecof/TelecofCallRow.tsx
+  - src/components/telecof/TelecofCallWorkspace.tsx
+  - src/components/telecof/TelecofCustomerPanel.tsx
+  - src/components/telecof/TelecofHubTags.tsx
+  - src/components/telecof/TelecofInboxFilters.tsx
+  - src/pages/Contactos.tsx  # A página de contactos foi personalizada
+
+## REGRAS ABSOLUTAS
+rules:
+  - NUNCA criar ou alterar campos no Directus via POST/PATCH /fields
+  - NUNCA alterar schema da base de dados via código frontend
+  - NUNCA chamar Meilisearch via proxy Directus (/product-search não existe)
+  - NUNCA expor chaves API no frontend
+  - NUNCA commitar .env.local ou ficheiros com chaves
+  - ANTES de cada alteração: mostrar diff exacto
+  - DEPOIS de cada alteração: npx tsc --noEmit zero erros
+  - NUNCA alterar código fora do âmbito do pedido
+
+## REGRAS TÉCNICAS
+technical:
+  - Meilisearch: fetch directo para VITE_MEILISEARCH_URL
+  - Images no PDF: converter para base64 com imageToBase64()
+  - Campos de data vazios: enviar null, nunca ""
+  - Campos string vazios: usar função s() que retorna null
+  - Schema changes: usar ALTER TABLE via docker exec db-hotelequip psql
+  - Cache Directus: limpar após schema changes via POST /utils/cache/clear
+
+## BRANCHES
+branches:
+  - feat/modulo-propostas: propostas interactivas (branch principal)
+  - develop-hotelequip: comunicações, PWA, social
+  - main: NUNCA commitar directamente — só via merge revisto
+
+## CONTACTO TÉCNICO
+developer: Mark (mainartmorettodev)
+repo: RuiMedalha/crm-lab-directus

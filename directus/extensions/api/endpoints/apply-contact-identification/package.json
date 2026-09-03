@@ -1,0 +1,10 @@
+{
+  "name": "apply-contact-identification",
+  "version": "1.0.0",
+  "description": "Apply contact/lead identification result to source collection",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  }
+}

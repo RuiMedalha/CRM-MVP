@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelEquip — Proposta Comercial</title>
+<!--
+  ===========================================================================
+  HotelEquip — Proposta Comercial · TEMPLATE HTML (sem JavaScript)
+  Pure HTML + CSS. Abre directamente no browser e imprime em A4.
+  Para integração React/servidor: substitua os {{PLACEHOLDERS}} pelos valores.
+  Os únicos recursos externos são: Google Fonts (link abaixo) e as imagens de
+  QR code (api.qrserver.com). Para zero dependências externas, troque o src
+  das imagens de QR por uma data-URI gerada no backend.
+  ---------------------------------------------------------------------------
+  Placeholders disponíveis:
+  {{COMPANY_NAME}} {{COMPANY_ADDRESS}} {{COMPANY_PHONE}} {{COMPANY_EMAIL}}
+  {{COMPANY_NIF}} {{COMPANY_IBAN}} {{COMPANY_BANK_HOLDER}}
+  {{CLIENT_NAME}} {{CLIENT_COMPANY}}
+  {{QUOTATION_NUMBER}} {{QUOTATION_TOKEN}} {{DATE}} {{VALID_UNTIL}}
+  {{SUBTOTAL}} {{IVA_PCT}} {{IVA_AMOUNT}} {{TOTAL}}
+  {{DEPOSIT_PCT}} {{DEPOSIT_AMOUNT}} {{REMAINING_AMOUNT}}
+  {{MULTIBANCO_ENTITY}} {{MULTIBANCO_REF}}
+  Loop de produtos (detalhe + tabela): PRODUCT_START / PRODUCT_END
+    {{PRODUCT_NAME}} {{PRODUCT_SKU}} {{PRODUCT_DESC}} {{PRODUCT_IMAGE}}
+    {{PRODUCT_DATASHEET_URL}} {{PRODUCT_URL}} {{PRODUCT_PRICE}}
+    {{PRODUCT_QTY}} {{PRODUCT_UNIT_PRICE}} {{PRODUCT_DISCOUNT}} {{PRODUCT_TOTAL}}
+  Loop de especificações: SPEC_START / SPEC_END → {{SPEC_LABEL}} {{SPEC_VALUE}}
+  Secção do sinal: DEPOSIT_START / DEPOSIT_END
+  ===========================================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#1a6b7c; --teal-d:#0d3d47; --teal-soft:rgba(26,107,124,.08);
+    --amber:#d4920a; --amber-deep:#a8720a; --amber-bright:#e8b53a; --amber-soft:rgba(212,146,10,.08);
+    --ink:#0f1923; --muted:#56616e; --faint:#8a929c;
+    --border:#e7e3db; --line:#efece6; --bg-soft:#f5f3ef; --img-bg:#f0f0eb;
+    --serif:'Playfair Display',Georgia,serif;
+    --sans:'Inter',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:#e6e3dd; color:var(--ink); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .doc-wrap{ padding:26px 0 40px; }
+
+  /* ---------- page ---------- */
+  .page{
+    width:210mm; min-height:297mm; background:#fff; margin:0 auto 26px;
+    padding:15mm 18mm; display:flex; flex-direction:column;
+    box-shadow:0 6px 30px rgba(15,25,35,.18);
+  }
+
+  /* ---------- type / helpers ---------- */
+  .mono{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .serif{ font-family:var(--serif); }
+  .accent-bar{ height:4px; background:var(--teal); width:100%; }
+  .eyebrow{ font-family:var(--mono); font-size:10px; letter-spacing:.16em; color:var(--teal); font-weight:600; }
+  .eyebrow.amber{ color:var(--amber-deep); }
+  .rule{ height:1px; background:var(--border); }
+  .sec-head{ display:flex; align-items:baseline; gap:14px; }
+  .sec-num{ font-family:var(--mono); font-size:11px; color:var(--amber); font-weight:600; }
+  .sec-title{ font-family:var(--serif); font-weight:600; font-size:26px; color:var(--ink); margin:0; }
+  .grow{ flex:1 1 auto; }
+
+  /* ---------- masthead ---------- */
+  .masthead{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .logo{ display:flex; align-items:center; gap:13px; }
+  .logo .hex{ position:relative; width:52px; height:52px; display:grid; place-items:center; }
+  .logo .hex svg{ position:absolute; inset:0; }
+  .logo .hex span{ font-family:var(--serif); font-weight:700; font-size:24px; color:var(--teal); position:relative; line-height:1; }
+  .logo .name{ font-family:var(--serif); font-weight:600; font-size:25px; letter-spacing:-.01em; line-height:1; color:var(--ink); }
+  .logo .tag{ font-family:var(--mono); font-size:8.5px; letter-spacing:.16em; color:var(--faint); }
+  .co-block{ text-align:right; font-size:9.5px; line-height:1.75; color:var(--muted); white-space:nowrap; }
+  .co-block .co-name{ font-weight:600; color:var(--ink); font-size:10.5px; }
+  .co-block .co-nif{ font-family:var(--mono); font-size:9px; color:var(--faint); margin-top:2px; }
+
+  /* ---------- cover ---------- */
+  .title-eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.28em; color:var(--amber); font-weight:600; }
+  .title{ font-family:var(--serif); font-weight:500; font-size:64px; line-height:.98; letter-spacing:-.02em; margin:10px 0 0; color:var(--ink); }
+  .meta-row{ display:flex; gap:34px; margin-top:26px; font-family:var(--mono); }
+  .meta-item .k{ font-size:8.5px; letter-spacing:.16em; color:var(--faint); }
+  .meta-item .v{ font-size:13px; color:var(--ink); margin-top:5px; }
+  .meta-item .v.ref{ font-size:15px; color:var(--teal); font-weight:600; }
+  .meta-sep{ width:1px; background:var(--border); }
+  .divider-teal{ height:2px; background:linear-gradient(90deg,var(--teal),rgba(26,107,124,0)); margin:30px 0 0; }
+  .prepared-eyebrow{ font-family:var(--mono); font-size:9px; letter-spacing:.2em; color:var(--amber); font-weight:600; }
+  .prepared-name{ font-family:var(--serif); font-weight:600; font-size:32px; color:var(--ink); margin-top:11px; line-height:1.05; }
+  .prepared-co{ font-size:14px; color:var(--muted); margin-top:7px; }
+  .about-text{ font-size:12px; line-height:1.7; color:var(--muted); margin:11px 0 0; }
+  .badges{ display:flex; gap:14px; margin-top:20px; }
+  .badge{ flex:1; display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius:4px; padding:13px 15px; }
+  .badge .ic{ font-size:18px; }
+  .badge .lb{ font-size:11.5px; color:var(--ink); font-weight:500; line-height:1.3; }
+  .tagline-bar{ background:var(--teal-d); display:flex; align-items:center; justify-content:space-between; padding:18px 26px; border-radius:4px; }
+  .tagline-bar .t{ font-family:var(--serif); font-style:italic; font-size:17px; color:#fff; }
+  .tagline-bar .r{ font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:rgba(255,255,255,.5); }
+
+  /* ---------- products ---------- */
+  .product{ display:flex; gap:22px; }
+  .product + .product{ margin-top:26px; padding-top:24px; border-top:1px solid var(--border); }
+  .prod-media{ flex:0 0 200px; }
+  .prod-img{ width:200px; height:160px; display:block; object-fit:contain; background:var(--img-bg); border:1px solid var(--border); border-radius:4px; }
+  .prod-link{ display:block; margin-top:8px; font-family:var(--mono); font-size:10px; color:var(--teal); text-decoration:none; letter-spacing:.02em; }
+  .prod-body{ flex:1; min-width:0; }
+  .prod-name{ font-family:var(--serif); font-weight:600; font-size:23px; color:var(--ink); margin:0; line-height:1.12; }
+  .amber-underline{ width:44px; height:3px; background:var(--amber); border-radius:2px; margin:9px 0 0; }
+  .sku{ font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-top:12px; }
+  .desc{ font-size:12.5px; line-height:1.65; color:var(--muted); margin:11px 0 0; }
+  .specs{ margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:11px 26px; }
+  .spec{ display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .spec .k{ font-size:11px; color:var(--faint); }
+  .spec .v{ font-family:var(--mono); font-size:11.5px; color:var(--ink); }
+  .price-row{ margin-top:18px; display:flex; align-items:baseline; gap:10px; }
+  .price-lg{ font-family:var(--mono); font-weight:700; font-size:30px; color:var(--teal); letter-spacing:-.02em; }
+  .price-sm{ font-family:var(--mono); font-size:11px; color:var(--faint); }
+
+  /* ---------- summary table ---------- */
+  .sum-table{ width:100%; border-collapse:collapse; margin-top:16px; font-size:11.5px; }
+  .sum-table thead tr{ background:var(--teal); color:#fff; }
+  .sum-table th{ font-weight:600; font-size:10px; letter-spacing:.08em; font-family:var(--mono); padding:11px 14px; }
+  .sum-table th.c{ text-align:center; } .sum-table th.r{ text-align:right; } .sum-table th.l{ text-align:left; }
+  .sum-table td{ padding:13px 14px; border-bottom:1px solid var(--line); }
+  .sum-table td.c{ text-align:center; font-family:var(--mono); }
+  .sum-table td.r{ text-align:right; font-family:var(--mono); }
+  .sum-table tbody tr:nth-child(even){ background:var(--bg-soft); }
+  .sum-table .item-sku{ font-family:var(--mono); font-size:9.5px; color:var(--faint); margin-top:2px; }
+  .sum-table tfoot td{ border-bottom:none; }
+  .ft-sub td{ padding:12px 14px; text-align:right; }
+  .ft-total td{ border-top:2px solid var(--teal); padding:13px 14px; text-align:right; }
+  .ft-total .lbl{ font-family:var(--serif); font-weight:600; font-size:15px; color:var(--ink); }
+  .ft-total .amt{ font-family:var(--mono); font-weight:700; font-size:16px; color:var(--teal); }
+
+  /* ---------- financial ---------- */
+  .fin-card{ margin-top:26px; border:1px solid var(--border); border-top:3px solid var(--amber); border-radius:4px; padding:30px 32px; }
+  .fin-list{ display:flex; flex-direction:column; gap:15px; }
+  .fin-row{ display:flex; justify-content:space-between; font-size:13.5px; }
+  .fin-row .l{ color:var(--muted); } .fin-row .v{ font-family:var(--mono); color:var(--ink); }
+  .fin-row.sub{ border-top:1px solid var(--line); padding-top:15px; }
+  .fin-row.sub .l, .fin-row.sub .v{ font-weight:600; }
+  .fin-row.iva{ font-size:12.5px; } .fin-row.iva .l{ color:var(--faint); } .fin-row.iva .v{ color:var(--faint); }
+  .fin-total{ margin-top:24px; border-top:2px solid var(--line); padding-top:22px; display:flex; justify-content:space-between; align-items:flex-end; }
+  .fin-total .lbl{ font-family:var(--serif); font-weight:600; font-size:22px; color:var(--ink); }
+  .fin-total .note{ font-family:var(--mono); font-size:9.5px; color:var(--faint); margin-top:4px; }
+  .fin-total .amt{ font-family:var(--mono); font-weight:700; font-size:46px; color:var(--teal); letter-spacing:-.02em; line-height:.9; }
+  .deposit-box{ margin-top:22px; background:linear-gradient(135deg,var(--teal),var(--teal-d)); border-radius:4px; padding:26px 32px; display:flex; justify-content:space-between; align-items:center; }
+  .deposit-box .eb{ font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--amber-bright); font-weight:600; }
+  .deposit-box .sub{ font-size:12.5px; color:rgba(255,255,255,.72); margin-top:8px; }
+  .deposit-box .amt{ font-family:var(--mono); font-weight:700; font-size:34px; color:#fff; letter-spacing:-.02em; }
+  .validity{ margin-top:22px; display:flex; align-items:center; gap:13px; background:var(--amber-soft); border:1px solid rgba(212,146,10,.28); border-radius:4px; padding:16px 22px; }
+  .validity .t{ font-size:13px; color:var(--amber-deep); }
+  .fine{ font-size:11px; line-height:1.7; color:var(--faint); margin:24px 0 0; }
+
+  /* ---------- payment & approval ---------- */
+  .approve-box{ margin-top:24px; background:linear-gradient(135deg,var(--teal),var(--teal-d)); border-radius:4px; padding:26px 30px; display:flex; justify-content:space-between; align-items:center; gap:26px; }
+  .approve-box .body{ flex:1; }
+  .approve-box .eb{ font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--amber-bright); font-weight:600; }
+  .approve-box .lead{ font-size:13px; color:rgba(255,255,255,.8); margin-top:11px; }
+  .approve-box .url{ font-family:var(--mono); font-size:15px; color:#fff; margin-top:9px; word-break:break-all; font-weight:600; }
+  .approve-box .hint{ font-size:11px; color:rgba(255,255,255,.6); margin-top:14px; line-height:1.55; }
+  .qr-card{ flex:none; background:#fff; border-radius:4px; padding:10px; display:grid; place-items:center; }
+  .pay-grid{ margin-top:14px; display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .pay-box{ border:1px solid var(--border); border-radius:4px; padding:18px; }
+  .pay-box.bank{ background:var(--bg-soft); }
+  .pay-box .hd{ display:flex; align-items:center; gap:8px; }
+  .pay-box .hd .nm{ font-size:12px; font-weight:600; color:var(--ink); white-space:nowrap; }
+  .pay-box .k{ font-size:9.5px; color:var(--faint); margin-top:12px; }
+  .pay-box .v{ font-family:var(--mono); font-size:13px; color:var(--ink); margin-top:3px; line-height:1.5; }
+  .pay-box .v.iban{ font-size:11px; letter-spacing:.02em; }
+  .pay-box .v.hl{ color:var(--teal); font-weight:600; }
+  .pay-box .v.txt{ font-family:var(--sans); font-size:11px; }
+  .pay-box .note{ font-size:9.5px; color:var(--faint); margin-top:14px; line-height:1.5; }
+  .contact-grid{ margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .contact-box{ border:1px solid var(--border); border-radius:4px; padding:18px 20px; display:flex; justify-content:space-between; align-items:center; gap:14px; }
+  .contact-box .nm{ font-size:13px; font-weight:600; color:var(--ink); }
+  .contact-box .v{ font-family:var(--mono); font-size:13px; color:var(--teal); margin-top:8px; }
+  .contact-box .v.sm{ font-size:12px; }
+  .contact-box .sub{ font-size:10.5px; color:var(--faint); margin-top:7px; }
+  .qr-sm{ display:block; flex:none; }
+
+  /* ---------- newsletter ---------- */
+  .nl-box{ margin-top:24px; background:var(--amber-soft); border:1.5px dashed var(--amber); border-radius:6px; padding:24px 26px; display:flex; justify-content:space-between; align-items:center; gap:26px; }
+  .nl-box .body{ flex:1; }
+  .nl-box .eb{ font-family:var(--mono); font-size:10px; letter-spacing:.16em; color:var(--amber-deep); font-weight:600; }
+  .nl-box .txt{ font-size:12.5px; line-height:1.6; color:var(--muted); margin:11px 0 0; }
+  .nl-form{ margin-top:16px; display:flex; gap:10px; max-width:380px; }
+  .nl-input{ flex:1; background:#fff; border:1px solid var(--border); border-radius:6px; padding:11px 14px; font-size:12px; color:#a9b0b8; }
+  .nl-btn{ background:linear-gradient(180deg,var(--amber-bright),var(--amber)); color:#3a2800; font-weight:700; font-size:12.5px; padding:11px 18px; border-radius:6px; white-space:nowrap; }
+  .nl-qr{ flex:none; text-align:center; }
+  .nl-qr .frame{ background:#fff; border:1px solid var(--border); border-radius:4px; padding:8px; display:inline-block; }
+  .nl-qr .cap{ font-size:9.5px; color:var(--faint); margin-top:7px; max-width:120px; }
+
+  /* ---------- terms ---------- */
+  .terms{ margin-top:28px; }
+  .terms-cols{ margin-top:14px; columns:2; column-gap:30px; font-size:10.5px; line-height:1.65; color:var(--muted); }
+  .terms-cols p{ margin:0 0 11px; break-inside:avoid; }
+  .terms-cols b{ font-weight:600; color:var(--ink); }
+
+  /* ---------- next steps ---------- */
+  .steps{ margin-top:28px; }
+  .steps-grid{ margin-top:16px; display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .step{ border:1px solid var(--border); border-radius:4px; padding:18px 18px 20px; }
+  .step .n{ width:34px; height:34px; border-radius:50%; background:var(--teal-soft); color:var(--teal); display:grid; place-items:center; font-family:var(--mono); font-weight:700; font-size:15px; }
+  .step .t{ font-size:12.5px; font-weight:600; color:var(--ink); margin-top:13px; }
+  .step .d{ font-size:10.5px; color:var(--muted); margin-top:5px; line-height:1.5; }
+
+  /* ---------- signature ---------- */
+  .sign{ margin-top:34px; display:flex; gap:50px; }
+  .sign .col{ flex:1; }
+  .sign .ln{ height:1px; background:var(--ink); }
+  .sign .lb{ font-size:10px; color:var(--faint); margin-top:7px; }
+
+  /* ---------- footer ---------- */
+  .pg-footer{ margin-top:auto; padding-top:10px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-end; }
+  .pg-footer .co{ font-size:8px; line-height:1.55; color:var(--faint); }
+  .pg-footer .co b{ color:var(--muted); font-weight:600; }
+  .pg-footer .meta{ text-align:right; font-family:var(--mono); font-size:8px; color:var(--faint); line-height:1.6; }
+
+  /* ---------- print ---------- */
+  @page{ size:A4 portrait; margin:15mm 18mm; }
+  @media print{
+    body{ background:#fff; }
+    .doc-wrap{ padding:0; }
+    .page{ width:auto; min-height:247mm; padding:0; margin:0; box-shadow:none; }
+    .page + .page{ page-break-before:always; }
+  }
+</style>
+</head>
+<body>
+<div class="doc-wrap">
+
+  <!-- ============================ PAGE 1 — COVER ============================ -->
+  <section class="page" data-section="cover">
+    <div class="accent-bar"></div>
+
+    <div class="masthead" style="margin-top:14px;">
+      <div class="logo">
+        <div class="hex">
+          <svg width="52" height="52" viewBox="0 0 46 46"><polygon points="23,2.5 41.5,13 41.5,33 23,43.5 4.5,33 4.5,13" fill="rgba(26,107,124,.07)" stroke="#1a6b7c" stroke-width="1.6"></polygon></svg>
+          <span>H</span>
+        </div>
+        <div>
+          <div class="name">HotelEquip</div>
+          <div class="tag">EQUIPAMENTOS HORECA · DESDE 2012</div>
+        </div>
+      </div>
+      <div class="co-block">
+        <div class="co-name">{{COMPANY_NAME}}</div>
+        <div>{{COMPANY_ADDRESS}}</div>
+        <div>{{COMPANY_PHONE}} · {{COMPANY_EMAIL}}</div>
+        <div class="co-nif">NIF {{COMPANY_NIF}}</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24mm;">
+      <div class="title-eyebrow">PROPOSTA</div>
+      <h1 class="title">Comercial</h1>
+      <div class="meta-row">
+        <div class="meta-item"><div class="k">REFERÊNCIA</div><div class="v ref">{{QUOTATION_NUMBER}}</div></div>
+        <div class="meta-sep"></div>
+        <div class="meta-item"><div class="k">DATA</div><div class="v">{{DATE}}</div></div>
+        <div class="meta-sep"></div>
+        <div class="meta-item"><div class="k">VÁLIDA ATÉ</div><div class="v">{{VALID_UNTIL}}</div></div>
+      </div>
+    </div>
+
+    <div class="divider-teal"></div>
+
+    <div style="margin-top:26px;">
+      <div class="prepared-eyebrow">PREPARADO PARA</div>
+      <div class="prepared-name">{{CLIENT_NAME}}</div>
+      <div class="prepared-co">{{CLIENT_COMPANY}}</div>
+    </div>
+
+    <div style="margin-top:34px;">
+      <div class="eyebrow">SOBRE NÓS</div>
+      <p class="about-text" style="max-width:165mm;">A HotelEquip é uma empresa portuguesa especializada em equipamentos profissionais para hotelaria e restauração (HORECA). Com mais de 12 anos de experiência, apoiamos hotéis, restaurantes e unidades de catering na selecção, fornecimento e instalação de equipamento industrial de qualidade. Parceiros de marcas líderes europeias, oferecemos garantia, assistência técnica e formação de utilização.</p>
+      <div class="badges">
+        <div class="badge"><span class="ic">🏆</span><span class="lb">12+ anos de experiência</span></div>
+        <div class="badge"><span class="ic">✅</span><span class="lb">500+ clientes satisfeitos</span></div>
+        <div class="badge"><span class="ic">🔧</span><span class="lb">Assistência técnica própria</span></div>
+      </div>
+    </div>
+
+    <div class="grow"></div>
+
+    <div class="tagline-bar" style="margin-top:30px;">
+      <span class="t">Equipamentos HORECA de excelência</span>
+      <span class="r">{{QUOTATION_NUMBER}}</span>
+    </div>
+
+    <div class="pg-footer">
+      <div class="co"><b>{{COMPANY_NAME}}</b> · NIF {{COMPANY_NIF}}<br>{{COMPANY_ADDRESS}} · {{COMPANY_PHONE}} · {{COMPANY_EMAIL}}</div>
+      <div class="meta"><div>Pág. 1 de 5</div><div>{{QUOTATION_NUMBER}}</div></div>
+    </div>
+  </section>
+
+  <!-- ============================ PAGE 2 — PRODUCTS ============================ -->
+  <section class="page" data-section="products">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2 class="sec-title">Equipamento proposto</h2>
+    </div>
+    <div class="rule" style="margin-top:14px;"></div>
+
+    <div style="margin-top:24px;">
+      <!-- PRODUCT_START -->
+      <div class="product">
+        <div class="prod-media">
+          <img class="prod-img" src="{{PRODUCT_IMAGE}}" alt="{{PRODUCT_NAME}}">
+          <a class="prod-link" href="{{PRODUCT_DATASHEET_URL}}">↗ Ficha técnica</a>
+          <a class="prod-link" href="{{PRODUCT_URL}}">↗ Ver no site</a>
+        </div>
+        <div class="prod-body">
+          <h3 class="prod-name">{{PRODUCT_NAME}}</h3>
+          <div class="amber-underline"></div>
+          <div class="sku">SKU: {{PRODUCT_SKU}}</div>
+          <p class="desc">{{PRODUCT_DESC}}</p>
+          <div class="specs">
+            <!-- SPEC_START -->
+            <div class="spec"><span class="k">{{SPEC_LABEL}}</span><span class="v">{{SPEC_VALUE}}</span></div>
+            <!-- SPEC_END -->
+          </div>
+          <div class="price-row">
+            <span class="price-lg">{{PRODUCT_PRICE}}</span>
+            <span class="price-sm">+ IVA · por unidade</span>
+          </div>
+        </div>
+      </div>
+      <!-- PRODUCT_END -->
+    </div>
+
+    <div style="margin-top:32px;">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <h2 class="sec-title" style="font-size:22px;">Resumo de itens</h2>
+      </div>
+
+      <table class="sum-table">
+        <thead>
+          <tr>
+            <th class="l">DESCRIÇÃO</th>
+            <th class="c" style="width:48px;">QTD</th>
+            <th class="r" style="width:96px;">PREÇO UNIT.</th>
+            <th class="r" style="width:64px;">DESC.</th>
+            <th class="r" style="width:96px;">TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- PRODUCT_START -->
+          <tr>
+            <td><div style="font-weight:500;">{{PRODUCT_NAME}}</div><div class="item-sku">{{PRODUCT_SKU}}</div></td>
+            <td class="c">{{PRODUCT_QTY}}</td>
+            <td class="r">{{PRODUCT_UNIT_PRICE}}</td>
+            <td class="r" style="color:var(--faint);">{{PRODUCT_DISCOUNT}}</td>
+            <td class="r" style="font-weight:600;">{{PRODUCT_TOTAL}}</td>
+          </tr>
+          <!-- PRODUCT_END -->
+        </tbody>
+        <tfoot>
+          <tr class="ft-sub">
+            <td colspan="4" style="color:var(--muted);font-size:11px;">Subtotal (sem IVA)</td>
+            <td class="mono" style="font-weight:600;text-align:right;">{{SUBTOTAL}}</td>
+          </tr>
+          <tr class="ft-total">
+            <td colspan="4" class="lbl">TOTAL com IVA</td>
+            <td class="amt" style="text-align:right;">{{TOTAL}}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="grow"></div>
+    <div class="pg-footer">
+      <div class="co"><b>{{COMPANY_NAME}}</b> · NIF {{COMPANY_NIF}}<br>{{COMPANY_ADDRESS}} · {{COMPANY_PHONE}} · {{COMPANY_EMAIL}}</div>
+      <div class="meta"><div>Pág. 2 de 5</div><div>{{QUOTATION_NUMBER}}</div></div>
+    </div>
+  </section>
+
+  <!-- ============================ PAGE 3 — FINANCIAL ============================ -->
+  <section class="page" data-section="financial">
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2 class="sec-title">Resumo financeiro</h2>
+    </div>
+    <div class="rule" style="margin-top:14px;"></div>
+
+    <div class="fin-card">
+      <div class="fin-list">
+        <!-- PRODUCT_START -->
+        <div class="fin-row"><span class="l">{{PRODUCT_NAME}}</span><span class="v">{{PRODUCT_TOTAL}}</span></div>
+        <!-- PRODUCT_END -->
+        <div class="fin-row sub"><span class="l">Subtotal</span><span class="v">{{SUBTOTAL}}</span></div>
+        <div class="fin-row iva"><span class="l">IVA à taxa legal em vigor ({{IVA_PCT}})</span><span class="v">{{IVA_AMOUNT}}</span></div>
+      </div>
+      <div class="fin-total">
+        <div>
+          <span class="lbl">TOTAL</span>
+          <div class="note">IVA incluído à taxa legal em vigor</div>
+        </div>
+        <span class="amt">{{TOTAL}}</span>
+      </div>
+    </div>
+
+    <!-- DEPOSIT_START -->
+    <div class="deposit-box">
+      <div>
+        <div class="eb">SINAL A ADIANTAR ({{DEPOSIT_PCT}})</div>
+        <div class="sub">Restante de {{REMAINING_AMOUNT}} a liquidar na entrega e instalação.</div>
+      </div>
+      <span class="amt">{{DEPOSIT_AMOUNT}}</span>
+    </div>
+    <!-- DEPOSIT_END -->
+
+    <div class="validity">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a8720a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+      <div class="t"><b style="font-weight:700;">Esta proposta é válida até {{VALID_UNTIL}}</b> — 30 dias a contar da data de emissão.</div>
+    </div>
+
+    <p class="fine">Os valores apresentados refletem as condições acordadas para {{CLIENT_COMPANY}} e pressupõem a aceitação integral do equipamento e serviços descritos. Eventuais alterações ao âmbito da proposta poderão implicar revisão dos preços indicados.</p>
+
+    <div class="grow"></div>
+    <div class="pg-footer">
+      <div class="co"><b>{{COMPANY_NAME}}</b> · NIF {{COMPANY_NIF}}<br>{{COMPANY_ADDRESS}} · {{COMPANY_PHONE}} · {{COMPANY_EMAIL}}</div>
+      <div class="meta"><div>Pág. 3 de 5</div><div>{{QUOTATION_NUMBER}}</div></div>
+    </div>
+  </section>
+
+  <!-- ============================ PAGE 4 — PAYMENT & APPROVAL ============================ -->
+  <section class="page" data-section="payment">
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2 class="sec-title">Pagamento e aprovação</h2>
+    </div>
+    <div class="rule" style="margin-top:14px;"></div>
+
+    <div class="approve-box">
+      <div class="body">
+        <div class="eb">✅ APROVAR ESTA PROPOSTA</div>
+        <div class="lead">Para aprovar, aceda à versão interactiva online:</div>
+        <div class="url">proposta.hotelequip.pt/p/{{QUOTATION_TOKEN}}</div>
+        <div class="hint">Leia o QR code ou aceda ao link acima para aprovar digitalmente.<br>Após aprovação receberá confirmação por email e WhatsApp.</div>
+      </div>
+      <div class="qr-card">
+        <!-- QR (recurso externo): substitua por data-URI gerada no backend para zero dependências -->
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&amp;data=https://proposta.hotelequip.pt/p/{{QUOTATION_TOKEN}}" alt="QR aprovar proposta" width="130" height="130" style="display:block;">
+      </div>
+    </div>
+
+    <!-- DEPOSIT_START -->
+    <div style="margin-top:30px;">
+      <div class="eyebrow">MÉTODOS DE PAGAMENTO — SINAL {{DEPOSIT_AMOUNT}}</div>
+      <div class="pay-grid">
+        <div class="pay-box bank">
+          <div class="hd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6b7c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="1"></rect><path d="M3 10h18"></path></svg><span class="nm">Transferência</span></div>
+          <div class="k">IBAN</div>
+          <div class="v iban">{{COMPANY_IBAN}}</div>
+          <div class="k">Titular</div>
+          <div class="v txt">{{COMPANY_BANK_HOLDER}}</div>
+        </div>
+        <div class="pay-box">
+          <div class="hd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6b7c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"></rect><path d="M8 7h8M8 11h8M8 15h5"></path></svg><span class="nm">Multibanco</span></div>
+          <div class="k">Entidade</div>
+          <div class="v">{{MULTIBANCO_ENTITY}}</div>
+          <div class="k">Referência</div>
+          <div class="v">{{MULTIBANCO_REF}}</div>
+          <div class="k">Valor</div>
+          <div class="v hl">{{DEPOSIT_AMOUNT}}</div>
+        </div>
+        <div class="pay-box">
+          <div class="hd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6b7c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"></rect><path d="M11 18h2"></path></svg><span class="nm">MB WAY</span></div>
+          <div class="k">Número</div>
+          <div class="v">{{COMPANY_PHONE}}</div>
+          <div class="k">Valor</div>
+          <div class="v hl">{{DEPOSIT_AMOUNT}}</div>
+          <div class="note">Indique a referência {{QUOTATION_NUMBER}}.</div>
+        </div>
+      </div>
+    </div>
+    <!-- DEPOSIT_END -->
+
+    <div style="margin-top:30px;">
+      <div class="eyebrow">DÚVIDAS? ESTAMOS AQUI</div>
+      <div class="contact-grid">
+        <div class="contact-box">
+          <div>
+            <div class="nm">💬 WhatsApp</div>
+            <div class="v">{{COMPANY_PHONE}}</div>
+            <div class="sub">Resposta em menos de 2h</div>
+          </div>
+          <img class="qr-sm" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&amp;data=https://wa.me/351916542271" alt="QR WhatsApp" width="76" height="76">
+        </div>
+        <div class="contact-box">
+          <div>
+            <div class="nm">💻 Chat online</div>
+            <div class="v sm">proposta.hotelequip.pt</div>
+            <div class="sub">Aceda à proposta interactiva</div>
+          </div>
+          <img class="qr-sm" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&amp;data=https://proposta.hotelequip.pt" alt="QR proposta online" width="76" height="76">
+        </div>
+      </div>
+    </div>
+
+    <div class="grow"></div>
+    <div class="pg-footer">
+      <div class="co"><b>{{COMPANY_NAME}}</b> · NIF {{COMPANY_NIF}}<br>{{COMPANY_ADDRESS}} · {{COMPANY_PHONE}} · {{COMPANY_EMAIL}}</div>
+      <div class="meta"><div>Pág. 4 de 5</div><div>{{QUOTATION_NUMBER}}</div></div>
+    </div>
+  </section>
+
+  <!-- ============================ PAGE 5 — NEWSLETTER, TERMS & STEPS ============================ -->
+  <section class="page" data-section="conditions">
+    <div class="sec-head">
+      <span class="sec-num">05</span>
+      <h2 class="sec-title">Newsletter e condições</h2>
+    </div>
+    <div class="rule" style="margin-top:14px;"></div>
+
+    <div class="nl-box">
+      <div class="body">
+        <div class="eb">📧 FIQUE INFORMADO</div>
+        <p class="txt">Subscreva a nossa newsletter e receba ofertas exclusivas, novidades de produto e dicas para o seu negócio HORECA.</p>
+        <div class="nl-form">
+          <div class="nl-input"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3b5415485e4e7b5e565a5257154b4f">[email&#160;protected]</a></div>
+          <div class="nl-btn">Subscrever →</div>
+        </div>
+      </div>
+      <div class="nl-qr">
+        <div class="frame"><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&amp;data=https://hotelequip.pt/newsletter" alt="QR newsletter" width="92" height="92" style="display:block;"></div>
+        <div class="cap">Ou leia o QR code para subscrever</div>
+      </div>
+    </div>
+
+    <div class="terms">
+      <div class="eyebrow">TERMOS E CONDIÇÕES</div>
+      <div class="terms-cols">
+        <p><b>1. Validade.</b> A presente proposta é válida por 30 dias a contar da data de emissão. Findo este prazo, os preços e condições poderão ser revistos.</p>
+        <p><b>2. Pagamento.</b> Sinal de {{DEPOSIT_PCT}} à adjudicação; remanescente no ato da entrega e instalação. Pagamento por transferência, Multibanco ou MB WAY.</p>
+        <p><b>3. Prazo de entrega.</b> A entrega ocorre num prazo de 15 a 20 dias úteis após confirmação do sinal, salvo rutura de stock comunicada atempadamente.</p>
+        <p><b>4. Garantia.</b> O equipamento inclui garantia do fabricante contra defeitos de fabrico, em condições normais de utilização profissional.</p>
+        <p><b>5. Instalação.</b> Inclui transporte, posicionamento e arranque assistido. Pressupõe acessos e infraestruturas de energia e água conformes no local.</p>
+        <p><b>6. Preços e IVA.</b> Todos os valores incluem IVA à taxa legal em vigor ({{IVA_PCT}}), salvo indicação em contrário. Valores em euros.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="eyebrow">PRÓXIMOS PASSOS</div>
+      <div class="steps-grid">
+        <div class="step">
+          <div class="n">1</div>
+          <div class="t">Aceitação</div>
+          <div class="d">Confirme a adjudicação respondendo a esta proposta ou por contacto direto.</div>
+        </div>
+        <div class="step">
+          <div class="n">2</div>
+          <div class="t">Sinal</div>
+          <div class="d">Liquide o sinal de {{DEPOSIT_PCT}} ({{DEPOSIT_AMOUNT}}) para iniciar a preparação da encomenda.</div>
+        </div>
+        <div class="step">
+          <div class="n">3</div>
+          <div class="t">Entrega</div>
+          <div class="d">Agendamos a entrega e instalação com arranque assistido à sua equipa.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sign">
+      <div class="col"><div class="ln"></div><div class="lb">{{COMPANY_NAME}} — pela gerência</div></div>
+      <div class="col"><div class="ln"></div><div class="lb">{{CLIENT_NAME}} · {{CLIENT_COMPANY}} · Data</div></div>
+    </div>
+
+    <div class="grow"></div>
+    <div class="pg-footer">
+      <div class="co"><b>{{COMPANY_NAME}}</b> · NIF {{COMPANY_NIF}}<br>{{COMPANY_ADDRESS}} · {{COMPANY_PHONE}} · {{COMPANY_EMAIL}}</div>
+      <div class="meta"><div>Pág. 5 de 5</div><div>{{QUOTATION_NUMBER}}</div></div>
+    </div>
+  </section>
+
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
+</html>

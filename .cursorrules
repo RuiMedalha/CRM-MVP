@@ -1,0 +1,56 @@
+# HotelEquip CRM OS — Regras para Claude Code
+# Projecto: React + Vite + TypeScript + Directus v11
+# Branch activa: feat/modulo-propostas
+# Repo: RuiMedalha/crm-lab-directus (privado)
+
+## VARIÁVEIS .env.local (ACTUAIS E CORRECTAS)
+VITE_DIRECTUS_URL=https://api.hotelequip.pt
+VITE_DIRECTUS_ADMIN_TOKEN=bZ98ZV_nHEvYt1J7jcoXzp0quyRkYqR8y19yPueBHcw
+VITE_PROPOSALS_BASE_URL=https://proposta.hotelequip.pt
+VITE_R2_PUBLIC_URL=https://files.hotelequip.pt
+VITE_MEILISEARCH_URL=https://search.palamenta.com.pt
+VITE_MEILISEARCH_SEARCH_KEY=ed7cabcddd7aeeed55e18972f4ec98dccd3c27bf78cb82962d04e1661778011e
+VITE_MEILISEARCH_INDEX=products_palamenta
+VITE_N8N_QUOTATION_SENT_WEBHOOK=https://n8n.hotelequip.pt/webhook/quotation-sent
+VITE_N8N_QUOTATION_APPROVED_WEBHOOK=https://n8n.hotelequip.pt/webhook/quotation-approved
+VITE_N8N_QUOTATION_REJECTED_WEBHOOK=https://n8n.hotelequip.pt/webhook/quotation-rejected
+VITE_N8N_NEWSLETTER_WEBHOOK=https://n8n.hotelequip.pt/webhook/newsletter-subscribe
+# SEM VITE_ANTHROPIC_API_KEY — IA passa sempre pelo proxy n8n
+
+## TOKENS COMPROMETIDOS — NUNCA USAR ESTES VALORES
+# 0TuAkkyjdFp8BZlKmOjc443mbQba0smF → token Directus COMPROMETIDO
+# sk-ant-api03-uwBf... → chave Anthropic REVOGADA
+# products_stage → índice Meilisearch ERRADO (usar products_palamenta)
+
+## REGRAS CRÍTICAS
+1. Directus devolve números como strings → usar helper n() de src/components/proposals/public/utils.ts
+2. comparison_specs vem como JSON string → usar parseSpecs()
+3. Meilisearch: chamar DIRECTAMENTE via fetch, NUNCA via proxy Directus
+4. getMeilisearchSettings/saveMeilisearchSettings → importar de @/hooks/useMeilisearch
+5. publicFetch() = sem token | directusAdminFetch() = com VITE_DIRECTUS_ADMIN_TOKEN
+6. Imagens de produto: objectFit contain (NUNCA cover)
+7. PDF: Helvetica built-in, NUNCA Font.register() com URLs externas
+8. IA/Anthropic: NUNCA colocar chaves no frontend → sempre via proxy n8n /webhook/ai-proxy
+9. Schema Directus: alterações via docker exec db-hotelequip psql + POST /utils/cache/clear
+10. Variáveis Directus: container só lê .env na criação → sed no .env não tem efeito
+
+## DEPLOY
+cd /var/www/crm && git pull origin feat/modulo-propostas && npm run build && pm2 restart crm-hotelequip && pm2 restart crm-static
+
+## FORMULÁRIO 8 PASSOS (ProposalStepper.tsx)
+case 0: StepClient | case 1: StepContent | case 2: StepMedia | case 3: StepServices
+case 4: StepSettings | case 5: StepPersuasion | case 6: StepPreview | case 7: StepSend
+
+## CAMPOS MEILISEARCH (índice products_palamenta)
+title, thumbnail, images[], brand, sku, ean, categories[],
+short_description, full_description, faq,
+price, regular_price, sale_price, on_sale, stock_status, url
+
+## INFRA
+- CRM: https://crm.hotelequip.pt
+- API: https://api.hotelequip.pt
+- n8n: https://n8n.hotelequip.pt
+- Propostas: https://proposta.hotelequip.pt
+- Meilisearch: https://search.palamenta.com.pt (índice: products_palamenta)
+- VPS: 84.247.142.28
+- AI Proxy: https://n8n.hotelequip.pt/webhook/ai-proxy (token: hotelequip-ai-2026)

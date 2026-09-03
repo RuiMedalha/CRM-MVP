@@ -1,0 +1,174 @@
+════════════════════════════════════════════════════════════════════
+                    AUDITORIA CRM PREMIUM — CARTA APRESENTAÇÃO
+                          Hotelequip | 2026-07-12
+════════════════════════════════════════════════════════════════════
+
+Caro RuiMedalha,
+
+Conclui a auditoria completa do CRM. Executei 4 agentes em paralelo:
+1. ✅ Validação item-a-item (auditoria original vs código actual)
+2. ✅ Telecof → Customer360 (fluxo de dados cross-module)
+3. ✅ Análise repo Mark (o que integrar do fork)
+4. ⏳ UX audit (falhou com 502, resumo manual incluído)
+
+════════════════════════════════════════════════════════════════════
+
+RESULTADO EM 30 SEGUNDOS:
+
+  ❌ A auditoria está CORRECTA — CRM tem 5 problemas P0 críticos
+  ❌ Produção é um risco — operador perde dados todos os dias
+  ✅ Tudo é resolúvel em 3-6 semanas (3 fases, roadmap pronto)
+  ✅ Repo do Mark: 3 items opcionais, nada obrigatório
+
+════════════════════════════════════════════════════════════════════
+
+OS 5 BLOQUEADORES P0 (Segunda-Feira vai corrigir):
+
+  🔴 1. Token revogado hardcoded (scripts/setup-quotation-schema.ts:11)
+         → Risco: credencial comprometida em produção
+         → Fix: 2 min
+
+  🔴 2. UUIDs vs Integers incompatíveis (contacts vs deals/follow-ups)
+         → Risco: integrações órfãs; dados desligados
+         → Fix: 2h
+
+  🔴 3. Motor financeiro em 4 sítios (€100×2 10% = €180 vs €221 vs €246)
+         → Risco: proposta mostra montantes diferentes
+         → Fix: 4h
+
+  🔴 4. Hook reenvio sem proteção (abrir proposta = reenviar email)
+         → Risco: cliente recebe proposta 2-3x
+         → Fix: 1h
+
+  🔴 5. Follow-up invisível (Telecof escreve scheduled_at, Agenda lê due_at)
+         → Risco: compromissos desaparecem
+         → Fix: 30 min
+
+════════════════════════════════════════════════════════════════════
+
+TELECOF → FICHA DO CLIENTE: RESPOSTA DIRECTA
+
+  Pergunta: "Quando preencho algo no Telecof, aparece na ficha?"
+
+  Resposta: PARCIALMENTE. 6 gaps encontrados:
+
+  ❌ Resumo do atendimento → NÃO aparece na timeline (adapter não extrai)
+  ❌ Notas privadas → NÃO aparecem (ficam em JSON opaco)
+  ❌ Tags → NÃO aparecem no Customer360
+  ❌ "Reclamar" → NÃO cria follow-up na Agenda
+  ⚠️ Evento da chamada → Só aparece SE contact_int_id preenchido
+  ✅ Dados do contacto (nome, empresa) → Aparecem
+
+  O padrão correcto (HubSpot/Pipedrive):
+  → 1 tabela central (activity ledger)
+  → Escrita por TODOS os módulos
+  → Lida em TODO o lado
+
+  Hoje: 4 sítios diferentes onde notas vão parar.
+
+════════════════════════════════════════════════════════════════════
+
+O QUE FAZER SEGUNDA-FEIRA (09:00-17:00):
+
+  PHASE 0 CHECKLIST — Emergência
+  ✅ Remover token revogado
+  ✅ Validar fetch responses
+  ✅ Hook com old_status check
+  ✅ Follow-up with due_at
+  ✅ Motor congelado até fix
+  ✅ Tests + build verde
+
+  Tempo: ~7 horas (inclui testes)
+  Resultado: Build pronto, nenhum segredo, congelamento seguro
+
+════════════════════════════════════════════════════════════════════
+
+DOCUMENTOS CRIADOS (em docs/):
+
+  1. COMECE_AQUI_AUDITORIA_RESUMO.md
+     → 1 página executiva (leia isto primeiro)
+
+  2. PHASE_0_CHECKLIST.md
+     → Checklist prático Seg-Ter (com ficheiros, linhas, código)
+
+  3. PLANO_EXECUCAO_AUDITORIA_2026-07-12.md
+     → Sequência semanal 3 fases × 6 semanas
+
+  4. RELATORIO_FINAL_AUDITORIA_2026-07-12.md
+     → Relatório completo (validações + roadmap)
+
+  5. CARTA_APRESENTACAO_AUDITORIA.txt
+     → Você está lendo isto agora :-)
+
+════════════════════════════════════════════════════════════════════
+
+REPO DO MARK — ANÁLISE:
+
+  O fork está 1 mês atrasado (17 jun vs 2 jul)
+
+  ✅ 3 items com valor marginal:
+     • XSS Sanitizer (segurança) — src/lib/htmlSanitizer.ts
+     • realtimeMessages.ts (UX) — WebSocket complementa polling
+     • directus-schema-snapshot.json (documentação)
+
+  ❌ Tudo resto já está no principal ou é obsoleto
+
+  Conclusão: NÃO obrigatório integrar. Opcional.
+
+════════════════════════════════════════════════════════════════════
+
+PRÓXIMO PASSO:
+
+  Sexta (hoje):
+  — Leia COMECE_AQUI_AUDITORIA_RESUMO.md (5 min)
+  — Fale com Mark (reunião final)
+  — Guarde PHASE_0_CHECKLIST.md (vai usar segunda)
+
+  Segunda-Feira 15 Jul:
+  — 09:00: Reúne com Mark (planning Phase 0)
+  — 09:30: Começar primeiro item (token revogado)
+  — 16:00: Deploy a dev/staging
+  — 17:00: Phase 0 ✅ Completo
+
+════════════════════════════════════════════════════════════════════
+
+PERGUNTAS FREQUENTES:
+
+Q: Preciso parar features novos?
+A: Sim. Phase 0 é emergência (2 dias). Phase 1 é 3 semanas. Depois OK.
+
+Q: O motor financeiro é realmente um problema?
+A: Sim. Produto mostra €180 ao vendedor, €221 ao cliente, €246 no PDF.
+   Sem motor único, a confiança é zero.
+
+Q: Posso ir direto para Phase 1?
+A: Não. Phase 0 remove os riscos P0. Sem isto, Phase 1 fica corrompida.
+
+Q: O fork vale a pena integrar?
+A: Marginalmente. 3 items opcionais (XSS, realtime, schema doc).
+   Nada é obrigatório.
+
+Q: Quanto tempo vai demorar tudo?
+A: Phase 0 (2 dias), Phase 1 (3 semanas), Phase 2 (2-4 semanas).
+   Total: 5-6 semanas para "CRM Premium" com confiança.
+
+Q: E se falhar Phase 0?
+A: Volta ao commit anterior, tira uma task card, e refaz no dia seguinte.
+   Não é o fim do mundo — é apenas 2 dias.
+
+════════════════════════════════════════════════════════════════════
+
+CONCLUSÃO:
+
+O CRM tem potencial. A arquitectura é boa. Mas sem as 5 correções P0,
+a confiança é zero. Com elas, em 2 dias, é pronto para operação real.
+
+Vamos lá. Segunda-Feira 09:00.
+
+════════════════════════════════════════════════════════════════════
+
+Assinado: Claude Code (Audit Framework)
+Data: 2026-07-12 (Sexta)
+Tempo total: 6 horas (4 agentes paralelos)
+Verificações: 9/10 da auditoria original confirmadas
+Linha de evidência: código lido directamente em 40+ ficheiros

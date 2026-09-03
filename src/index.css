@@ -1,0 +1,1052 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes pulse-slow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 193 74% 21%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 193 74% 21%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 193 74% 21%;
+
+    --radius: 0.5rem;
+    --radius-xs: 0.25rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 220 14% 96%;
+    --sidebar-primary: 193 74% 21%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 15%;
+    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-border: 222 47% 18%;
+    --sidebar-ring: 193 74% 21%;
+    --sidebar-muted: 220 9% 46%;
+
+    /* Hotelequip Design System — canais (load-bearing, nao reaproveitar) */
+    --ch-wa1: 142 70% 49%;   /* WhatsApp linha 1 (#25D366) */
+    --ch-wa2: 173 77% 31%;   /* WhatsApp linha 2 (#128C7E) */
+    --ch-tel: 25 95% 53%;    /* Telecof / telefonia (#F97316) */
+    --ch-ai: 258 90% 66%;    /* Ask Me / IA interna (#8B5CF6) */
+    --ch-ig: 338 74% 54%;    /* Instagram (#E1306C) */
+    --ch-fb: 214 89% 52%;    /* Facebook (#1877F2) */
+
+    /* Hotelequip Design System — estados de conversa (borda esquerda 3px) */
+    --state-atendimento: 142 76% 36%;  /* #16a34a */
+    --state-urgente: 0 72% 51%;        /* #dc2626 */
+    --state-ia: 258 90% 66%;           /* #8b5cf6 */
+    --state-pendente: 38 92% 50%;      /* #f59e0b */
+
+    /* Hotelequip Design System — bolhas e tintas */
+    --note-yellow: 55 97% 88%;     /* nota interna (#FEF9C3) */
+    --note-yellow-bd: 48 96% 53%;  /* borda nota interna (#FACC15) */
+    --ai-suggest: 48 96% 89%;      /* sugestao IA (#FEF3C7) */
+    --ai-suggest-bd: 38 92% 50%;   /* borda sugestao IA (#F59E0B) */
+    --tint-ia: 258 90% 66%;        /* base barra IA insight; usar com /0.08 */
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 220 14% 96%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 220 14% 96%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 220 14% 96%;
+
+    /* Phase 3.H2: primary com luminosidade ≥45% para WCAG 4.5:1 contra fundo escuro */
+    --primary: 193 74% 45%;
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 222 47% 15%;
+    --secondary-foreground: 220 14% 96%;
+
+    --muted: 222 47% 15%;
+    --muted-foreground: 220 9% 65%;
+
+    /* Phase 3.H2: accent alinhado com primary dark */
+    --accent: 193 74% 45%;
+    --accent-foreground: 222 47% 6%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 222 47% 18%;
+    --input: 222 47% 18%;
+    --ring: 193 74% 21%;
+
+    --radius-xs: 0.25rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 220 14% 96%;
+    --sidebar-primary: 193 74% 21%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-border: 222 47% 15%;
+    --sidebar-ring: 193 74% 21%;
+    --sidebar-muted: 220 9% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* ------------------------------------------------------------
+ *  TIPOGRAFIA — escala canónica (Tailwind defaults)
+ *  text-xs = 12px     (badges, labels secundárias)
+ *  text-sm = 14px     (UI padrão, listas)
+ *  text-base = 16px   (corpo)
+ *  text-lg = 18px     (subtítulos, CardTitle)
+ *  text-xl = 20px     (PageTitle mobile)
+ *  text-2xl = 24px    (PageTitle desktop)
+ *  text-3xl = 30px    (KPI principal)
+ *  text-4xl = 36px    (Valor monetário destacado)
+ *
+ *  PROIBIDO: classes ad-hoc text-[9px] / text-[10px] / text-[8px].
+ *  Usar text-xs ou componente <Badge>.
+ * ------------------------------------------------------------ */
+
+/* ------------------------------------------------------------
+ *  Phase 3.H4 (revisto): alvos de toque ≥44px em dispositivos coarse.
+ *
+ *  A versão anterior aplicava `min-height/min-width: 44px` directamente aos
+ *  elementos. Como `min-*` se sobrepõe a um `height`/`width` definido por
+ *  classe, isso deformava tudo o que o Radix implementa como <button>:
+ *    - Switch   (h-6 w-11)  44×24  →  44×44   (pílula transformada em bloco)
+ *    - Checkbox (h-4 w-4)   16×16  →  44×44   (2.75× o desenhado)
+ *    - <TableHead className="w-8"> com checkbox: 32px → 46.5px (coluna rebenta)
+ *    - dias do calendário da Agenda (grid-cols-7): cada célula transbordava a
+ *      sua track em 7.55px a 360px e sobrepunha-se ao dia seguinte
+ *
+ *  Agora a área de toque é expandida por um pseudo-elemento fora do fluxo, o
+ *  que preserva a caixa de layout desenhada. `a[href]` saiu da lista: forçava
+ *  min-width:44px em links inline dentro de texto corrido.
+ *
+ *  Opt-out: `data-no-touch-pad` para controlos densos onde a área expandida se
+ *  sobreporia à do vizinho (grelhas de calendário, toolbars compactas) — esses
+ *  devem ser dimensionados no próprio componente.
+ * ------------------------------------------------------------ */
+@media (pointer: coarse) {
+  button:not([data-no-touch-pad]),
+  [role="button"]:not([data-no-touch-pad]),
+  input[type="checkbox"]:not([data-no-touch-pad]),
+  input[type="radio"]:not([data-no-touch-pad]) {
+    position: relative;
+  }
+
+  button:not([data-no-touch-pad])::after,
+  [role="button"]:not([data-no-touch-pad])::after,
+  input[type="checkbox"]:not([data-no-touch-pad])::after,
+  input[type="radio"]:not([data-no-touch-pad])::after {
+    content: "";
+    position: absolute;
+    inset: 50% 50%;
+    min-width: 44px;
+    min-height: 44px;
+    transform: translate(-50%, -50%);
+  }
+
+  /* <select> nativo não suporta pseudo-elementos — mantém o min-height directo. */
+  select {
+    min-height: 44px;
+  }
+
+  /* Inbox/Comunicacoes: ações sempre visíveis (não depender de hover) */
+  .group-hover\:opacity-100 {
+    opacity: 1 !important;
+  }
+  .group-hover\:visible {
+    visibility: visible !important;
+  }
+  .group-hover\:flex {
+    display: flex !important;
+  }
+}
+
+@layer utilities {
+  .shadow-elevated {
+    box-shadow: 0 4px 12px rgb(15 23 42 / 0.08), 0 1px 3px rgb(15 23 42 / 0.08);
+  }
+
+  .shadow-elevated-lg {
+    box-shadow: 0 16px 32px rgb(15 23 42 / 0.12), 0 4px 8px rgb(15 23 42 / 0.08);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+}
+
+/* Em landscape móvel a altura útil é curta; permitir scroll no contentor da
+   página mantém headers, composer e ações alcançáveis em vez de os cortar. */
+.crm-topbar {
+  height: calc(3rem + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .crm-layout-main {
+    padding-bottom: 0;
+    padding-left: 3.25rem;
+  }
+
+
+  /* Redesign landscape — cards/rows do Telecof com 64px de altura e
+     tipografia legível. O telefone (.crm-telecof-phone) fica sempre
+     visível em linha própria, >=15px. Substitui os selectores frágeis
+     por estrutura antiga (redesign/telecof-landscape). */
+  .crm-telecof-call-row,
+  .crm-telecof-call-card {
+    font-size: 0.875rem !important; /* 14px */
+    line-height: 1.3 !important;
+    min-height: 4rem !important; /* 64px */
+  }
+  .crm-telecof-phone {
+    font-size: 0.9375rem !important; /* 15px — telefone maior */
+    white-space: nowrap !important;
+  }
+
+  /* Header da lista (Fila Telecof + contador {n} chamada(s)):
+     text-base/text-xs cai para ~12-16px em landscape phone.
+     Forçar >=14px para o utilizador ler \"3 não tratada(s)\" sem
+     espremer os olhos. Compensa a perda dos 40px escondidos no topbar. */
+  .crm-telecof-list-header h1 {
+    font-size: 1.125rem !important; /* 18px */
+    line-height: 1.3 !important;
+  }
+  .crm-telecof-list-counter,
+  .crm-telecof-list-counter span {
+    font-size: 0.875rem !important; /* 14px */
+    line-height: 1.3 !important;
+  }
+
+  .crm-topbar {
+    height: 2.5rem;
+    padding-top: 0;
+    padding-inline: 0.75rem;
+  }
+
+  .crm-topbar-menu {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .crm-topbar-title {
+    display: block;
+  }
+
+  .crm-topbar > button[aria-label="Pesquisar"],
+  .crm-topbar-actions {
+    display: none;
+  }
+
+  /* Landscape phones use the sidebar as a modal overlay, closed initially. */
+  .crm-layout-main {
+    width: 100%;
+  }
+
+  aside.crm-sidebar-mobile-open {
+    display: flex;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: min(220px, 78vw) !important;
+    transform: translateX(0);
+    box-shadow: 8px 0 24px rgb(0 0 0 / 0.25);
+  }
+
+  aside:not(.crm-sidebar-mobile-open) {
+    display: none;
+  }
+
+  /* A rail substitui a barra inferior: navegação disponível sem roubar altura.
+     Fix 2026-08-31: posicionar EXPLICITAMENTE à direita (right:0) e ancorar a
+     top/bottom ao viewport. Sem left:auto, herdava left:0 do Tailwind e a
+     coluna 52px ficava à ESQUERDA, encostada ao topbar, ocupando 100% da
+     altura visível (blocker #1 do F-MOBILE-VALIDATION). */
+  .crm-bottom-nav {
+    top: 2.5rem;
+    right: 0;
+    left: auto;
+    bottom: 0;
+    width: 3.25rem;
+    border-top: 0;
+    border-right: 0;
+    border-left: 1px solid hsl(var(--border));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* WhatsApp mode em landscape phone: esconder bottom-nav coluna
+     (já estava à direita a ocupar 52px). O modelo do WhatsApp Web
+     não tem bottom-nav em landscape — só topbar + split + composer.
+     Recupera 52px de largura para a thread. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .crm-bottom-nav {
+      display: none !important;
+    }
+  }
+
+  .crm-bottom-nav-items {
+    height: 100%;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .crm-bottom-nav-link {
+    flex: 0 0 2.75rem;
+    padding: 0.5rem;
+  }
+
+  .crm-bottom-nav-link span {
+    display: none;
+  }
+
+  .crm-bottom-nav-fab {
+    display: none;
+  }
+
+  /* Em landscape phone (altura <500px) o CTA "Simular chamada Telecof"
+     (32px) e os filtros internos do InboxLeftColumn (~120px) ocupam
+     ~150px de altura que não existem — fica 11px para ver conversas.
+     Esconder ambos para dar TODO o espaço à lista. O CTA só aparece
+     em DEV mode (if !import.meta.env.DEV return null) por isso é
+     seguro escondê-lo em landscape. */
+  .crm-telecof-banner--sim {
+    display: none !important;
+  }
+
+  /* Filtros do InboxLeftColumn ("Arquivo", "Abertas", "Minhas",
+     "Não atribuídas", "IA ativa", "Humano", "Fechadas", "Grupos").
+     Selector é por classe porque o componente não expõe data-attribute.
+     Em portrait/desktop continuam visíveis. */
+  .crm-hub-list [class*="filter"],
+  .crm-hub-list .flex.flex-wrap.gap-1,
+  .crm-hub-list > div > div:has(> button) {
+    display: none !important;
+  }
+
+  /* Mais agressivo: esconder QUALQUER filho do InboxLeftColumn que
+     seja uma row de chips/badges. Em landscape phone só interessa a
+     lista de conversas. */
+  .crm-hub-list > div > div:not(:last-child) {
+    display: none !important;
+  }
+
+  /* Esconder a barra de filtros do Inbox (search + tabs + chips).
+     Ocupa ~120-150px em landscape phone, deixando pouco espaço para
+     a lista. Selector directo pela classe adicionada crm-inbox-filters-bar. */
+  .crm-inbox-filters-bar {
+    display: none !important;
+  }
+
+
+
+  /* /leads em landscape phone: esconder header (h1 + subtitle) para
+     dar toda a altura à lista de cards. Os contadores ficam
+     acessíveis via badge na topbar (futuro commit). */
+  .crm-leads-header {
+    display: none !important;
+  }
+
+  /* /leads em landscape phone: tocar targets ≥44px (WCAG 2.5.5 / Apple HIG).
+     Search, SelectTriggers e chip toggle passam a h-11 (44px).
+     Em portrait/desktop mantém h-9 actual. */
+  .crm-layout-content input[placeholder*="Pesquisar"],
+  .crm-layout-content [class*="SelectTrigger"] {
+    height: 2.75rem !important; /* 44px */
+  }
+
+  /* Em landscape phone, o virtual-list começa logo abaixo da topbar.
+     Sem header h1/subtitle, sobram ~390-40(topbar) = 350px para a lista.
+     min-h-[320px] dá fallback em viewports ainda menores. */
+  [data-testid="leads-virtual-list"] {
+    height: calc(100dvh - 40px) !important;
+    min-height: 320px !important;
+  }
+
+  /* Esconder os 2 selects (Origem + Estado) em landscape phone — a
+     /leads pode ser navegada por scroll/touch na lista. Em
+     desktop (≥lg) continuam visíveis. */
+  .crm-leads-filters {
+    display: none !important;
+  }
+
+
+
+  /* Em landscape phone, cada lead card mostra só nome + status.
+     Esconder linha de metadata (telefone/email/timestamp) para
+     reduzir altura de cada card de ~96px para ~52px — cabem 6
+     cards em vez de 2-3 no viewport 844x390. */
+  .crm-lead-card .mt-1.flex.flex-wrap.items-center.gap-3 {
+    display: none !important;
+  }
+
+  /* Manter badges de status mas mais pequenos em landscape. */
+  .crm-lead-card [class*="Badge"] {
+    padding: 0 0.375rem !important;
+    font-size: 0.625rem !important;
+  }
+
+  /* Reduzir altura virtual da row (de 96px para 56px) em landscape. */
+  .crm-lead-card {
+    min-height: 56px !important;
+  }
+
+  /* /leads em tablet (md+): card deve caber dentro do viewport com
+     sidebar (220px) + topbar + paddings. Reduzir padding horizontal
+     do crm-layout-content para md+ para evitar overflow horizontal
+     que faz o botão 'Promover' sair à direita do viewport. */
+  @media (min-width: 768px) and (max-width: 1365px) {
+    .crm-layout-content {
+      padding-left: 0.75rem !important;
+      padding-right: 0.75rem !important;
+    }
+  }
+
+  /* /comunicacoes em landscape phone (844x390): esconder row de
+     badges (ConversationStatusBadge + channelVisual badge) do
+     ChatHeader para reduzir header de ~90px para ~48px. Recupera
+     ~40px de altura útil para MessageList. */
+  .crm-chat-header > div > div > div.mt-1\.5,
+  .crm-chat-header > div > div > div[class*="mt-1.5"] {
+    display: none !important;
+  }
+  .crm-chat-header {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* /comunicacoes em landscape phone: esconder 4 botões de acção
+     (Assumir, Reativar IA, Fechar, Reabrir) — ficam acessíveis via
+     menu overflow. Reduz ~30-40px do header. */
+  .crm-chat-header button:has(> svg + "Assumir conversa"),
+  .crm-chat-header button:has(> svg + "Reativar IA"),
+  .crm-chat-header button:has(> svg + "Fechar"),
+  .crm-chat-header button:has(> svg + "Reabrir") {
+    display: none !important;
+  }
+
+  /* WhatsApp mode em landscape phone: o botão "Abrir ficha" ou "Criar
+     contacto" vira apenas ícone (sem texto), 36x36, primary action à
+     direita do header (modelo WhatsApp Web: ícone de chamada/vídeo no
+     canto). Reduz ~30px do header. */
+  .crm-chat-header a:has(> svg + "Abrir ficha"),
+  .crm-chat-header a:has(> svg + "Criar contacto") {
+    height: 2.25rem !important;
+    padding: 0 0.5rem !important;
+    gap: 0 !important;
+  }
+  .crm-chat-header a:has(> svg + "Abrir ficha") span,
+  .crm-chat-header a:has(> svg + "Criar contacto") span {
+    display: none !important;
+  }
+
+  /* Em mobile portrait (largura ≤768) também reduzir chrome:
+     - Esconder search global na topbar (hamburger + actions ficam) */
+  @media (max-width: 768px) {
+    .crm-topbar button[aria-label="Pesquisar"],
+    .crm-topbar > div.flex.h-11.min-w-0.flex-1.items-center {
+      display: none !important;
+    }
+    /* Esconder NotificationBell badge (mantém só avatar user menu) */
+    .crm-topbar > div.ml-auto > button[aria-label*="otificaç"] {
+      display: none !important;
+    }
+  }
+
+  /* Em mobile portrait quando conversa aberta: esconder InboxFiltersBar
+     (chips de canal) — foco está na conversa. */
+  @media (max-width: 768px) {
+    .crm-inbox-filters-bar {
+      display: none !important;
+    }
+  }
+
+  /* MessageList (scroller de bolhas) precisa de altura util minima em
+     landscape phone. Sem isto, o header + composer esmagam o scroller
+     abaixo de 200px (medido 149px @844x390). Garantir >=200px. */
+  .crm-message-list,
+  .crm-landscape-two-pane .crm-message-list {
+    min-height: 200px !important;
+  }
+
+  /* Composer ultra-compacto em landscape phone: padding 4px, children
+     28px, gap 2px. Recupera ~50px de altura para MessageList. */
+  .crm-message-input {
+    padding: 0.25rem 0.375rem !important;
+    min-width: 0 !important;
+  }
+  .crm-message-input input,
+  .crm-message-input button {
+    height: 1.75rem !important;
+    min-height: 1.75rem !important;
+    padding: 0 0.375rem !important;
+  }
+  .crm-message-input > div:last-child {
+    gap: 0.125rem !important;
+  }
+
+  /* Lista de conversas (ConversationList) mais compacta em landscape. */
+  .crm-hub-list [class*="ConversationItem"] {
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+
+  .crm-telecof-banner {
+    min-height: 2rem;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .crm-telecof-banner--sim {
+    padding-block: 0.125rem;
+  }
+
+  .crm-telecof-banner--sim button {
+    height: 1.5rem;
+  }
+
+  .crm-telecof-banner > span:first-child {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  .crm-telecof-banner > span:nth-child(2) {
+    display: none;
+  }
+
+  .crm-telecof-banner-details > p:first-child,
+  .crm-telecof-banner-badges,
+  .crm-telecof-banner-countdown {
+    display: none;
+  }
+
+  .crm-telecof-banner-actions {
+    gap: 0.25rem;
+  }
+
+  .crm-telecof-banner-actions button {
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+  }
+
+  .crm-telecof-banner-action-label {
+    display: none;
+  }
+
+  .crm-active-call-bar {
+    min-height: 2rem;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .crm-active-call-actions button:not(:last-child) {
+    display: none;
+  }
+
+  .crm-communications-header {
+    display: none;
+  }
+
+  /* Em landscape phone (altura <500px), o split 42/58 deixa a thread a
+     ~46% da largura e esmaga o composer/cabeçalho. Em vez disso,
+     escondemos a lista de conversas quando há selecção (apenas em
+     landscape phone — em desktop lg+ mantemos o split). A classe
+     crm-hub-list é hidden via :has() OU usamos data-attribute.
+
+     Estratégia adoptada: o pai crm-landscape-two-pane já tem
+     flex-row por defeito em lg. Em <lg, o flex-row não aplica, então
+     as colunas empilham-se verticalmente. Quando ambas têm altura
+     útil (250px), o utilizador vê lista em cima + thread em baixo.
+     Mas em landscape phone (altura <500px) queremos SELECCIONAR-
+     PRIMEIRO-LISTA: thread fullscreen se há selecção, lista
+     fullscreen se não há. Implementado via mostrar/esconder
+     baseado em hasSelection no JS. */
+
+  /* Regra antiga desactivada: era para split 42/58 que esmagava
+     a thread. Removida em favor da abordagem fullscreen-list-OR-thread. */
+  .crm-landscape-two-pane > :first-child,
+  .crm-landscape-workbench > :first-child {
+    /* mantém comportamento base (column em <lg, row em lg) */
+  }
+
+  .crm-landscape-two-pane > :nth-child(2),
+  .crm-landscape-workbench > :nth-child(2) {
+    /* idem */
+  }
+
+
+  /* Em tablet landscape (1024x600) com sidebar + channels-sidebar, o
+     crm-landscape-two-pane pai não tem largura suficiente para a coluna
+     de chat. Forçar min-width na coluna de thread para que o wrapper
+     interno overflow-y-auto não colapse para w=8 (perda de 89% de largura
+     reportada no F-MOBILE-COMMS-MEASURED.md). */
+  @media (min-width: 1024px) and (max-width: 1365px) and (orientation: landscape) {
+    .crm-landscape-two-pane {
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+    .crm-hub-thread {
+      min-width: 280px !important;
+      width: auto !important;
+      flex: 1 1 280px !important;
+      /* Não usar overflow-hidden — deixa o flex interno do chat expandir */
+      overflow: visible !important;
+    }
+    /* O wrapper interno que colapsa para w=8 precisa de min-width explícito */
+    .crm-hub-thread > div,
+    .crm-hub-thread > div > div {
+      min-width: 0 !important;
+    }
+    /* HubConversationView: garantir que preenche a coluna */
+    .crm-hub-thread > div.flex.min-h-0 {
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+
+    /* Channel tabs (InboxFiltersBar com channel chips) devem aparecer
+       no TOPO da coluna da lista de conversas, não no fundo. O pane-166
+       mediu-as em y=463-577 sobrepostas ao input. Forçamos posição
+       relativa + ordem natural do flex. */
+    .crm-hub-list .crm-inbox-filters-bar {
+      position: relative !important;
+      z-index: 1 !important;
+      /* Remover qualquer max-height que force colapso */
+      max-height: none !important;
+    }
+    .crm-hub-list {
+      /* Garantir que a coluna de lista tem a ordem certa: header no topo,
+         filtros a seguir, lista de conversas no resto */
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    /* Topbar não deve comer 89px de topo (medido pelo pane-166). */
+    .crm-topbar {
+      position: sticky !important;
+      top: 0 !important;
+      margin-top: 0 !important;
+    }
+  }
+
+  .crm-chat-header {
+    padding: 0.375rem 0.75rem;
+  }
+
+  .crm-chat-header > div {
+    gap: 0.25rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .crm-chat-header > div > div:first-child > div:nth-child(2) {
+    display: none;
+  }
+
+  /* Modo "essencial só": em mobile (landscape + portrait), o ChatHeader
+     deve ser UMA linha compacta. Avatar + nome + telefone inline
+     (já combinado pelo commit 917e730). Forçar min-height para
+     garantir 44px. Esconder tudo o que não é essencial. */
+  .crm-chat-header {
+    min-height: 44px !important;
+  }
+  .crm-chat-header h2 {
+    font-size: 0.9375rem !important; /* 15px em vez de text-base */
+    line-height: 1.2 !important;
+  }
+  /* Botão de voltar (mobile only) — 32px compacto */
+  .crm-chat-header button[aria-label="Voltar à lista de conversas"] {
+    height: 2rem !important;
+    width: 2rem !important;
+    margin-left: 0 !important;
+  }
+
+  /* === A11Y FIXES (commit pós F-MOBILE-COMMS-A11Y.md pane-170) === */
+
+  /* T1 BLOCKER: chips de filtro e tags com altura >=44px (WCAG 2.5.8
+     Nível AA mínimo 24x24; WCAG 2.5.5 Nível AAA recomenda 44x44). */
+  .crm-inbox-filters-bar button[class*="rounded-full"],
+  .crm-inbox-filters-bar button[class*="chip"] {
+    min-height: 44px !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    padding-left: 0.875rem !important;
+    padding-right: 0.875rem !important;
+  }
+
+  /* T2 BLOCKER: botões de fechar X, concluir tarefa em InboxFiltersBar
+     e similares — garantir 44x44 mínimo */
+  button[aria-label*="Fechar"],
+  button[aria-label*="fechar"],
+  button[aria-label*="Remover"],
+  button[aria-label*="Concluir"],
+  button[aria-label*="concluir"],
+  .crm-inbox-filters-bar button[class*="rounded-full"][class*="bg-"] {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  /* T3 SERIOUS: tabs de canal horizontal em mobile — 32px → 44px */
+  .crm-landscape-two-pane button[class*="Channel"],
+  [class*="channel-tab"],
+  [class*="ChannelTabs"] button {
+    min-height: 44px !important;
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+  }
+
+  /* T4 SERIOUS: botões do ChatHeader (Assumir, Reativar, Fechar, etc.)
+     — 32-34px → 44px */
+  .crm-chat-header button:not([data-no-touch-pad]) {
+    min-height: 44px !important;
+  }
+
+  /* K1 SERIOUS: anéis de foco visíveis 2px (WCAG 2.4.11) */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px !important;
+  }
+
+  .crm-conversation-tags {
+    display: none;
+  }
+
+  .crm-message-input {
+    padding: 0.5rem;
+    /* Em landscape phone, o crm-hub-thread tem altura limitada (~350px).
+       O composer com position: sticky bottom:0 ficava no meio porque
+       o scroll container é curto. Fix: position absolute bottom:0 dentro
+       do crm-hub-thread (que é um flex-col), e MessageList ganha
+       padding-bottom para não tapar a última mensagem. */
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    background: hsl(var(--card));
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  /* MessageList precisa de padding-bottom para a última mensagem não
+     ficar tapada pelo composer absolute bottom:0 em landscape. */
+  .crm-hub-thread .flex-1.overflow-y-auto {
+    padding-bottom: 3.5rem;
+  }
+
+  .crm-message-input > div:last-child {
+    gap: 0.375rem;
+  }
+
+  .crm-message-input input[type="text"],
+  .crm-message-input button {
+    min-height: 2rem;
+  }
+
+  .crm-message-input button[aria-label="Anexar ficheiro"],
+  .crm-message-input button[aria-label*="grava"] {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .crm-layout-content {
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    padding: 0.75rem;
+  }
+
+  /* Páginas de dados: menos espaços verticais de retrato, sem alterar desktop/portrait. */
+  .crm-layout-content > .space-y-6 {
+    --tw-space-y-reverse: 0;
+  }
+
+  .crm-layout-content .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem;
+  }
+
+  .crm-layout-content h1.text-2xl {
+    font-size: 1.25rem;
+    line-height: 1.5rem;
+  }
+}
+
+
+/* /comunicacoes em portrait mobile (<=768px): a InboxFiltersBar fica
+   presente no DOM mas colapsada a 0x0 (nao desmontada), poluindo o
+   layout. Esconder de forma explicita fora de qualquer media query de
+   landscape para cobrir tambem portrait. */
+@media (max-width: 768px) {
+  .crm-inbox-filters-bar {
+    display: none !important;
+  }
+}
+
+/* /comunicacoes em portrait mobile (<=768px): compactar o ChatHeader.
+   Em portrait o header media 134px porque a row de badges (.mt-1.5) e os
+   botoes de accao (Assumir/Reativar/Fechar/Reabrir) empilham em coluna.
+   Escondemos badges + accoes secundarias e limitamos min-height a 64px,
+   alinhando com os 51px do modo landscape. */
+@media (max-width: 768px) and (orientation: portrait) {
+  .crm-chat-header {
+    min-height: 64px !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  .crm-chat-header > div {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+  }
+  /* Row de badges (canal + estado) sob o nome consome ~30px. */
+  .crm-chat-header > div > div > div.mt-1\.5,
+  .crm-chat-header > div > div > div[class*="mt-1.5"] {
+    display: none !important;
+  }
+  /* Botoes de accao secundarios do header (ficam acessiveis via lista). */
+  .crm-chat-header button:has(> svg + "Assumir conversa"),
+  .crm-chat-header button:has(> svg + "Reativar IA"),
+  .crm-chat-header button:has(> svg + "Fechar"),
+  .crm-chat-header button:has(> svg + "Reabrir") {
+    display: none !important;
+  }
+}
+
+/* /comunicacoes em tablet landscape (1024x600): a InboxFiltersBar na
+   coluna da lista media ~239px de altura e empurrava o MessageList dessa
+   coluna para y=486. Limitar a altura da barra (com scroll interno dos
+   chips) devolve altura ao scroller de mensagens. Nota: esta regra fica
+   ao nivel de topo (nao dentro de max-height:500px) porque 1024x600 tem
+   altura 600px e nao entra no bloco de landscape phone. */
+@media (min-width: 1024px) and (max-width: 1365px) and (orientation: landscape) {
+  .crm-hub-list .crm-inbox-filters-bar {
+    flex: 0 0 auto !important;
+    max-height: 96px !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* ============================================================
+ *  TELECOF /comunicacoes — REDESIGN LANDSCAPE (>=700px)
+ *  branch: redesign/telecof-landscape
+ *
+ *  Chrome mínimo: esconde topbar global, bottom-nav e header dos
+ *  canais/comunicações para libertar altura útil (~250-300px).
+ *  Workbench em full-viewport master-detail: lista 320px fixa +
+ *  workspace flex-1 com header 48px, corpo scrollável e composer
+ *  sticky no fundo (48-56px).
+ * ============================================================ */
+@media (orientation: landscape) and (min-width: 700px) {
+  /* --- Esconder chrome global --- */
+  .crm-topbar,
+  .crm-bottom-nav,
+  .crm-communications-header,
+  .crm-channel-tabs-bar,
+  .crm-channels-sidebar,
+  aside.crm-channel-tabs-bar {
+    display: none !important;
+  }
+
+  /* --- Layout ocupa 100dvh sem paddings do shell --- */
+  .crm-layout-main {
+    padding-left: 0 !important;
+    padding-bottom: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+  }
+
+  .crm-layout-content {
+    padding: 0 !important;
+    height: 100% !important;
+    max-height: 100dvh !important;
+  }
+
+  /* --- Workbench master-detail em 2 colunas --- */
+  .crm-landscape-workbench {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  /* Coluna master (lista 320px fixa) — sempre visível em landscape. */
+  .crm-landscape-workbench > .crm-telecof-master {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 320px !important;
+    max-width: 320px !important;
+    flex: 0 0 320px !important;
+    min-height: 0 !important;
+    border-right: 1px solid hsl(var(--border)) !important;
+  }
+
+  /* Coluna detail (workspace flex-1). */
+  .crm-landscape-workbench > .crm-telecof-detail {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* Botão "voltar" desnecessário em landscape (lista sempre visível). */
+  .crm-telecof-back {
+    display: none !important;
+  }
+
+  /* --- Coluna master interna --- */
+  /* Esconder header extra e bulk para dar altura ao scroller. O contador
+     e filtros ficam; o título encolhe. */
+  .crm-telecof-list-header {
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+  .crm-telecof-list-header h1 {
+    font-size: 0.875rem !important;
+  }
+  .crm-telecof-bulk {
+    display: none !important;
+  }
+
+  /* Scroller da lista ocupa toda a altura restante. */
+  .crm-telecof-scroller {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+  }
+
+  /* Rows/cards com 64px e tipografia legível; telefone sempre visível. */
+  .crm-telecof-call-row,
+  .crm-telecof-call-card {
+    font-size: 0.875rem !important; /* 14px */
+    line-height: 1.3 !important;
+    min-height: 4rem !important; /* 64px */
+  }
+  .crm-telecof-phone {
+    font-size: 0.9375rem !important; /* 15px */
+    white-space: nowrap !important;
+  }
+
+  /* --- Coluna detail interna (workspace) --- */
+  .crm-telecof-workspace {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  /* Header compacto (avatar 32 + nome + 1 acção primária) ~48px. */
+  .crm-telecof-ws-header {
+    min-height: 48px !important;
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+
+  /* Corpo scrollável ocupa o meio; composer não o tapa. */
+  .crm-telecof-ws-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+  }
+
+  /* Composer sticky no fundo (48-56px), scroll horizontal das acções. */
+  .crm-telecof-composer {
+    flex: 0 0 auto !important;
+    min-height: 48px !important;
+    max-height: 56px !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+}
