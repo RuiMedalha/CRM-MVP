@@ -29,6 +29,7 @@ import { pt } from "date-fns/locale";
 import { buildContactCreationUrl } from "@/lib/buildContactCreationUrl";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useCrossTabBus } from "@/store/crossTabBus";
+import { scoreBucket } from "@/services/leadScoring/score";
 
 // Em portrait/desktop cada Card de lead tem ~96px (linha + metadata).
 // Em landscape phone (~56px) é mais compacto. Detectamos com matchMedia.
