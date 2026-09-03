@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+﻿import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -53,6 +53,7 @@ const Email = lazy(() => import("./pages/Email"));
 const Customer360Shell = lazy(() => import("./pages/Customer360Shell"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
+const CallsAI = lazy(() => import("./pages/CallsAI"));
 
 function PageLoader() {
   return (
@@ -117,6 +118,7 @@ const AppContent = () => {
         <Route path="/customer360-shell" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
         <Route path="/customer360-shell/:id" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
         <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+        <Route path="/calls-ai" element={<ProtectedRoute><CallsAI /></ProtectedRoute>} />
         <Route path="/developer-tools" element={<ProtectedRoute><DeveloperTools /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -150,3 +152,5 @@ const App = () => (
 );
 
 export default App;
+
+
