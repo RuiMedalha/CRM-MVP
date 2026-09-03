@@ -72,7 +72,25 @@ interface LeadRow {
   postal_code?: string;
   website?: string;
   lead_data?: Record<string, unknown> | null;
+  /** Card 7 — Lead Scoring */
+  score?: number;
+  score_factors?: Record<string, number> | null;
+  score_computed_at?: string | null;
+  score_model_version?: string | null;
+  whatsapp_replies?: number;
+  email_opens?: number;
+  phone?: string;
+  nif?: string;
+  last_attempt_at?: string | null;
 }
+
+const SCORE_BUCKET_LABELS = {
+  hot:  { label: "Quentes", value: "hot",  Icon: Flame,       color: "bg-green-100 text-green-800 border-green-200 hover:bg-green-200" },
+  warm: { label: "Mornos",  value: "warm", Icon: Thermometer, color: "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200" },
+  cold: { label: "Frios",   value: "cold", Icon: Snowflake,   color: "bg-red-100 text-red-800 border-red-200 hover:bg-red-200" },
+} as const;
+
+type ScoreBucket = keyof typeof SCORE_BUCKET_LABELS;
 
 export default function Leads() {
   const qc = useQueryClient();
@@ -83,6 +101,23 @@ export default function Leads() {
   const [promoting, setPromoting] = useState<string | number | null>(null);
   const [timelineLead, setTimelineLead] = useState<LeadRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [scoreFilter, setScoreFilter] = useState<ScoreBucket | "all">("all");
+  const [breakdownLead, setBreakdownLead] = useState<LeadRow | null>(null);
+
+  const newLeads = useCrossTabBus((s) => s.newLeads);
+  const clearNewLeads = useCrossTabBus((s) => s.clearNewLeads);
+  const newLeadIds = useMemo(() => new Set(newLeads.map((l) => String(l.id))), [newLeads]);
+
+  // Directus & Cross-tab Realtime Subscription
+  const { emit } = useRealtime("leads", {
+    onEvent: (payload) => {
+      if (payload.event === "create" && payload.data) {
+        const item = Array.isArray(payload.data) ? payload.data[0] : payload.data;
+        const name = item?.display_name || item?.contact_name || item?.contact_phone || "Novo Lead";
+        notifyRealtimeLead(name, payload.meta?.userName);
+      }
+    },
+  });
 
   const newLeads = useCrossTabBus((s) => s.newLeads);
   const clearNewLeads = useCrossTabBus((s) => s.clearNewLeads);
@@ -109,7 +144,7 @@ export default function Leads() {
     queryKey: ["leads-page"],
     queryFn: async () => {
       const res = await directusRequest<{ data: LeadRow[] }>(
-        `/items/leads?sort=-date_created&limit=500&fields=id,display_name,contact_name,contact_phone,phone,email,source,status,contact_id,date_created,city,postal_code,website,lead_data`
+        `/items/leads?sort=-score,-date_created&limit=500&fields=id,display_name,contact_name,contact_phone,phone,email,nif,source,status,contact_id,date_created,last_attempt_at,city,postal_code,website,lead_data,score,score_factors,score_computed_at,score_model_version`
       );
       return res.data ?? [];
     },
@@ -142,6 +177,10 @@ export default function Leads() {
     if (statusFilter) {
       list = list.filter((l) => l.status === statusFilter);
     }
+    // Filtro por bucket de score (Card 7)
+    if (scoreFilter !== "all") {
+      list = list.filter((l) => scoreBucket(l.score ?? 0) === scoreFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((l) =>
@@ -152,7 +191,7 @@ export default function Leads() {
       );
     }
     return list;
-  }, [leads, sourceFilter, statusFilter, search, showConverted]);
+  }, [leads, sourceFilter, statusFilter, search, showConverted, scoreFilter]);
 
   const pendingCount = pendingCountReal ?? leads.filter((l) => !l.contact_id && l.status !== "discarded" && l.status !== "spam" && l.status !== "converted").length;
 
@@ -288,6 +327,34 @@ export default function Leads() {
           >
             {showConverted ? "Mostrar todos" : "Incluir convertidos"}
           </button>
+
+          {/* Filtros laterais de Score (Card 7) — Quentes/Mornos/Frios */}
+          <div className="flex items-center gap-1.5 ml-auto" data-testid="score-bucket-filters">
+            {(["all", "hot", "warm", "cold"] as const).map((bucket) => {
+              const isActive = scoreFilter === bucket;
+              const conf = bucket === "all" ? null : SCORE_BUCKET_LABELS[bucket];
+              const Icon = conf?.Icon;
+              return (
+                <button
+                  key={bucket}
+                  type="button"
+                  onClick={() => setScoreFilter(bucket)}
+                  className={
+                    isActive
+                      ? "rounded-full border px-2.5 py-1 text-xs font-medium transition bg-primary text-primary-foreground border-primary inline-flex items-center gap-1"
+                      : bucket === "all"
+                      ? "rounded-full border px-2.5 py-1 text-xs font-medium transition border-border text-muted-foreground hover:bg-muted"
+                      : `${conf!.color} rounded-full border px-2.5 py-1 text-xs font-medium transition inline-flex items-center gap-1`
+                  }
+                  data-testid={`score-filter-${bucket}`}
+                  aria-pressed={isActive}
+                >
+                  {Icon && <Icon className="h-3 w-3" />}
+                  {bucket === "all" ? "Todos" : conf!.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* List — virtualizada para suportar 500+ leads sem gargalo no DOM */}
@@ -402,6 +469,12 @@ export default function Leads() {
           leadData={timelineLead.lead_data}
         />
       )}
+
+      {/* Score Breakdown Modal (Card 7) */}
+      <ScoreBreakdownDialog
+        lead={breakdownLead}
+        onClose={() => setBreakdownLead(null)}
+      />
     </AppLayout>
   );
 }
@@ -519,6 +592,11 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, newLeadIds 
                       )}
                     </div>
                   </div>
+                  {/* Badge de Score (Card 7) — mobile-first, click para ver breakdown */}
+                  <ScoreBadge
+                    score={lead.score ?? 0}
+                    onClick={(e) => { e.stopPropagation(); setBreakdownLead(lead); }}
+                  />
                   <Button
                     size="sm"
                     variant="ghost"
