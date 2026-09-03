@@ -26,9 +26,11 @@ const REQUEST_TYPES = [
 interface Props {
   phone: string
   callId: string
+  onContactCreated?: (contact: any, contactId: string | number) => void
+  onLeadCreated?: (lead: any, leadId: string | number) => void
 }
 
-export function TelecofLeadCapture({ phone, callId }: Props) {
+export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCreated }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const mergeEvent = useTelecofCallStore((s) => s.mergeEvent)
@@ -69,28 +71,31 @@ export function TelecofLeadCapture({ phone, callId }: Props) {
     setSaving(true)
     try {
       const displayName = name.trim() || `Chamada ${phone}`
-      await directusRequest<{ data: { id: string | number } }>("/items/leads", {
+      const leadPayload = {
+        display_name: displayName,
+        contact_name: contactPerson.trim() || displayName,
+        phone,
+        contact_phone: phone,
+        email: email.trim() || undefined,
+        source: "telecof",
+        status: "incoming",
+        type: "call",
+        notes: [
+          requestType ? `Assunto: ${REQUEST_TYPES.find(r => r.value === requestType)?.label || requestType}` : null,
+          notes.trim() || null,
+        ].filter(Boolean).join("\n\n") || undefined,
+        lead_data: {
+          request_type: requestType || undefined,
+          call_id: callId,
+          city: city.trim() || undefined,
+        },
+      }
+      const res = await directusRequest<{ data: { id: string | number } }>("/items/leads", {
         method: "POST",
-        body: JSON.stringify({
-          display_name: displayName,
-          contact_name: contactPerson.trim() || displayName,
-          phone,
-          contact_phone: phone,
-          email: email.trim() || undefined,
-          source: "telecof",
-          status: "incoming",
-          type: "call",
-          notes: [
-            requestType ? `Assunto: ${REQUEST_TYPES.find(r => r.value === requestType)?.label || requestType}` : null,
-            notes.trim() || null,
-          ].filter(Boolean).join("\n\n") || undefined,
-          lead_data: {
-            request_type: requestType || undefined,
-            call_id: callId,
-            city: city.trim() || undefined,
-          },
-        }),
+        body: JSON.stringify(leadPayload),
       })
+
+      const leadId = res?.data?.id
 
       // Atualizar nome da chamada
       if (callId) {
@@ -108,6 +113,9 @@ export function TelecofLeadCapture({ phone, callId }: Props) {
         title: "Lead criado com sucesso",
         description: `${displayName} registado na lista de leads.`,
       })
+      if (onLeadCreated && leadId) {
+        onLeadCreated({ id: leadId, ...leadPayload }, leadId)
+      }
     } catch (err) {
       toast({
         title: "Erro ao criar lead",
@@ -117,7 +125,7 @@ export function TelecofLeadCapture({ phone, callId }: Props) {
     } finally {
       setSaving(false)
     }
-  }, [name, contactPerson, phone, email, requestType, notes, callId, city, draftKey, mergeEvent, queryClient])
+  }, [name, contactPerson, phone, email, requestType, notes, callId, city, draftKey, mergeEvent, queryClient, onLeadCreated])
 
   // 2. Criar Contacto Definitivo (Ficha Cliente 360)
   const handleSaveContact = useCallback(async () => {
@@ -128,7 +136,7 @@ export function TelecofLeadCapture({ phone, callId }: Props) {
     setSaving(true)
     try {
       const companyName = name.trim()
-      const created = await createContact({
+      const contactPayload = {
         company_name: companyName,
         contact_name: contactPerson.trim() || companyName,
         phone,
@@ -137,7 +145,8 @@ export function TelecofLeadCapture({ phone, callId }: Props) {
         city: city.trim() || undefined,
         source: "telecof",
         notes: notes.trim() || (requestType ? `Origem: Chamada Telecof (${requestType})` : undefined),
-      } as any)
+      }
+      const created = await createContact(contactPayload as any)
 
       const contactId = created?.id ?? (created as any)?.data?.id
       if (contactId) {
@@ -160,6 +169,9 @@ export function TelecofLeadCapture({ phone, callId }: Props) {
         title: "Contacto / Cliente 360 criado!",
         description: `${companyName} guardado no CRM.`,
       })
+      if (onContactCreated && contactId) {
+        onContactCreated(created || { id: contactId, ...contactPayload }, contactId)
+      }
     } catch (err) {
       toast({
         title: "Erro ao criar contacto",
@@ -169,7 +181,7 @@ export function TelecofLeadCapture({ phone, callId }: Props) {
     } finally {
       setSaving(false)
     }
-  }, [name, contactPerson, phone, email, nif, city, notes, requestType, callId, draftKey, mergeEvent, queryClient])
+  }, [name, contactPerson, phone, email, nif, city, notes, requestType, callId, draftKey, mergeEvent, queryClient, onContactCreated])
 
   if (savedType === "lead") {
     return (

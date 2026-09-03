@@ -1,7 +1,10 @@
+import { useMemo } from "react";
 import { Globe, MessageCircle, Phone, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useConversationStore } from "@/store/conversationStore";
+import { useTelecofCallStore } from "@/store/telecofCallStore";
 
 export type ComunicacoesChannelId =
   | "whatsapp"
@@ -20,13 +23,13 @@ const CHANNELS: Array<{
   /** Cor do ponto de destaque (ex.: WA·916 via WAHA). */
   dotClass?: string;
 }> = [
-  { id: "whatsapp", label: "WhatsApp", description: "Conversas WhatsApp", icon: MessageCircle },
+  { id: "whatsapp", label: "WhatsApp", description: "Todos os números unificados", icon: MessageCircle },
   { id: "wa918", label: "WA·918", description: "WhatsApp 918 346 615 (Evolution)", icon: MessageCircle, dotClass: "bg-emerald-500" },
-  { id: "waha", label: "WA·916", description: "WhatsApp 916 542 211 (Evolution)", icon: MessageCircle, dotClass: "bg-amber-500" },
+  { id: "waha", label: "WA·916", description: "WhatsApp 916 542 271 (Evolution)", icon: MessageCircle, dotClass: "bg-amber-500" },
   { id: "wa913", label: "WA·913", description: "WhatsApp 913 866 565 (WABA)", icon: MessageCircle, dotClass: "bg-primary" },
   { id: "telecof", label: "Telecof", description: "Central telefónica", icon: Phone },
   { id: "askme", label: "Chat do site", description: "Mensagens do website", icon: Globe },
-  { id: "grupos", label: "Grupos", description: "Grupos internos", icon: Users },
+  { id: "grupos", label: "Grupos", description: "Grupos WhatsApp", icon: Users },
 ];
 
 type Props = {
@@ -44,6 +47,54 @@ export function ComunicacoesChannelsSidebar({
   layout = "sidebar",
 }: Props) {
   const isHorizontal = layout === "horizontal";
+  const conversations = useConversationStore((s) => s.conversations);
+  const groupConversations = useConversationStore((s) => s.groupConversations);
+  const telecofEvents = useTelecofCallStore((s) => s.events);
+
+  const channelUnreadCounts = useMemo(() => {
+    const counts: Record<ComunicacoesChannelId, number> = {
+      whatsapp: 0,
+      wa918: 0,
+      waha: 0,
+      wa913: 0,
+      telecof: 0,
+      askme: 0,
+      grupos: 0,
+    };
+
+    // Telecof open calls count
+    counts.telecof = telecofEvents.filter(
+      (e) => e.operationalStatus === "new" || e.operationalStatus === "unhandled",
+    ).length;
+
+    // Grupos unread count
+    counts.grupos = groupConversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+
+    // Individual conversations unread count
+    for (const c of conversations) {
+      const u = c.unreadCount || 0;
+      if (u <= 0) continue;
+
+      const ch = String(c.channel || "").toLowerCase();
+      const inst = String(c.instanceName || "").toLowerCase();
+      const src = String(c.source || "").toLowerCase();
+
+      if (ch === "askme") {
+        counts.askme += u;
+      } else if (ch.startsWith("wa") || ch === "whatsapp" || ch === "whatsapp_meta" || ch === "waha") {
+        counts.whatsapp += u;
+        if (inst.includes("918") || ch.includes("918") || src.includes("918")) {
+          counts.wa918 += u;
+        } else if (inst.includes("916") || ch.includes("916") || ch === "waha" || src.includes("916")) {
+          counts.waha += u;
+        } else if (inst.includes("913") || ch.includes("913") || ch === "whatsapp_meta" || src.includes("913") || src.startsWith("meta:")) {
+          counts.wa913 += u;
+        }
+      }
+    }
+
+    return counts;
+  }, [conversations, groupConversations, telecofEvents]);
 
   return (
     <aside
@@ -73,6 +124,7 @@ export function ComunicacoesChannelsSidebar({
         {CHANNELS.map((ch) => {
           const Icon = ch.icon;
           const active = activeChannel === ch.id;
+          const unread = channelUnreadCounts[ch.id] || 0;
           return (
             <Button
               key={ch.id}
@@ -80,28 +132,35 @@ export function ComunicacoesChannelsSidebar({
               variant={active ? "secondary" : "ghost"}
               size={isHorizontal ? "sm" : "default"}
               className={cn(
-                isHorizontal ? "h-8" : "h-auto w-full justify-start gap-2 py-2.5",
+                isHorizontal ? "h-8" : "h-auto w-full justify-between py-2.5 px-3",
               )}
               onClick={() => onChannelChange?.(ch.id)}
               title={ch.description}
             >
-              <span className="relative shrink-0">
-                <Icon className="h-4 w-4" />
-                {ch.dotClass ? (
-                  <span
-                    className={cn(
-                      "absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-background",
-                      ch.dotClass,
-                    )}
-                  />
-                ) : null}
-              </span>
-              <span className={cn(isHorizontal ? "" : "flex flex-col items-start text-left")}>
-                <span className="text-sm font-medium">{ch.label}</span>
-                {!isHorizontal ? (
-                  <span className="text-xs font-normal text-muted-foreground">{ch.description}</span>
-                ) : null}
-              </span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="relative shrink-0">
+                  <Icon className="h-4 w-4" />
+                  {ch.dotClass ? (
+                    <span
+                      className={cn(
+                        "absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-background",
+                        ch.dotClass,
+                      )}
+                    />
+                  ) : null}
+                </span>
+                <span className={cn(isHorizontal ? "" : "flex flex-col items-start text-left truncate")}>
+                  <span className="text-sm font-medium">{ch.label}</span>
+                  {!isHorizontal ? (
+                    <span className="text-xs font-normal text-muted-foreground truncate">{ch.description}</span>
+                  ) : null}
+                </span>
+              </div>
+              {unread > 0 && (
+                <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
             </Button>
           );
         })}

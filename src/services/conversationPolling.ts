@@ -31,16 +31,21 @@ export async function fetchConversationsWithFallback(): Promise<ConversationFetc
     }
 
     const [waResult, askmeResult, emailResult] = await Promise.all([
-      // WhatsApp — busca por instância, limite generoso para apanhar todas
-      getConversations({ "filter[channel][_eq]": "whatsapp" }, 0, 250)
-        .catch(() => [] as Conversation[]),
+      // WhatsApp — busca por todos os canais WhatsApp conhecidos com limite generoso
+      getConversations({
+        "filter[channel][_in]": "whatsapp,whatsapp_meta,whatsapp_group,whatsapp_916,whatsapp_918,whatsapp_913,waha,wa918,wa916,wa913",
+      }, 0, 300).catch(() =>
+        getConversations({ "filter[channel][_starts_with]": "wa" }, 0, 300).catch(() =>
+          getConversations({ "filter[channel][_eq]": "whatsapp" }, 0, 250).catch(() => [] as Conversation[])
+        )
+      ),
       // Ask Me — só com mensagem real (não visitas vazias)
       getConversations({
         "filter[channel][_eq]": "askme",
         "filter[last_message][_nnull]": "true",
-      }, 0, 20).catch(() => [] as Conversation[]),
+      }, 0, 50).catch(() => [] as Conversation[]),
       // Email
-      getConversations({ "filter[channel][_eq]": "email" }, 0, 20)
+      getConversations({ "filter[channel][_eq]": "email" }, 0, 50)
         .catch(() => [] as Conversation[]),
     ])
 

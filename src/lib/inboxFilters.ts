@@ -39,13 +39,12 @@ export function isGroupConversation(conv: Conversation): boolean {
 }
 
 function isActiveInboxStatus(status: string): boolean {
-  return (
-    status === "open" ||
-    status === "ai_active" ||
-    status === "human_active" ||
-    status === "handoff" ||
-    status === "waiting_client"
-  )
+  if (!status) return true
+  const s = status.toLowerCase()
+  if (s === "closed" || s === "resolved" || s === "archived" || s === "deleted" || s === "done") {
+    return false
+  }
+  return true
 }
 
 function isNotDeleted(status: string): boolean {
@@ -98,6 +97,12 @@ export function filterConversationsWithStats(
 
   let list = [...conversations]
 
+  // Strictly exclude Telecof/phone call events from chat conversations
+  list = list.filter((c) => {
+    const ch = String(c.channel ?? "").toLowerCase()
+    return ch !== "telecof" && ch !== "call" && ch !== "phone"
+  })
+
   if (options?.groupsOnly) {
     list = list.filter(
       (c) => c.source?.includes("@g.us") || isGroupConversation(c),
@@ -124,12 +129,12 @@ export function filterConversationsWithStats(
       case "human":
         list = list.filter(
           (c) =>
-            (c.status === "open" || c.status === "human_active") &&
+            (c.status === "open" || c.status === "human_active" || c.status === "active") &&
             c.mode === "human",
         )
         break
       case "closed":
-        list = list.filter((c) => c.status === "closed")
+        list = list.filter((c) => c.status === "closed" || c.status === "resolved" || c.status === "done")
         break
       case "mine":
         list = list.filter(
@@ -153,19 +158,33 @@ export function filterConversationsWithStats(
 
   if (filters.channelFilters.length > 0) {
     const channelSet = new Set(filters.channelFilters.map((c) => c.toLowerCase()))
-    // Include generic "whatsapp" conversations when any whatsapp_* filter is active
-    const hasAnyWa = filters.channelFilters.some((c) => c.startsWith("whatsapp"))
+    // Include generic "whatsapp" variations when any whatsapp filter is active
+    const hasAnyWa = filters.channelFilters.some((c) => c.startsWith("wa"))
     const instanceFilter = filters.instanceFilter?.trim().toLowerCase()
     list = list.filter((c) => {
       if (options?.groupsOnly && c.source?.includes("@g.us")) return true
-      const ch = String(c.channel).toLowerCase()
+      const ch = String(c.channel ?? "").toLowerCase()
       if (channelSet.has(ch)) return true
-      if (hasAnyWa && ch === "whatsapp") return true
+      if (hasAnyWa && (ch.startsWith("wa") || ch === "whatsapp" || ch === "whatsapp_meta" || ch === "waha")) return true
       return false
     })
-    // Phase 2.F1: filtrar também por instance_name (e.g. 916 vs 913)
+    // Phase 2.F1: filtrar também por instance_name (e.g. 916 vs 918 vs 913)
     if (instanceFilter) {
-      list = list.filter((c) => String(c.instanceName ?? "").toLowerCase() === instanceFilter)
+      const inst = instanceFilter.toLowerCase().trim()
+      const suffix = inst.replace(/^hotelequip-/, "").replace(/^inst-evo-/, "").replace(/^inst-meta-/, "")
+      list = list.filter((c) => {
+        const cInst = String(c.instanceName ?? "").toLowerCase()
+        const cChan = String(c.channel ?? "").toLowerCase()
+        const cSource = String(c.source ?? "").toLowerCase()
+        // Exact instance match
+        if (cInst === inst || cInst === suffix) return true
+        // Suffix matches in instance name, channel or source
+        if (suffix && (cInst.includes(suffix) || cChan.includes(suffix) || cSource.includes(suffix))) return true
+        // Channel specific aliases
+        if (suffix === "913" && (cChan === "whatsapp_meta" || cSource.startsWith("meta:"))) return true
+        if (suffix === "916" && (cChan === "waha" || cInst === "waha")) return true
+        return false
+      })
     }
   }
   stats.afterChannel = list.length
