@@ -1,0 +1,501 @@
+[
+  {
+    "name": "dashboard",
+    "requestedUrl": "/",
+    "finalUrl": "http://localhost:8080/dashboard",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+      "[RealtimeClient] WebSocket error: Event",
+      "[RealtimeClient] WebSocket error: Event"
+    ],
+    "elementSummary": {
+      "h1": [
+        "Boa tarde, setup-service@hotelequip.pt."
+      ],
+      "buttons": [
+        "Mais módulos",
+        "Pesquisar",
+        "Modo Escuro",
+        "Sair",
+        "Colapsar menu",
+        "Pesquisar contactos, negócios…Ctrl K",
+        "SEsetup-service@hotelequip.pt",
+        "Simular chamada Telecof",
+        "Conversas",
+        "Hoje",
+        "noreply@fprmlogistica.pt11:56Notificação de recibo RC/23 4774 com faturas de transporte/logística",
+        "Responder",
+        "sat@climahosteleria.es11:49Fornecedor espanhol (Climahosteleria) a solicitar confirmação de morada e contacto para envio de termóstato em garantia.",
+        "Responder",
+        "compras.nrs@ligacontracancro.pt11:27Orçamento urgente para 12 termos Cambro (8x9.5L e 4x5.7L) com entrega até 11 de setembro para Liga Portuguesa Contra o Cancro/IPO Lisboa"
+      ],
+      "hasRecharts": true,
+      "hasTable": false,
+      "tabs": [
+        "",
+        "",
+        "SEsetup-service@hotelequip.pt",
+        "Conversas",
+        "Hoje"
+      ],
+      "hasCards": 130,
+      "canvasCount": 0,
+      "svgCount": 397
+    },
+    "screenshotRoot": "qa-dashboard.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-dashboard.png"
+  },
+  {
+    "name": "leads",
+    "requestedUrl": "/leads",
+    "finalUrl": "http://localhost:8080/leads",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+      "[RealtimeClient] WebSocket error: Event",
+      "[RealtimeClient] WebSocket error: Event"
+    ],
+    "elementSummary": {
+      "h1": [
+        "Leads"
+      ],
+      "buttons": [
+        "Mais módulos",
+        "Pesquisar",
+        "Modo Escuro",
+        "Sair",
+        "Colapsar menu",
+        "Pesquisar contactos, negócios…Ctrl K",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Simular chamada Telecof",
+        "Novo Lead",
+        "Todas origens",
+        "Todos estados",
+        "Incluir convertidos",
+        "Todos",
+        "Quentes"
+      ],
+      "hasRecharts": false,
+      "hasTable": false,
+      "tabs": [
+        "",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Todas origens",
+        "Todos estados"
+      ],
+      "hasCards": 9,
+      "canvasCount": 0,
+      "svgCount": 56
+    },
+    "screenshotRoot": "qa-leads.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-leads.png"
+  },
+  {
+    "name": "relatorios",
+    "requestedUrl": "/relatorios",
+    "finalUrl": "http://localhost:8080/relatorios",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+      "[RealtimeClient] WebSocket error: Event"
+    ],
+    "elementSummary": {
+      "h1": [
+        "Relatórios"
+      ],
+      "buttons": [
+        "Mais módulos",
+        "Pesquisar",
+        "Modo Escuro",
+        "Sair",
+        "Colapsar menu",
+        "Pesquisar contactos, negócios…Ctrl K",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Simular chamada Telecof",
+        "Imprimir",
+        "CSV"
+      ],
+      "hasRecharts": true,
+      "hasTable": false,
+      "tabs": [
+        "",
+        "99+",
+        "SEsetup-service@hotelequip.pt"
+      ],
+      "hasCards": 15,
+      "canvasCount": 0,
+      "svgCount": 53
+    },
+    "screenshotRoot": "qa-relatorios.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-relatorios.png"
+  },
+  {
+    "name": "inbox",
+    "requestedUrl": "/inbox",
+    "finalUrl": "http://localhost:8080/inbox",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+      "[RealtimeClient] WebSocket error: Event"
+    ],
+    "elementSummary": {
+      "h1": [
+        "Inbox"
+      ],
+      "buttons": [
+        "Mais módulos",
+        "Pesquisar",
+        "Modo Escuro",
+        "Sair",
+        "Colapsar menu",
+        "Pesquisar contactos, negócios…Ctrl K",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Simular chamada Telecof",
+        "Todos",
+        "WhatsApp",
+        "Email",
+        "IG",
+        "Todas",
+        "Não lidas"
+      ],
+      "hasRecharts": false,
+      "hasTable": false,
+      "tabs": [
+        "",
+        "99+",
+        "SEsetup-service@hotelequip.pt"
+      ],
+      "hasCards": 112,
+      "canvasCount": 0,
+      "svgCount": 342
+    },
+    "screenshotRoot": "qa-inbox.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-inbox.png"
+  },
+  {
+    "name": "customer360",
+    "requestedUrl": "/customer360/1",
+    "finalUrl": "http://localhost:8080/customer360/1",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    ],
+    "elementSummary": {
+      "h1": [
+        "Hotel Sol & Mar Lda"
+      ],
+      "buttons": [
+        "Ações",
+        "Timeline",
+        "Propostas",
+        "Compras",
+        "Comunicacao",
+        "Notas"
+      ],
+      "hasRecharts": false,
+      "hasTable": false,
+      "tabs": [
+        "Ações",
+        "Timeline",
+        "Propostas",
+        "Compras",
+        "Comunicacao",
+        "Notas"
+      ],
+      "hasCards": 0,
+      "canvasCount": 0,
+      "svgCount": 15
+    },
+    "screenshotRoot": "qa-customer360.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-customer360.png"
+  },
+  {
+    "name": "definicoes-ia-providers",
+    "requestedUrl": "/definicoes/ia-providers",
+    "finalUrl": "http://localhost:8080/definicoes/ia-providers",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+      "[RealtimeClient] WebSocket error: Event"
+    ],
+    "elementSummary": {
+      "h1": [
+        "Provedores de IA Plug-in"
+      ],
+      "buttons": [
+        "Mais módulos",
+        "Pesquisar",
+        "Modo Escuro",
+        "Sair",
+        "Colapsar menu",
+        "Pesquisar contactos, negócios…Ctrl K",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Simular chamada Telecof",
+        "Definições Globais",
+        "Atualizar",
+        "Adicionar Provedor",
+        "Testar",
+        "Editar",
+        "Testar"
+      ],
+      "hasRecharts": false,
+      "hasTable": false,
+      "tabs": [
+        "",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "hasCards": 13,
+      "canvasCount": 0,
+      "svgCount": 67
+    },
+    "screenshotRoot": "qa-definicoes-ia-providers.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-definicoes-ia-providers.png"
+  },
+  {
+    "name": "definicoes-aparencia",
+    "requestedUrl": "/definicoes/aparencia",
+    "finalUrl": "http://localhost:8080/definicoes/aparencia",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+      "[RealtimeClient] WebSocket error: Event",
+      "[RealtimeClient] WebSocket error: Event"
+    ],
+    "elementSummary": {
+      "h1": [
+        "Personalizar Tema"
+      ],
+      "buttons": [
+        "Mais módulos",
+        "Pesquisar",
+        "Modo Escuro",
+        "Sair",
+        "Colapsar menu",
+        "Pesquisar contactos, negócios…Ctrl K",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Simular chamada Telecof",
+        "Personalizar tema"
+      ],
+      "hasRecharts": false,
+      "hasTable": false,
+      "tabs": [
+        "",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Personalizar tema"
+      ],
+      "hasCards": 5,
+      "canvasCount": 0,
+      "svgCount": 38
+    },
+    "screenshotRoot": "qa-definicoes-aparencia.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-definicoes-aparencia.png"
+  },
+  {
+    "name": "definicoes-whatsapp",
+    "requestedUrl": "/definicoes/whatsapp",
+    "finalUrl": "http://localhost:8080/definicoes/whatsapp",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+      "Directus fetch /items/whatsapp_instances falhou, usando armazenamento local: Error: You don't have permission to access collection \"whatsapp_instances\" or it does not exist. Queried in root.\n    at directusRequest (http://localhost:8080/src/integrations/directus/client.ts:247:15)\n    at async fetchWhatsAppInstances (http://localhost:8080/src/integrations/directus/whatsapp-instances.ts:79:21)\n    at async loadData (http://localhost:8080/src/pages/settings/WhatsappInstances.tsx?t=1788435235704:72:26)",
+      "[RealtimeClient] WebSocket error: Event"
+    ],
+    "elementSummary": {
+      "h1": [
+        "Números WhatsApp (Dual API)"
+      ],
+      "buttons": [
+        "Mais módulos",
+        "Pesquisar",
+        "Modo Escuro",
+        "Sair",
+        "Colapsar menu",
+        "Pesquisar contactos, negócios…Ctrl K",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Simular chamada Telecof",
+        "Atualizar",
+        "Adicionar Número",
+        "Todas (3)",
+        "Evolution (2)",
+        "Meta Cloud (1)",
+        "Ativas (3)"
+      ],
+      "hasRecharts": false,
+      "hasTable": false,
+      "tabs": [
+        "",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Todas (3)",
+        "Evolution (2)",
+        "Meta Cloud (1)",
+        "Ativas (3)",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "hasCards": 11,
+      "canvasCount": 0,
+      "svgCount": 57
+    },
+    "screenshotRoot": "qa-definicoes-whatsapp.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-definicoes-whatsapp.png"
+  },
+  {
+    "name": "pipelines",
+    "requestedUrl": "/pipelines",
+    "finalUrl": "http://localhost:8080/pipelines",
+    "pageTitle": "CRMMVP",
+    "status": "PASS",
+    "notes": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "WebSocket connection to 'wss://api.hotelequip.pt/websocket' failed: Error during WebSocket handshake: Unexpected response code: 404"
+    ],
+    "consoleWarnings": [
+      "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+      "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+      "[RealtimeClient] WebSocket error: Event",
+      "[RealtimeClient] WebSocket error: Event"
+    ],
+    "elementSummary": {
+      "h1": [
+        "Pipeline"
+      ],
+      "buttons": [
+        "Mais módulos",
+        "Pesquisar",
+        "Modo Escuro",
+        "Sair",
+        "Colapsar menu",
+        "Pesquisar contactos, negócios…Ctrl K",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Simular chamada Telecof",
+        "Filtros guardados",
+        "Filtros",
+        "Novo Negócio"
+      ],
+      "hasRecharts": false,
+      "hasTable": false,
+      "tabs": [
+        "",
+        "99+",
+        "SEsetup-service@hotelequip.pt",
+        "Filtros guardados"
+      ],
+      "hasCards": 3,
+      "canvasCount": 0,
+      "svgCount": 36
+    },
+    "screenshotRoot": "qa-pipelines.png",
+    "screenshotDocs": "C:\\Projetos\\CRMMVP\\docs\\screenshots\\qa-pipelines.png"
+  }
+]
