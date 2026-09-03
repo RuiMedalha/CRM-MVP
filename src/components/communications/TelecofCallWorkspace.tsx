@@ -36,7 +36,7 @@ import { useTelecofCallStore } from "@/store/telecofCallStore"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 import { useAuth } from "@/contexts/AuthContext"
 import { directusRequest } from "@/integrations/directus/client"
-import { patchContact } from "@/integrations/directus/contacts"
+import { patchContact, getContactById } from "@/integrations/directus/contacts"
 import { createFollowUp } from "@/integrations/directus/follow-ups"
 import { useEmployees } from "@/hooks/useEmployees"
 import { ProductSearchTab } from "@/components/contacts/ProductSearchTab"
@@ -144,46 +144,93 @@ export function TelecofCallWorkspace() {
     }
   }, [identity?.record, identity?.kind, selected?.phone, selected?.normalizedPhone])
 
-  const loadIdentityForPhone = useCallback(async (phone: string) => {
+  const loadIdentityForPhone = useCallback(async (phone: string, contactId?: string) => {
     setIdentityLoading(true)
-    setIdentity(null)
     try {
-      const { identifyByPhoneOrEmail } = await import("@/services/contactIdentification")
-      const result = await identifyByPhoneOrEmail({ phone })
-      let recentInteractions: unknown[] = []
-      let openDealsRecords: unknown[] = []
-      if (result.kind === "contact" && result.record?.id) {
-        const contactId = result.record.id
-        const [intRes, dealsRes] = await Promise.all([
-          directusRequest<{ data: unknown[] }>(
-            `/items/interactions?filter[contact_id][_eq]=${contactId}&sort=-occurred_at,-date_created&limit=5&fields=id,type,summary,occurred_at,date_created,direction,channel`
-          ).catch(() => ({ data: [] })),
-          directusRequest<{ data: unknown[] }>(
-            `/items/deals?filter[customer_id][_eq]=${contactId}&filter[status][_nin]=perdido&limit=5&fields=id,title,total_amount,status`
-          ).catch(() => ({ data: [] })),
-        ])
-        recentInteractions = intRes.data ?? []
-        openDealsRecords = dealsRes.data ?? []
-      }
-      setIdentity({
-        kind: result.kind,
-        record: result.record ?? undefined,
-        recentInteractions,
-        openDealsRecords,
-        openDeals: openDealsRecords.length,
-        interactionCount: result.interactionCount,
-        lastActivity: result.lastActivity,
-      })
-
-      if (result.kind !== "unknown" && result.record && selected) {
-        const identifiedName = String(result.record.company_name || result.record.contact_name || result.record.name || "").trim()
-        if (identifiedName && identifiedName !== selected.customerName) {
-          patchHubCommunicationEvent(selected.id, {
-            customer_name: identifiedName,
-            ...(result.kind === "contact" ? { contact_id: String(result.record.id) } : {}),
-          }).then((updated) => mergeEvent(updated)).catch(() => {})
+      // 1. Se o evento já tem contact_id associado, carrega imediatamente por ID
+      if (contactId) {
+        const directContact = await getContactById(contactId).catch(() => null)
+        if (directContact) {
+          const [intRes, dealsRes] = await Promise.all([
+            directusRequest<{ data: unknown[] }>(
+              `/items/interactions?filter[contact_id][_eq]=${contactId}&sort=-occurred_at,-date_created&limit=5&fields=id,type,summary,occurred_at,date_created,direction,channel`
+            ).catch(() => ({ data: [] })),
+            directusRequest<{ data: unknown[] }>(
+              `/items/deals?filter[customer_id][_eq]=${contactId}&filter[status][_nin]=perdido&limit=5&fields=id,title,total_amount,status`
+            ).catch(() => ({ data: [] })),
+          ])
+          const recentInteractions = intRes.data ?? []
+          const openDealsRecords = dealsRes.data ?? []
+          setIdentity({
+            kind: "contact",
+            record: directContact as any,
+            recentInteractions,
+            openDealsRecords,
+            openDeals: openDealsRecords.length,
+            interactionCount: recentInteractions.length,
+            lastActivity: (directContact.last_seen_at as string) || (directContact.date_created as string) || null,
+          })
+          setIdentityLoading(false)
+          return
         }
       }
+
+      // 2. Pesquisa de contacto pelo número de telefone
+      if (phone && phone.trim()) {
+        const { identifyByPhoneOrEmail } = await import("@/services/contactIdentification")
+        const result = await identifyByPhoneOrEmail({ phone })
+        let recentInteractions: unknown[] = []
+        let openDealsRecords: unknown[] = []
+        if (result.kind === "contact" && result.record?.id) {
+          const cId = result.record.id
+          const [intRes, dealsRes] = await Promise.all([
+            directusRequest<{ data: unknown[] }>(
+              `/items/interactions?filter[contact_id][_eq]=${cId}&sort=-occurred_at,-date_created&limit=5&fields=id,type,summary,occurred_at,date_created,direction,channel`
+            ).catch(() => ({ data: [] })),
+            directusRequest<{ data: unknown[] }>(
+              `/items/deals?filter[customer_id][_eq]=${cId}&filter[status][_nin]=perdido&limit=5&fields=id,title,total_amount,status`
+            ).catch(() => ({ data: [] })),
+          ])
+          recentInteractions = intRes.data ?? []
+          openDealsRecords = dealsRes.data ?? []
+          setIdentity({
+            kind: "contact",
+            record: result.record,
+            recentInteractions,
+            openDealsRecords,
+            openDeals: openDealsRecords.length,
+            interactionCount: result.interactionCount,
+            lastActivity: result.lastActivity,
+          })
+
+          if (selected) {
+            const identifiedName = String(result.record.company_name || result.record.contact_name || result.record.name || "").trim()
+            if (identifiedName && identifiedName !== selected.customerName) {
+              patchHubCommunicationEvent(selected.id, {
+                customer_name: identifiedName,
+                contact_id: String(result.record.id),
+              }).then((updated) => mergeEvent(updated)).catch(() => {})
+            }
+          }
+          setIdentityLoading(false)
+          return
+        } else if (result.kind === "lead" && result.record?.id) {
+          setIdentity({
+            kind: "lead",
+            record: result.record,
+            recentInteractions: [],
+            openDealsRecords: [],
+            openDeals: 0,
+            interactionCount: 0,
+            lastActivity: result.lastActivity,
+          })
+          setIdentityLoading(false)
+          return
+        }
+      }
+
+      // 3. Caso não identificado, disponibiliza de imediato o formulário de preenchimento
+      setIdentity({ kind: "unknown" })
     } catch {
       setIdentity({ kind: "unknown" })
     } finally {
@@ -192,13 +239,20 @@ export function TelecofCallWorkspace() {
   }, [selected, mergeEvent])
 
   useEffect(() => {
-    const phone = selected?.normalizedPhone || selected?.phone
-    if (!phone) {
+    if (!selected) {
       setIdentity(null)
+      setIdentityLoading(false)
       return
     }
-    void loadIdentityForPhone(phone)
-  }, [selected?.id, selected?.normalizedPhone, selected?.phone, loadIdentityForPhone])
+    const phone = selected.normalizedPhone || selected.phone || ""
+    const contactId = selected.contactId
+    if (!phone && !contactId) {
+      setIdentity({ kind: "unknown" })
+      setIdentityLoading(false)
+      return
+    }
+    void loadIdentityForPhone(phone, contactId)
+  }, [selected?.id, selected?.contactId, selected?.normalizedPhone, selected?.phone, loadIdentityForPhone])
 
   const handleContactCreated = useCallback(async (contact: any, contactId: string | number) => {
     const cId = String(contactId)
@@ -669,17 +723,14 @@ export function TelecofCallWorkspace() {
         </dl>
 
         {/* Identificação automática do chamador e Dossiê 360 */}
-        {identityLoading && (
-          <div className="animate-pulse rounded-xl border border-border bg-card p-4 space-y-2">
-            <div className="flex items-center gap-2 text-primary">
-              <UserSearch className="h-4 w-4 animate-spin" />
-              <span className="text-xs font-semibold uppercase tracking-wider">A identificar chamador…</span>
-            </div>
-            <p className="text-xs text-muted-foreground">A pesquisar ficha de cliente, histórico e negócios associados a {selected.phone || selected.normalizedPhone}…</p>
+        {identityLoading && !identity && (
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground animate-pulse">
+            <UserSearch className="h-4 w-4 animate-spin text-primary shrink-0" />
+            <span>A verificar ficha de cliente associada a {selected.phone || selected.normalizedPhone || "chamador"}…</span>
           </div>
         )}
 
-        {!identityLoading && identity?.kind === "unknown" && (
+        {identity?.kind === "unknown" && (
           <TelecofLeadCapture
             phone={selected.phone || selected.normalizedPhone || ""}
             callId={selected.id}

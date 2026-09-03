@@ -1,13 +1,14 @@
 /**
  * TelecofLeadCapture — formulário de captura rápida para números desconhecidos.
- * Permite criar ou um Lead (pipeline de prospeção) ou um Contacto (Ficha Cliente 360).
+ * Permite preencher diretamente as linhas de contacto (Ficha Cliente 360),
+ * associar a um cliente existente ou criar um Lead de prospeção.
  */
-import { useState, useEffect, useCallback } from "react"
-import { UserPlus, UserRoundPlus, Loader2, ExternalLink, Building2 } from "lucide-react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { UserPlus, UserRoundPlus, Loader2, ExternalLink, Building2, Search, Link2, Check, User } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { directusRequest } from "@/integrations/directus/client"
-import { createContact } from "@/integrations/directus/contacts"
+import { createContact, getContactById } from "@/integrations/directus/contacts"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 import { useTelecofCallStore } from "@/store/telecofCallStore"
 import { toast } from "@/hooks/use-toast"
@@ -36,7 +37,7 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
   const mergeEvent = useTelecofCallStore((s) => s.mergeEvent)
   const draftKey = `telecof_lead_${callId}`
 
-  const [activeTab, setActiveTab] = useState<"lead" | "contact">("lead")
+  const [activeTab, setActiveTab] = useState<"contact" | "lead">("contact")
 
   // Draft state
   const [name, setName] = useState(() => {
@@ -54,15 +55,157 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
   const [savedType, setSavedType] = useState<"lead" | "contact" | null>(null)
   const [createdContactId, setCreatedContactId] = useState<string | number | null>(null)
 
+  // Search existing contact to link
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchingContacts, setSearchingContacts] = useState(false)
+  const [contactResults, setContactResults] = useState<Array<{
+    id: string | number
+    company_name?: string
+    contact_name?: string
+    name?: string
+    phone?: string
+    email?: string
+    nif?: string
+    city?: string
+  }>>([])
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Autosave draft
   useEffect(() => {
     const t = setTimeout(() => {
-      sessionStorage.setItem(draftKey, JSON.stringify({ name, requestType }))
+      sessionStorage.setItem(draftKey, JSON.stringify({ name, requestType, contactPerson, email, nif, city, notes }))
     }, 500)
     return () => clearTimeout(t)
-  }, [name, requestType, draftKey])
+  }, [name, requestType, contactPerson, email, nif, city, notes, draftKey])
 
-  // 1. Criar Lead (pipeline de prospeção)
+  // Search existing contacts debounce
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    const q = searchQuery.trim()
+    if (!q || q.length < 2) {
+      setContactResults([])
+      setShowSearchDropdown(false)
+      return
+    }
+
+    setSearchingContacts(true)
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const encoded = encodeURIComponent(q)
+        const res = await directusRequest<{ data: any[] }>(
+          `/items/contacts?search=${encoded}&limit=6&fields=id,company_name,contact_name,name,phone,email,nif,city`
+        )
+        setContactResults(res?.data || [])
+        setShowSearchDropdown(true)
+      } catch {
+        setContactResults([])
+      } finally {
+        setSearchingContacts(false)
+      }
+    }, 300)
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    }
+  }, [searchQuery])
+
+  // Link existing contact
+  const handleLinkExistingContact = async (contact: any) => {
+    setSaving(true)
+    try {
+      const contactId = String(contact.id)
+      const companyName = String(contact.company_name || contact.name || contact.contact_name || "").trim()
+
+      if (callId) {
+        const updated = await patchHubCommunicationEvent(callId, {
+          contact_id: contactId,
+          customer_name: companyName || undefined,
+        }).catch(() => null)
+        if (updated) mergeEvent(updated)
+      }
+
+      setCreatedContactId(contactId)
+      setSavedType("contact")
+      sessionStorage.removeItem(draftKey)
+      setShowSearchDropdown(false)
+      setSearchQuery("")
+      queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
+      toast({
+        title: "Contacto associado com sucesso!",
+        description: `Esta chamada foi vinculada à ficha de ${companyName || `#${contactId}`}.`,
+      })
+      if (onContactCreated) {
+        onContactCreated(contact, contactId)
+      }
+    } catch (err) {
+      toast({
+        title: "Erro ao associar contacto",
+        description: String((err as Error)?.message || ""),
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // 1. Criar Contacto Definitivo (Ficha Cliente 360)
+  const handleSaveContact = useCallback(async () => {
+    if (!name.trim()) {
+      toast({ title: "Nome da empresa / cliente é obrigatório", variant: "destructive" })
+      return
+    }
+    setSaving(true)
+    try {
+      const companyName = name.trim()
+      const contactPayload = {
+        company_name: companyName,
+        contact_name: contactPerson.trim() || companyName,
+        phone: phone || undefined,
+        email: email.trim() || undefined,
+        nif: nif.trim() || undefined,
+        city: city.trim() || undefined,
+        source: "telecof",
+        notes: notes.trim() || (requestType ? `Origem: Chamada Telecof (${requestType})` : undefined),
+      }
+      const created = await createContact(contactPayload as any)
+
+      const contactId = created?.id ?? (created as any)?.data?.id
+      if (contactId) {
+        setCreatedContactId(contactId)
+        // Associar imediatamente à chamada
+        if (callId) {
+          const updated = await patchHubCommunicationEvent(callId, {
+            contact_id: String(contactId),
+            customer_name: companyName,
+          }).catch(() => null)
+          if (updated) mergeEvent(updated)
+        }
+      }
+
+      setSavedType("contact")
+      sessionStorage.removeItem(draftKey)
+      queryClient.invalidateQueries({ queryKey: ["contacts-directus"] })
+      queryClient.invalidateQueries({ queryKey: ["customer360"] })
+      toast({
+        title: "Ficha do Cliente 360 criada!",
+        description: `${companyName} registado no CRM.`,
+      })
+      if (onContactCreated && contactId) {
+        onContactCreated(created || { id: contactId, ...contactPayload }, contactId)
+      }
+    } catch (err) {
+      toast({
+        title: "Erro ao criar contacto",
+        description: String((err as Error)?.message || ""),
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }, [name, contactPerson, phone, email, nif, city, notes, requestType, callId, draftKey, mergeEvent, queryClient, onContactCreated])
+
+  // 2. Criar Lead (pipeline de prospeção)
   const handleSaveLead = useCallback(async () => {
     if (!name.trim() && !requestType) {
       toast({ title: "Preencha o nome da empresa ou o tipo de assunto", variant: "destructive" })
@@ -127,61 +270,25 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
     }
   }, [name, contactPerson, phone, email, requestType, notes, callId, city, draftKey, mergeEvent, queryClient, onLeadCreated])
 
-  // 2. Criar Contacto Definitivo (Ficha Cliente 360)
-  const handleSaveContact = useCallback(async () => {
-    if (!name.trim()) {
-      toast({ title: "Nome da empresa / cliente é obrigatório", variant: "destructive" })
-      return
-    }
-    setSaving(true)
-    try {
-      const companyName = name.trim()
-      const contactPayload = {
-        company_name: companyName,
-        contact_name: contactPerson.trim() || companyName,
-        phone,
-        email: email.trim() || undefined,
-        nif: nif.trim() || undefined,
-        city: city.trim() || undefined,
-        source: "telecof",
-        notes: notes.trim() || (requestType ? `Origem: Chamada Telecof (${requestType})` : undefined),
-      }
-      const created = await createContact(contactPayload as any)
-
-      const contactId = created?.id ?? (created as any)?.data?.id
-      if (contactId) {
-        setCreatedContactId(contactId)
-        // Associar imediatamente à chamada
-        if (callId) {
-          const updated = await patchHubCommunicationEvent(callId, {
-            contact_id: String(contactId),
-            customer_name: companyName,
-          }).catch(() => null)
-          if (updated) mergeEvent(updated)
-        }
-      }
-
-      setSavedType("contact")
-      sessionStorage.removeItem(draftKey)
-      queryClient.invalidateQueries({ queryKey: ["contacts-directus"] })
-      queryClient.invalidateQueries({ queryKey: ["customer360"] })
-      toast({
-        title: "Contacto / Cliente 360 criado!",
-        description: `${companyName} guardado no CRM.`,
-      })
-      if (onContactCreated && contactId) {
-        onContactCreated(created || { id: contactId, ...contactPayload }, contactId)
-      }
-    } catch (err) {
-      toast({
-        title: "Erro ao criar contacto",
-        description: String((err as Error)?.message || ""),
-        variant: "destructive",
-      })
-    } finally {
-      setSaving(false)
-    }
-  }, [name, contactPerson, phone, email, nif, city, notes, requestType, callId, draftKey, mergeEvent, queryClient, onContactCreated])
+  if (savedType === "contact") {
+    return (
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 p-4 space-y-2">
+        <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">✓ Cliente 360 associado com sucesso</p>
+        <p className="text-xs text-emerald-700 dark:text-emerald-400">
+          A ficha do cliente foi vinculada a esta chamada e o dossiê está disponível.
+        </p>
+        {createdContactId && (
+          <button
+            type="button"
+            onClick={() => navigate(`/customer360-shell/${createdContactId}`)}
+            className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+          >
+            <ExternalLink className="h-3 w-3" /> Abrir Ficha Completa #{createdContactId}
+          </button>
+        )}
+      </div>
+    )
+  }
 
   if (savedType === "lead") {
     return (
@@ -201,154 +308,168 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
     )
   }
 
-  if (savedType === "contact") {
-    return (
-      <div className="rounded-xl border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800 p-4 space-y-2">
-        <p className="text-xs font-semibold text-green-800 dark:text-green-300">✓ Cliente 360 criado com sucesso</p>
-        <p className="text-xs text-green-700 dark:text-green-400">
-          O contacto foi criado e associado a esta chamada.
-        </p>
-        {createdContactId && (
-          <button
-            type="button"
-            onClick={() => navigate(`/customer360-shell/${createdContactId}`)}
-            className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline dark:text-green-300"
-          >
-            <ExternalLink className="h-3 w-3" /> Abrir Ficha do Cliente #{createdContactId}
-          </button>
-        )}
-      </div>
-    )
-  }
-
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50/70 dark:bg-amber-950/20 dark:border-amber-800 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <UserPlus className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <h3 className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-            Número desconhecido ({phone})
-          </h3>
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3.5 shadow-sm">
+      {/* Header & Quick Search */}
+      <div className="flex flex-col gap-2 border-b border-border pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-primary" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+              Ficha do Chamador {phone ? `(${phone})` : ""}
+            </h3>
+          </div>
+          <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">
+            Contacto Novo / Não Registado
+          </span>
+        </div>
+
+        {/* Live Link to Existing Contact */}
+        <div className="relative mt-1">
+          <div className="flex items-center rounded-lg border border-border bg-background px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-primary/30">
+            <Search className="h-3.5 w-3.5 text-muted-foreground mr-2 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Pesquisar cliente existente para associar (nome, nif, telefone)..."
+              className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            />
+            {searchingContacts && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0 ml-1" />}
+          </div>
+
+          {showSearchDropdown && contactResults.length > 0 && (
+            <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
+              <p className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">Clientes Encontrados:</p>
+              {contactResults.map((c) => {
+                const cName = c.company_name || c.name || c.contact_name || `Contacto #${c.id}`
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void handleLinkExistingContact(c)}
+                    className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs text-foreground hover:bg-accent transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold truncate">{cName}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {c.phone ? `Tel: ${c.phone}` : ""} {c.nif ? `· NIF: ${c.nif}` : ""} {c.city ? `· ${c.city}` : ""}
+                      </p>
+                    </div>
+                    <span className="ml-2 inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary shrink-0">
+                      <Link2 className="h-3 w-3" /> Associar
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
-      <p className="text-xs text-amber-700 dark:text-amber-400">
-        Este número não está registado. Escolha se pretende registar como <strong>Lead</strong> (para triagem comercial) ou <strong>Contacto Definitivo</strong> (Cliente 360).
-      </p>
-
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-        <TabsList className="grid grid-cols-2 w-full h-8 bg-amber-100/80 dark:bg-amber-900/30">
-          <TabsTrigger value="lead" className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-card gap-1">
-            <UserRoundPlus className="h-3.5 w-3.5 text-amber-600" />
-            Criar Lead
-          </TabsTrigger>
-          <TabsTrigger value="contact" className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-card gap-1">
+        <TabsList className="grid grid-cols-2 w-full h-8 bg-muted/60">
+          <TabsTrigger value="contact" className="text-xs data-[state=active]:bg-background gap-1 font-semibold">
             <Building2 className="h-3.5 w-3.5 text-primary" />
-            Criar Contacto (360)
+            Criar Ficha Cliente (360)
+          </TabsTrigger>
+          <TabsTrigger value="lead" className="text-xs data-[state=active]:bg-background gap-1 font-semibold">
+            <UserRoundPlus className="h-3.5 w-3.5 text-amber-600" />
+            Criar Lead Prospeção
           </TabsTrigger>
         </TabsList>
 
-        {/* TAB 1: CRIAR LEAD */}
-        <TabsContent value="lead" className="space-y-2.5 pt-2 mt-0">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Nome do cliente / empresa *"
-            className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
-          />
-
-          <select
-            value={requestType}
-            onChange={(e) => setRequestType(e.target.value)}
-            className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
-          >
-            {REQUEST_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-
-          <input
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Observações rápidas do pedido..."
-            className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
-          />
-
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void handleSaveLead()}
-            className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center gap-1.5"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRoundPlus className="h-4 w-4" />}
-            {saving ? "A registar Lead..." : "Registar como Lead"}
-          </button>
-        </TabsContent>
-
-        {/* TAB 2: CRIAR CONTACTO (CLIENTE 360) */}
+        {/* TAB 1: CRIAR CONTACTO / CLIENTE 360 (DIRECT CONTACT LINES) */}
         <TabsContent value="contact" className="space-y-2.5 pt-2 mt-0">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Empresa / Nome *"
-              className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <input
-              type="text"
-              value={contactPerson}
-              onChange={(e) => setContactPerson(e.target.value)}
-              placeholder="Pessoa de contacto"
-              className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Empresa / Nome Comercial *</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Hotel Mar & Sol Lda"
+                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Pessoa de Contacto</label>
+              <input
+                type="text"
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                placeholder="Ex: João Pereira"
+                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <input
-              type="text"
-              value={nif}
-              onChange={(e) => setNif(e.target.value)}
-              placeholder="NIF / Contribuinte"
-              className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Telefone</label>
+              <input
+                type="text"
+                value={phone}
+                readOnly
+                className="w-full rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Ex: compras@hotelmarsol.pt"
+                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Cidade"
-              className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">NIF / Contribuinte</label>
+              <input
+                type="text"
+                value={nif}
+                onChange={(e) => setNif(e.target.value)}
+                placeholder="Ex: 509123456"
+                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Cidade / Localidade</label>
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Ex: Lisboa"
+                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Observações / Notas da Chamada</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notas"
-              className="w-full rounded-lg border border-amber-200 bg-white dark:bg-card px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Ex: Interessado em forno combinado e mesa inox..."
+              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-1">
             <button
               type="button"
               disabled={saving}
               onClick={() => void handleSaveContact()}
-              className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-1.5"
+              className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm transition-all"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-              {saving ? "A criar..." : "Criar Contacto (360)"}
+              {saving ? "A criar Ficha..." : "Guardar e Abrir Ficha 360"}
             </button>
 
             <button
@@ -363,12 +484,60 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
                 params.set("source", "telecof_call")
                 navigate(`/customer360-shell/novo?${params.toString()}`)
               }}
-              className="rounded-lg border border-border bg-white dark:bg-card px-2.5 py-2 text-xs font-medium text-foreground hover:bg-muted"
-              title="Abrir formulário de criação completo"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1"
+              title="Abrir no formulário avançado de criação"
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-3.5 w-3.5" /> Ficha Completa
             </button>
           </div>
+        </TabsContent>
+
+        {/* TAB 2: CRIAR LEAD DE PROSPEÇÃO */}
+        <TabsContent value="lead" className="space-y-2.5 pt-2 mt-0">
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Nome da Empresa / Contacto *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Restaurante O Pescador"
+              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Tipo de Assunto</label>
+            <select
+              value={requestType}
+              onChange={(e) => setRequestType(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+            >
+              {REQUEST_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Observações da Prospeção</label>
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ex: Solicita visita técnica para remodelação de cozinha..."
+              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+            />
+          </div>
+
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void handleSaveLead()}
+            className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm transition-all"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRoundPlus className="h-4 w-4" />}
+            {saving ? "A registar Lead..." : "Registar como Lead na Fila"}
+          </button>
         </TabsContent>
       </Tabs>
     </div>

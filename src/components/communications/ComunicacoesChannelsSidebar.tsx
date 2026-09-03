@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useConversationStore } from "@/store/conversationStore";
 import { useTelecofCallStore } from "@/store/telecofCallStore";
+import { resolveConversationWhatsAppInstance } from "@/lib/whatsappConversation";
 
 export type ComunicacoesChannelId =
   | "whatsapp"
@@ -76,18 +77,17 @@ export function ComunicacoesChannelsSidebar({
       if (u <= 0) continue;
 
       const ch = String(c.channel || "").toLowerCase();
-      const inst = String(c.instanceName || "").toLowerCase();
-      const src = String(c.source || "").toLowerCase();
 
       if (ch === "askme") {
         counts.askme += u;
       } else if (ch.startsWith("wa") || ch === "whatsapp" || ch === "whatsapp_meta" || ch === "waha") {
         counts.whatsapp += u;
-        if (inst.includes("918") || ch.includes("918") || src.includes("918")) {
+        const inst = resolveConversationWhatsAppInstance(c);
+        if (inst === "918") {
           counts.wa918 += u;
-        } else if (inst.includes("916") || ch.includes("916") || ch === "waha" || src.includes("916")) {
+        } else if (inst === "916") {
           counts.waha += u;
-        } else if (inst.includes("913") || ch.includes("913") || ch === "whatsapp_meta" || src.includes("913") || src.startsWith("meta:")) {
+        } else if (inst === "913") {
           counts.wa913 += u;
         }
       }

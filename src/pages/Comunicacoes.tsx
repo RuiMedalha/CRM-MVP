@@ -104,6 +104,7 @@ export default function Comunicacoes() {
   const [activeChannel, setActiveChannel] = useState<ComunicacoesChannelId>(() => requestedChannel ?? "whatsapp")
   const setInboxViewMode = useInboxFilterStore((s) => s.setInboxViewMode)
   const setMessageChannelScope = useInboxFilterStore((s) => s.setMessageChannelScope)
+  const setActiveTab = useInboxFilterStore((s) => s.setActiveTab)
   const hasSelection = useConversationStore((s) => Boolean(s.selectedConversationId))
 
   const handleChannelChange = useCallback((channel: ComunicacoesChannelId) => {
@@ -113,24 +114,29 @@ export default function Comunicacoes() {
       setInboxViewMode("telecof_calls")
     } else {
       setInboxViewMode("conversations")
-      // Phase 2.F1: mapear canais com channel_account_id (instanceFilter)
-      const channelConfig: Partial<Record<ComunicacoesChannelId, { channel: string; instance?: string }>> = {
-        whatsapp: { channel: "whatsapp" },
-        wa918: { channel: "whatsapp", instance: "hotelequip-918" },
-        waha: { channel: "whatsapp", instance: "hotelequip-916" },
-        wa913: { channel: "whatsapp", instance: "hotelequip-913" },
-        askme: { channel: "askme" },
-        grupos: { channel: "whatsapp" },
-      }
-      const config = channelConfig[channel]
-      if (config) {
-        setMessageChannelScope(
-          config.channel as import("@/types/communication").CommunicationChannel,
-          config.instance,
-        )
+      if (channel === "grupos") {
+        setActiveTab("groups")
+        setMessageChannelScope("whatsapp")
+      } else {
+        setActiveTab("all")
+        // Phase 2.F1: mapear canais com channel_account_id (instanceFilter)
+        const channelConfig: Partial<Record<ComunicacoesChannelId, { channel: string; instance?: string }>> = {
+          whatsapp: { channel: "whatsapp" },
+          wa918: { channel: "whatsapp", instance: "hotelequip-918" },
+          waha: { channel: "whatsapp", instance: "hotelequip-916" },
+          wa913: { channel: "whatsapp", instance: "hotelequip-913" },
+          askme: { channel: "askme" },
+        }
+        const config = channelConfig[channel]
+        if (config) {
+          setMessageChannelScope(
+            config.channel as import("@/types/communication").CommunicationChannel,
+            config.instance,
+          )
+        }
       }
     }
-  }, [setInboxViewMode, setMessageChannelScope])
+  }, [setInboxViewMode, setMessageChannelScope, setActiveTab])
 
   useEffect(() => {
     if (requestedChannel) handleChannelChange(requestedChannel)

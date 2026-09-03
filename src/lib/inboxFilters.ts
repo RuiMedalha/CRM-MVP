@@ -1,4 +1,8 @@
-import { isWhatsAppGroupConversation } from "./whatsappConversation"
+import {
+  isWhatsAppGroupConversation,
+  resolveConversationWhatsAppInstance,
+  type WhatsAppInstanceId,
+} from "./whatsappConversation"
 
 import type {
   CommunicationChannel,
@@ -158,34 +162,32 @@ export function filterConversationsWithStats(
 
   if (filters.channelFilters.length > 0) {
     const channelSet = new Set(filters.channelFilters.map((c) => c.toLowerCase()))
-    // Include generic "whatsapp" variations when any whatsapp filter is active
-    const hasAnyWa = filters.channelFilters.some((c) => c.startsWith("wa"))
+    const hasAnyWa = filters.channelFilters.some((c) => c.startsWith("wa") || c === "waha")
     const instanceFilter = filters.instanceFilter?.trim().toLowerCase()
+
+    let targetWaInstance: WhatsAppInstanceId | null = null
+    if (instanceFilter) {
+      if (instanceFilter.includes("918")) targetWaInstance = "918"
+      else if (instanceFilter.includes("916") || instanceFilter === "waha") targetWaInstance = "916"
+      else if (instanceFilter.includes("913") || instanceFilter === "waba") targetWaInstance = "913"
+    }
+
     list = list.filter((c) => {
       if (options?.groupsOnly && c.source?.includes("@g.us")) return true
       const ch = String(c.channel ?? "").toLowerCase()
-      if (channelSet.has(ch)) return true
-      if (hasAnyWa && (ch.startsWith("wa") || ch === "whatsapp" || ch === "whatsapp_meta" || ch === "waha")) return true
-      return false
+      const isWa = ch.startsWith("wa") || ch === "whatsapp" || ch === "whatsapp_meta" || ch === "waha"
+
+      if (isWa) {
+        if (!hasAnyWa && !channelSet.has(ch)) return false
+        if (targetWaInstance) {
+          const cInst = resolveConversationWhatsAppInstance(c)
+          return cInst === targetWaInstance
+        }
+        return true
+      }
+
+      return channelSet.has(ch)
     })
-    // Phase 2.F1: filtrar também por instance_name (e.g. 916 vs 918 vs 913)
-    if (instanceFilter) {
-      const inst = instanceFilter.toLowerCase().trim()
-      const suffix = inst.replace(/^hotelequip-/, "").replace(/^inst-evo-/, "").replace(/^inst-meta-/, "")
-      list = list.filter((c) => {
-        const cInst = String(c.instanceName ?? "").toLowerCase()
-        const cChan = String(c.channel ?? "").toLowerCase()
-        const cSource = String(c.source ?? "").toLowerCase()
-        // Exact instance match
-        if (cInst === inst || cInst === suffix) return true
-        // Suffix matches in instance name, channel or source
-        if (suffix && (cInst.includes(suffix) || cChan.includes(suffix) || cSource.includes(suffix))) return true
-        // Channel specific aliases
-        if (suffix === "913" && (cChan === "whatsapp_meta" || cSource.startsWith("meta:"))) return true
-        if (suffix === "916" && (cChan === "waha" || cInst === "waha")) return true
-        return false
-      })
-    }
   }
   stats.afterChannel = list.length
 
