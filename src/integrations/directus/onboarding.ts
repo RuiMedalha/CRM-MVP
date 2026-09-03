@@ -3,7 +3,6 @@
  * and bootstraps minimal data (default employee, demo lead, default pipeline).
  */
 import { directusRequest } from "@/integrations/directus/client";
-import { createItem, readItems, updateItem, getDirectusClient } from "@/lib/directus";
 
 export interface CompanySettingsOnboarding {
   id: string;

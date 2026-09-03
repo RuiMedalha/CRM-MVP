@@ -385,33 +385,79 @@ export default function Definicoes() {
           </Card>
         </Link>
 
-        {/* ConfiguraÃ§Ãµes Globais de IA */}
+        {/* Gestão de Pipelines e Templates */}
         <Link to="/definicoes/pipelines">
-              <Button variant="outline" className="w-full justify-start h-auto py-3 px-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                    <span className="text-lg">🔀</span>
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium">Pipelines</div>
-                    <div className="text-xs text-muted-foreground">Gerir pipelines e stages</div>
-                  </div>
+          <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-purple-500/30 dark:border-purple-500/20">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">Pipelines e Fases de Venda</p>
+                  <span className="text-[10px] font-semibold uppercase bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 rounded-full">
+                    Templates & Multi-Funil
+                  </span>
                 </div>
-              </Button>
-            </Link>
+                <p className="text-sm text-muted-foreground">
+                  Personalizar funis de vendas, templates predefinidos, checklist e SLAs
+                </p>
+              </div>
+              <Sparkles className="h-5 w-5 text-purple-500" />
+            </CardContent>
+          </Card>
+        </Link>
 
-            <Link to="/definicoes/ia-settings">
+        {/* Regras de Lead Scoring */}
+        <Link to="/definicoes/scoring-rules">
+          <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-rose-500/30 dark:border-rose-500/20">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">Regras de Lead Scoring</p>
+                  <span className="text-[10px] font-semibold uppercase bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 px-2 py-0.5 rounded-full">
+                    Qualificação Automática
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Pesos de pontuação (0-100), engajamento de email, respostas WhatsApp e dados fiscais
+                </p>
+              </div>
+              <Zap className="h-5 w-5 text-rose-500" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Formulários de Captura Web-to-Lead */}
+        <Link to="/definicoes/captura-leads">
+          <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-cyan-500/30 dark:border-cyan-500/20">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">Formulários de Captura (Web-to-Lead)</p>
+                  <span className="text-[10px] font-semibold uppercase bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 px-2 py-0.5 rounded-full">
+                    Embed & Landing Pages
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Gerador de formulários incorporáveis para websites e landing pages externas
+                </p>
+              </div>
+              <FileText className="h-5 w-5 text-cyan-600" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Configurações Globais de IA */}
+        <Link to="/definicoes/ia-settings">
           <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-primary/30 dark:border-primary/20">
             <CardContent className="flex items-center justify-between py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-medium">ConfiguraÃ§Ãµes & Fallback de IA</p>
+                  <p className="font-medium">Configurações & Fallback de IA</p>
                   <span className="text-[10px] font-semibold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                     Roteamento Unificado
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Provedor padrÃ£o, tolerÃ¢ncia a falhas (fallback), tokens e system prompts globais
+                  Provedor padrão, tolerância a falhas (fallback), tokens e system prompts globais
                 </p>
               </div>
               <Cpu className="h-5 w-5 text-primary" />

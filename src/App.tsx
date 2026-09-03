@@ -57,6 +57,13 @@ const Customer360 = lazy(() => import("./pages/Customer360"));
 const Customer360Shell = lazy(() => import("./pages/Customer360Shell"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
+const Workflows = lazy(() => import("./pages/settings/Workflows"));
+const LeadCaptureForms = lazy(() => import("./pages/settings/LeadCaptureForms"));
+const Onboarding = lazy(() => import("./pages/onboarding"));
+const StandaloneLeadForm = lazy(() => import("./pages/c/[slug]"));
+const CallsAI = lazy(() => import("./pages/CallsAI"));
+const AiAgentReview = lazy(() => import("./pages/AiAgentReview"));
+const PipelinesSettings = lazy(() => import("./pages/settings/Pipelines"));
 
 function PageLoader() {
   return (
@@ -136,6 +143,26 @@ const AppContent = () => {
         <Route path="/customer360" element={<ProtectedRoute><Navigate to="/contactos" replace /></ProtectedRoute>} />
         <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
         <Route path="/developer-tools" element={<ProtectedRoute><DeveloperTools /></ProtectedRoute>} />
+
+        {/* Onboarding & Web-to-Lead Forms (Card 9) */}
+        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+        <Route path="/c/:slug" element={<StandaloneLeadForm />} />
+        <Route path="/definicoes/captura-leads" element={<ProtectedRoute><LeadCaptureForms /></ProtectedRoute>} />
+
+        {/* Workflows Automation (Card 6) */}
+        <Route path="/definicoes/workflows" element={<ProtectedRoute><Workflows /></ProtectedRoute>} />
+        <Route path="/automacoes" element={<ProtectedRoute><Workflows /></ProtectedRoute>} />
+
+        {/* Voice AI & Transcriptions (Card 5) */}
+        <Route path="/chamadas-ia" element={<ProtectedRoute><CallsAI /></ProtectedRoute>} />
+        <Route path="/telecof/ia" element={<ProtectedRoute><CallsAI /></ProtectedRoute>} />
+
+        {/* AI Agent Supervisor Review (Card 16) */}
+        <Route path="/ia/revisao" element={<ProtectedRoute><AiAgentReview /></ProtectedRoute>} />
+
+        {/* Pipeline Settings Editor (Card 4) */}
+        <Route path="/definicoes/pipelines-editor" element={<ProtectedRoute><PipelinesSettings /></ProtectedRoute>} />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
