@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
@@ -301,6 +301,26 @@ export default function Definicoes() {
                 </p>
               </div>
               <FileText className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* WhatsApp Dual — Gestão Multi-Número Evolution + Meta */}
+        <Link to="/definicoes/whatsapp">
+          <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-emerald-500/30 dark:border-emerald-500/20">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">WhatsApp Dual (Multi-Número)</p>
+                  <span className="text-[10px] font-semibold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full">
+                    Evolution + Meta WABA
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Gestão de números, QR code, tokens oficiais Meta Cloud e rotas de webhooks
+                </p>
+              </div>
+              <MessageCircle className="h-5 w-5 text-emerald-600" />
             </CardContent>
           </Card>
         </Link>

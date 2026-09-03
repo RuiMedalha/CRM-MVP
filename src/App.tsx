@@ -28,6 +28,7 @@ const Fornecedores = lazy(() => import("./pages/Fornecedores"));
 const Integracoes = lazy(() => import("./pages/Integracoes"));
 const Definicoes = lazy(() => import("./pages/Definicoes"));
 const FichaClienteConfig = lazy(() => import("./pages/FichaClienteConfig"));
+const WhatsappInstances = lazy(() => import("./pages/settings/WhatsappInstances"));
 const UtilizadoresDirectus = lazy(() => import("./pages/UtilizadoresDirectus"));
 const MenuMobile = lazy(() => import("./pages/MenuMobile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -110,6 +111,7 @@ const AppContent = () => {
         <Route path="/integracoes" element={<ProtectedRoute><Integracoes /></ProtectedRoute>} />
         <Route path="/definicoes" element={<ProtectedRoute><Definicoes /></ProtectedRoute>} />
         <Route path="/definicoes/ficha-cliente" element={<ProtectedRoute><FichaClienteConfig /></ProtectedRoute>} />
+        <Route path="/definicoes/whatsapp" element={<ProtectedRoute><WhatsappInstances /></ProtectedRoute>} />
         <Route path="/utilizadores" element={<ProtectedRoute><UtilizadoresDirectus /></ProtectedRoute>} />
         <Route path="/menu" element={<ProtectedRoute><MenuMobile /></ProtectedRoute>} />
         <Route path="/customer360-shell" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />

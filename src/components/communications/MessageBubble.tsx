@@ -1,4 +1,4 @@
-﻿import { useState } from "react"
+import { useState } from "react"
 import { AlertCircle, Check, CheckCheck, Clock } from "lucide-react"
 
 import { getGroupParticipantLabel } from "@/lib/groupParticipant"
@@ -9,6 +9,7 @@ import { useMessageStore } from "@/store/messageStore"
 
 import { MessageActionsMenu } from "./MessageActionsMenu"
 import { MessageContent } from "./MessageContent"
+import { MessageBadge } from "@/components/MessageBadge"
 
 import type { Message } from "@/types/message"
 
@@ -171,9 +172,18 @@ export function MessageBubble({ message, isGroup, conversationId, quotedLookup }
         <div className="group flex justify-start gap-1">
           <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-card px-4 py-3 text-foreground shadow-sm sm:max-w-md">
             <div className="mb-1 flex items-start justify-between gap-2">
-              {participantLabel ? (
-                <p className="text-xs font-semibold text-emerald-800">{participantLabel}</p>
-              ) : <span />}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {participantLabel ? (
+                  <p className="text-xs font-semibold text-emerald-800">{participantLabel}</p>
+                ) : null}
+                {conversation && (conversation.channel?.includes("whatsapp") || conversation.instanceName) && (
+                  <MessageBadge
+                    provider={conversation.channel === "whatsapp_meta" ? "meta" : "evolution"}
+                    instanceName={conversation.instanceName}
+                    size="xs"
+                  />
+                )}
+              </div>
               <span className="opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">{actions}</span>
             </div>
             {quotedPreview}
@@ -231,7 +241,17 @@ export function MessageBubble({ message, isGroup, conversationId, quotedLookup }
           <span className="self-center opacity-0 transition group-hover:opacity-100">{actions}</span>
           <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-blue-900 px-4 py-3 text-white shadow-sm sm:max-w-md">
             <p className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-blue-200">
-              <span>{label}</span>
+              <span className="flex items-center gap-1.5 flex-wrap">
+                <span>{label}</span>
+                {conversation && (conversation.channel?.includes("whatsapp") || conversation.instanceName) && (
+                  <MessageBadge
+                    provider={conversation.channel === "whatsapp_meta" ? "meta" : "evolution"}
+                    instanceName={conversation.instanceName}
+                    size="xs"
+                    inverted
+                  />
+                )}
+              </span>
               <span className="flex items-center gap-1.5 font-normal normal-case">
                 <DeliveryStatusIcon status={message.deliveryStatus} inverted />
                 {deliveryHint && (
