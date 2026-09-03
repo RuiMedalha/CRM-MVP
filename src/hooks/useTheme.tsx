@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { getCompanySettings, upsertCompanySettings } from '@/integrations/directus/settings';
 
 export type ThemeAccent = 'indigo' | 'emerald' | 'amber' | 'rose' | 'violet' | 'slate';
