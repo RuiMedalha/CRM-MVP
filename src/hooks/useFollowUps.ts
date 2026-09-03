@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuditedMutation } from "@/hooks/useAudit";
 import { createFollowUp, listFollowUps, patchFollowUp, type FollowUpRow } from "@/integrations/directus/follow-ups";
 
 export function useFollowUps(params?: Parameters<typeof listFollowUps>[0]) {
@@ -9,11 +10,12 @@ export function useFollowUps(params?: Parameters<typeof listFollowUps>[0]) {
 }
 
 export function useCreateFollowUp() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: Partial<FollowUpRow>) => await createFollowUp(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["follow-ups"] });
+  return useAuditedMutation({
+    collection: "follow_ups",
+    action: "create",
+    invalidateKeys: [["follow-ups"]],
+    mutationFn: async (payload: Partial<FollowUpRow>) => {
+      return await createFollowUp(payload) as any;
     },
   });
 }
@@ -27,4 +29,3 @@ export function usePatchFollowUp() {
     },
   });
 }
-

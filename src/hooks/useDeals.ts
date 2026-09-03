@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuditedMutation } from "@/hooks/useAudit";
 import {
   createDeal,
   createDealItem,
@@ -10,6 +11,8 @@ import {
   type DealItemRow,
   type DealRow,
 } from "@/integrations/directus/deals";
+import { auditMutation } from "@/integrations/directus/audit";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type Deal = DealRow & {
   customer?: { id: string; company_name?: string | null } | null;
@@ -86,26 +89,29 @@ export function useDeal(id: string | undefined) {
 }
 
 export function useCreateDeal() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
+  return useAuditedMutation({
+    collection: "deals",
+    action: "create",
+    invalidateKeys: [["deals"]],
     mutationFn: async (deal: DealInsert) => {
       const { customer, manufacturer, items, ...payload } = deal as any;
-      return await createDeal(payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      const result = await createDeal(payload);
+      return result as any;
     },
   });
 }
 
 export function useUpdateDeal() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...deal }: DealUpdate & { id: string }) => {
       const { customer, manufacturer, items, ...patch } = deal as any;
-      return await patchDeal(id, patch);
+      const before = await getDealById(id).catch(() => null);
+      const result = await patchDeal(id, patch);
+      auditMutation("deals", "update", before, result, { user_id: user?.id ?? undefined, user_email: user?.email ?? undefined }).catch(() => {});
+      return result;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });

@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuditedMutation } from "@/hooks/useAudit";
 import {
   createQuotationFromDeal,
   deleteQuotation,
@@ -121,9 +122,10 @@ export function useQuotation(quotationId: string | undefined) {
 }
 
 export function useCreateQuotation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
+  return useAuditedMutation({
+    collection: "quotations",
+    action: "create",
+    invalidateKeys: [["quotations"]],
     mutationFn: async (data: {
       deal_id: string;
       customer_id?: string | null;
@@ -131,7 +133,7 @@ export function useCreateQuotation() {
       notes?: string | null;
       terms_conditions?: string | null;
     }) => {
-      return await createQuotation({
+      const result = await createQuotation({
         deal_id: data.deal_id,
         customer_id: data.customer_id || undefined,
         valid_until: data.valid_until || undefined,
@@ -139,9 +141,7 @@ export function useCreateQuotation() {
         terms_conditions: data.terms_conditions || undefined,
         status: "draft",
       });
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["quotations", "deal", variables.deal_id] });
+      return result as any;
     },
   });
 }
@@ -167,7 +167,6 @@ export function useUpdateQuotation() {
       id,
       ...data
     }: Partial<Quotation> & { id: string }) => {
-      // Minimal for now; implement when UI needs it
       return { id, ...data } as any;
     },
     onSuccess: (data) => {
