@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -50,7 +50,7 @@ const ComunicacoesPage = lazy(() => import("./pages/Comunicacoes"));
 const Telecof = lazy(() => import("./pages/Telecof"));
 const Social = lazy(() => import("./pages/Social"));
 const Email = lazy(() => import("./pages/Email"));
-const Customer360Shell = lazy(() => import("./pages/Customer360Shell"));
+const Customer360 = lazy(() => import("./pages/Customer360"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const CallsAI = lazy(() => import("./pages/CallsAI"));
@@ -68,6 +68,11 @@ function PageLoader() {
 
 const queryClient = new QueryClient();
 
+function Customer360LegacyRedirect() {
+  const { id } = useParams();
+  return <Navigate to={id ? `/customer360/${id}` : "/contactos"} replace />;
+}
+
 const AppContent = () => {
   useChannelSettingsSync();
   useNewEmailNotifications();
@@ -81,9 +86,9 @@ const AppContent = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/contactos" element={<ProtectedRoute><ContactosDirectus /></ProtectedRoute>} />
-        <Route path="/contactos/novo" element={<ProtectedRoute><Navigate to="/customer360-shell/novo" replace /></ProtectedRoute>} />
-        <Route path="/dashboard360/:id" element={<ProtectedRoute><Navigate to="/customer360-shell" replace /></ProtectedRoute>} />
-        <Route path="/dashboard360" element={<ProtectedRoute><Navigate to="/customer360-shell" replace /></ProtectedRoute>} />
+        <Route path="/contactos/novo" element={<ProtectedRoute><Navigate to="/customer360/novo" replace /></ProtectedRoute>} />
+        <Route path="/dashboard360/:id" element={<ProtectedRoute><Customer360LegacyRedirect /></ProtectedRoute>} />
+        <Route path="/dashboard360" element={<ProtectedRoute><Navigate to="/contactos" replace /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
         <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
         <Route path="/loja" element={<ProtectedRoute><Loja /></ProtectedRoute>} />
@@ -118,8 +123,9 @@ const AppContent = () => {
         <Route path="/settings/workflows" element={<ProtectedRoute><WorkflowsSettings /></ProtectedRoute>} />
         <Route path="/utilizadores" element={<ProtectedRoute><UtilizadoresDirectus /></ProtectedRoute>} />
         <Route path="/menu" element={<ProtectedRoute><MenuMobile /></ProtectedRoute>} />
-        <Route path="/customer360-shell" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
-        <Route path="/customer360-shell/:id" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
+        <Route path="/customer360-shell" element={<ProtectedRoute><Navigate to="/contactos" replace /></ProtectedRoute>} />
+        <Route path="/customer360-shell/:id" element={<ProtectedRoute><Customer360LegacyRedirect /></ProtectedRoute>} />
+        <Route path="/customer360/:id" element={<ProtectedRoute><Customer360 /></ProtectedRoute>} />
         <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
         <Route path="/calls-ai" element={<ProtectedRoute><CallsAI /></ProtectedRoute>} />
         <Route path="/developer-tools" element={<ProtectedRoute><DeveloperTools /></ProtectedRoute>} />
