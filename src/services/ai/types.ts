@@ -10,17 +10,18 @@
 export interface AICompletionOptions {
   model?: string;
   maxTokens?: number;
-  temperature?: number;
+  system?: string;
   systemPrompt?: string;
+  temperature?: number;
 }
 
 export interface AICompletionResult {
   text: string;
   tokens: number;
   latency: number;
-  providerId: string;
+  providerId?: string;
   providerLabel?: string;
-  model: string;
+  model?: string;
   raw?: unknown;
 }
 
@@ -37,8 +38,20 @@ export interface AIProviderMeta {
   date_updated?: string;
 }
 
+export interface AISettings {
+  id?: string;
+  default_provider_id?: string | null;
+  fallback_provider_id?: string | null;
+  max_tokens_default?: number;
+  system_prompt_default?: string | null;
+  date_created?: string;
+  date_updated?: string;
+}
+
 export interface AIProvider {
   id: string;
+  label: string;
+  type: AIProviderType;
   meta: AIProviderMeta;
   complete(
     prompt: string,
@@ -47,8 +60,10 @@ export interface AIProvider {
 }
 
 export interface AIRouter {
-  listProviders(): Promise<AIProviderMeta[]>;
+  listProviders(forceRefresh?: boolean): Promise<AIProviderMeta[]>;
   getProvider(providerId: string): Promise<AIProvider | null>;
+  getSettings(forceRefresh?: boolean): Promise<AISettings>;
+  saveSettings(settings: Partial<AISettings>): Promise<AISettings>;
   complete(
     providerId: string,
     prompt: string,
