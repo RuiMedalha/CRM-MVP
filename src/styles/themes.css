@@ -1,0 +1,10 @@
+/* =============================================================================
+ *  CRMMVP — themes.css (legacy slot, vazio desde Card 17)
+ *  Antes deste card existia um bloco @layer base aqui com overrides por tema
+ *  (high-contrast, soft, dense). A nova identidade visual concentra-se em
+ *  tokens.css + tailwind.config.ts; este ficheiro permanece como ponto de
+ *  extensão futuro (ex.: temas sectoriais, modo alto contraste reforçado,
+ *  personalização por tenant).
+ *
+ *  Mantido vazio de propósito: a sua existência evita 404s de @import.
+ * ============================================================================= */
