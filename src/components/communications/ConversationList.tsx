@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Plus } from "lucide-react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 
@@ -169,34 +169,76 @@ export function ConversationList() {
       </div>
 
       {!showList ? (
-        <div className="flex flex-col gap-2 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Escolha um canal
-          </p>
-          {["whatsapp", "askme", "email"].map((ch) => {
-            const v = getChannelVisual(ch)
-            return (
+        <div className="flex flex-col gap-3 p-3 overflow-y-auto">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Linhas WhatsApp (3 Números)
+            </p>
+            <div className="space-y-1.5">
+              {[
+                { key: "whatsapp_916", instance: "hotelequip-916", label: "WhatsApp 916 · Comercial", subtitle: "+351 916 542 271 (Evolution)" },
+                { key: "whatsapp_918", instance: "hotelequip-918", label: "WhatsApp 918 · Suporte", subtitle: "+351 918 000 000 (Evolution)" },
+                { key: "whatsapp_913", instance: "hotelequip-913", label: "WhatsApp 913 · Oficial WABA", subtitle: "+351 913 866 565 (Meta Cloud)" },
+                { key: "whatsapp", instance: undefined, label: "Todas as conversas WhatsApp", subtitle: "Ver todos os números unificados" },
+              ].map((waOpt) => {
+                const v = getChannelVisual(waOpt.key)
+                return (
+                  <button
+                    key={waOpt.key}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("inbox")
+                      setMessageChannelScope("whatsapp" as any, waOpt.instance)
+                    }}
+                    className="flex w-full items-center justify-between rounded-lg border border-border bg-card p-2.5 text-left transition hover:border-primary/40 hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <v.Icon className="h-4 w-4 shrink-0" style={{ color: v.color }} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{waOpt.label}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{waOpt.subtitle}</p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Outros Canais & Grupos
+            </p>
+            <div className="space-y-1.5">
+              {[
+                { key: "askme", label: "AskMe (Site / Chat)" },
+                { key: "email", label: "Email" },
+              ].map((ch) => {
+                const v = getChannelVisual(ch.key)
+                return (
+                  <button
+                    key={ch.key}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("inbox")
+                      setMessageChannelScope(ch.key as import("@/types/communication").CommunicationChannel)
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-card p-2.5 text-xs font-medium text-foreground hover:border-primary/40 hover:bg-muted/50 transition"
+                  >
+                    <v.Icon className="h-4 w-4 shrink-0" style={{ color: v.color }} />
+                    {ch.label}
+                  </button>
+                )
+              })}
               <button
-                key={ch}
                 type="button"
-                onClick={() => {
-                  setActiveTab("inbox")
-                  setMessageChannelScope(ch as import("@/types/communication").CommunicationChannel)
-                }}
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:border-border"
+                onClick={() => setActiveTab("groups")}
+                className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-card p-2.5 text-xs font-medium text-foreground hover:border-primary/40 hover:bg-muted/50 transition"
               >
-                <v.Icon className="h-4 w-4" style={{ color: v.color }} />
-                {v.label}
+                Grupos WhatsApp
               </button>
-            )
-          })}
-          <button
-            type="button"
-            onClick={() => setActiveTab("groups")}
-            className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:border-border"
-          >
-            Grupos WhatsApp
-          </button>
+            </div>
+          </div>
         </div>
       ) : (
         <>

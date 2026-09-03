@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Workspace central do Telecof — replica o HubChat:
  * - Detalhes da chamada
  * - Resumo / nota rápida
@@ -8,6 +8,8 @@ import { useState, useMemo, useEffect } from "react"
 import { ExternalLink, MessageCircle, Phone, Trash2, Clock, UserSearch, History } from "lucide-react"
 import { Link } from "react-router-dom"
 
+import { useQueryClient } from "@tanstack/react-query"
+import { createInteraction } from "@/integrations/directus/interactions"
 import { operationalStatusLabel } from "@/lib/telecofQueue"
 import { crmDashboard360UrlForCall } from "@/lib/crmUrls"
 import { useTelecofCallStore } from "@/store/telecofCallStore"
@@ -46,6 +48,7 @@ export function TelecofCallWorkspace() {
   const removeEvent = useTelecofCallStore((s) => s.removeEventFromQueue)
 
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const agentName = user?.first_name ?? "Agente"
   const agentId = user?.id ?? ""
   const { data: employees = [] } = useEmployees()
@@ -184,11 +187,45 @@ export function TelecofCallWorkspace() {
   async function handleStatus(status: string, label: string) {
     if (!selected) return
     await run(async () => {
+      const contactId = selected.contactId || (identity?.kind === "contact" ? String(identity.record?.id) : undefined)
+      const leadId = identity?.kind === "lead" ? String(identity.record?.id) : undefined
+
       const updated = await patchHubCommunicationEvent(selected.id, {
         status,
         resolved_at: new Date().toISOString(),
+        ...(contactId ? { contact_id: contactId } : {}),
       })
       mergeEvent(updated)
+
+      // Registo na timeline e interações do Customer 360
+      try {
+        await createInteraction({
+          contact_id: contactId,
+          lead_id: leadId,
+          type: "call",
+          direction: selected.direction === "outbound" ? "out" : "in",
+          status: status === "resolved" ? "done" : status,
+          source: "telecof",
+          phone: selected.phone || selected.normalizedPhone,
+          summary: `Chamada Telecof: ${label}${summaryNote.trim() ? ` — ${summaryNote.trim().slice(0, 100)}` : ""}`,
+          occurred_at: new Date().toISOString(),
+          payload: {
+            status,
+            status_label: label,
+            call_id: selected.id,
+            tags: activeTags,
+            agent_name: agentName,
+            note: summaryNote.trim() || undefined,
+            phone: selected.phone || selected.normalizedPhone,
+          },
+        })
+        if (contactId) {
+          queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
+          queryClient.invalidateQueries({ queryKey: ["interactions"] })
+          queryClient.invalidateQueries({ queryKey: ["activities"] })
+        }
+      } catch { /* non-blocking */ }
+
       showFeedback(`Marcada como: ${label}`)
     })
   }
@@ -197,13 +234,42 @@ export function TelecofCallWorkspace() {
   async function handleCallback() {
     if (!selected) return
     await run(async () => {
+      const contactId = selected.contactId || (identity?.kind === "contact" ? String(identity.record?.id) : undefined)
+      const leadId = identity?.kind === "lead" ? String(identity.record?.id) : undefined
+
       const updated = await patchHubCommunicationEvent(selected.id, {
         status: "callback",
         resolved_at: new Date().toISOString(),
+        ...(contactId ? { contact_id: contactId } : {}),
       })
       mergeEvent(updated)
+
+      // Registo na timeline e interações do Customer 360
+      try {
+        await createInteraction({
+          contact_id: contactId,
+          lead_id: leadId,
+          type: "call",
+          direction: selected.direction === "outbound" ? "out" : "in",
+          status: "open",
+          source: "telecof",
+          phone: selected.phone || selected.normalizedPhone,
+          summary: `Chamada Telecof marcada para Reclamar (+1h)`,
+          occurred_at: new Date().toISOString(),
+          payload: {
+            call_id: selected.id,
+            agent_name: agentName,
+            phone: selected.phone || selected.normalizedPhone,
+          },
+        })
+        if (contactId) {
+          queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
+          queryClient.invalidateQueries({ queryKey: ["interactions"] })
+          queryClient.invalidateQueries({ queryKey: ["activities"] })
+        }
+      } catch { /* non-blocking */ }
+
       // Criar follow-up ligado ao contacto (se identificado) para aparecer na Agenda
-      const contactId = selected.contactId
       if (contactId) {
         try {
           await createFollowUp({
@@ -241,11 +307,47 @@ export function TelecofCallWorkspace() {
   async function handleSaveSummary() {
     if (!selected || !summaryNote.trim()) return
     setSavingSummary(true)
+    const text = summaryNote.trim()
     try {
+      const contactId = selected.contactId || (identity?.kind === "contact" ? String(identity.record?.id) : undefined)
+      const leadId = identity?.kind === "lead" ? String(identity.record?.id) : undefined
+
       const updated = await patchHubCommunicationEvent(selected.id, {
-        resolution_note: summaryNote.trim(),
+        resolution_note: text,
+        ...(contactId ? { contact_id: contactId } : {}),
       })
       mergeEvent(updated)
+
+      // Dual-write: criar registo em interactions para aparecer na timeline, pedidos e ficha 360 do cliente
+      try {
+        await createInteraction({
+          contact_id: contactId,
+          lead_id: leadId,
+          type: "call",
+          direction: selected.direction === "outbound" ? "out" : "in",
+          status: "done",
+          source: "telecof",
+          phone: selected.phone || selected.normalizedPhone,
+          summary: `Chamada Telecof: ${text.slice(0, 100)}`,
+          occurred_at: selected.startedAt || selected.createdAt || new Date().toISOString(),
+          payload: {
+            text,
+            call_id: selected.id,
+            tags: activeTags,
+            agent_name: agentName,
+            duration: selected.durationSeconds,
+            phone: selected.phone || selected.normalizedPhone,
+          },
+        })
+        if (contactId) {
+          queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
+          queryClient.invalidateQueries({ queryKey: ["interactions"] })
+          queryClient.invalidateQueries({ queryKey: ["activities"] })
+        }
+      } catch (intErr) {
+        console.warn("[Telecof] Falha ao registar interação 360:", intErr)
+      }
+
       setSummaryNote("")
       if (draftKey) sessionStorage.removeItem(draftKey)
       showFeedback("Resumo guardado no cliente.")

@@ -217,6 +217,179 @@ const AVAILABLE_VARIABLES = [
   "{{assigned_employee_id}}",
 ];
 
+export interface WorkflowRecipe {
+  id: string;
+  title: string;
+  description: string;
+  badge: string;
+  trigger_collection: string;
+  trigger_event: TriggerEventType;
+  trigger_conditions: WorkflowCondition[];
+  actions: WorkflowAction[];
+}
+
+export const WORKFLOW_RECIPES: WorkflowRecipe[] = [
+  {
+    id: "recipe-lead-no-contact-24h",
+    title: "Lead sem resposta há 24 horas",
+    description: "Cria automaticamente tarefa de follow-up prioritário e notifica a equipa comercial se um lead não tiver seguimento.",
+    badge: "Leads · Tempo",
+    trigger_collection: "leads",
+    trigger_event: "no_followup_days",
+    trigger_conditions: [{ field: "status", op: "_eq", value: "incoming" }],
+    actions: [
+      {
+        id: "act-fu-1",
+        type: "create_follow_up",
+        params: {
+          title: "Urgente: Contactar lead parado (24h) - {{company_name}}",
+          type: "call",
+          due_in_days: 1,
+          notes: "Lead sem resposta há mais de 24h. Ligar para qualificar necessidade e agendar demonstração.",
+        },
+      },
+      {
+        id: "act-notif-1",
+        type: "notify_user",
+        params: {
+          title: "Alerta de Lead Parado",
+          message: "O lead {{company_name}} aguarda contacto há 24 horas.",
+          user_id: "commercial",
+        },
+      },
+    ],
+  },
+  {
+    id: "recipe-telecof-missed-call",
+    title: "Chamada Perdida Telecof -> Rechamada Rápida",
+    description: "Gera tarefa imediata de rechamada no CRM quando uma ligação entra e não é atendida pela equipa.",
+    badge: "Telecof · Voz",
+    trigger_collection: "activity",
+    trigger_event: "create",
+    trigger_conditions: [
+      { field: "type", op: "_eq", value: "call" },
+      { field: "status", op: "_in", value: "missed,unhandled" },
+    ],
+    actions: [
+      {
+        id: "act-fu-2",
+        type: "create_follow_up",
+        params: {
+          title: "Rechamar chamada perdida: {{phone}}",
+          type: "call",
+          due_in_days: 1,
+          notes: "Chamada perdida no Telecof. Retornar no prazo máximo de 1 hora.",
+        },
+      },
+      {
+        id: "act-notif-2",
+        type: "notify_user",
+        params: {
+          title: "Chamada Não Atendida",
+          message: "Chamada não atendida do número {{phone}}.",
+          user_id: "commercial",
+        },
+      },
+    ],
+  },
+  {
+    id: "recipe-deal-won-moloni",
+    title: "Negócio Ganho -> Atividade & Faturação",
+    description: "Quando um negócio é fechado com sucesso, regista no Activity Ledger e aciona webhook para faturação.",
+    badge: "Vendas · Deals",
+    trigger_collection: "deals",
+    trigger_event: "stage_changed",
+    trigger_conditions: [{ field: "status", op: "_eq", value: "ganho" }],
+    actions: [
+      {
+        id: "act-act-3",
+        type: "create_activity",
+        params: {
+          activity_type: "deal_won",
+          channel: "system",
+          summary: "🎉 Negócio Ganho: {{title}} (Valor: {{total_amount}}€). Cliente promovido para faturação.",
+        },
+      },
+      {
+        id: "act-notif-3",
+        type: "notify_user",
+        params: {
+          title: "🎉 Negócio Fechado!",
+          message: "Parabéns! Negócio ganho: {{title}} ({{total_amount}}€).",
+          user_id: "team",
+        },
+      },
+      {
+        id: "act-web-3",
+        type: "webhook",
+        params: {
+          url: "https://api.hotelequip.pt/webhook/crm-deal-won",
+          method: "POST",
+          payload: { deal_id: "{{id}}", event: "deal_won" },
+        },
+      },
+    ],
+  },
+  {
+    id: "recipe-quotation-followup-3d",
+    title: "Proposta Enviada -> Follow-up em 3 Dias",
+    description: "Agenda chamada de acompanhamento 3 dias após envio do orçamento para verificar dúvidas do cliente.",
+    badge: "Orçamentos",
+    trigger_collection: "quotations",
+    trigger_event: "update",
+    trigger_conditions: [{ field: "status", op: "_eq", value: "sent" }],
+    actions: [
+      {
+        id: "act-fu-4",
+        type: "create_follow_up",
+        params: {
+          title: "Follow-up Proposta #{{quotation_number}} - {{company_name}}",
+          type: "call",
+          due_in_days: 3,
+          notes: "Acompanhamento pós-envio de proposta. Esclarecer condições de pagamento e prazos de entrega.",
+        },
+      },
+      {
+        id: "act-act-4",
+        type: "create_activity",
+        params: {
+          activity_type: "quotation_sent",
+          channel: "crm",
+          summary: "Orçamento #{{quotation_number}} enviado ao cliente. Follow-up agendado para D+3.",
+        },
+      },
+    ],
+  },
+  {
+    id: "recipe-new-contact-welcome",
+    title: "Novo Cliente Registado -> Boas-Vindas WhatsApp",
+    description: "Quando um novo cliente é adicionado, envia mensagem automática WhatsApp de boas-vindas da HotelEquip.",
+    badge: "Comunicação",
+    trigger_collection: "contacts",
+    trigger_event: "create",
+    trigger_conditions: [{ field: "phone", op: "_nnull", value: "" }],
+    actions: [
+      {
+        id: "act-wa-5",
+        type: "send_whatsapp",
+        params: {
+          to: "{{phone}}",
+          message: "Olá {{contact_name}}! Bem-vindo à HotelEquip. Estamos disponíveis para o apoiar na escolha de equipamentos hoteleiros.",
+        },
+      },
+      {
+        id: "act-act-5",
+        type: "create_activity",
+        params: {
+          activity_type: "welcome_sent",
+          channel: "whatsapp",
+          summary: "Mensagem de boas-vindas enviada ao novo cliente {{company_name}}.",
+        },
+      },
+    ],
+  },
+];
+
 export default function WorkflowsPage() {
   const [activeTab, setActiveTab] = useState<"workflows" | "executions">("workflows");
   const [searchQuery, setSearchQuery] = useState("");
@@ -346,6 +519,36 @@ export default function WorkflowsPage() {
     }
 
     setWizardOpen(false);
+  };
+
+  const [showRecipes, setShowRecipes] = useState(true);
+
+  // Activate pre-built recipe directly (1-click)
+  const handleActivateRecipe = async (recipe: WorkflowRecipe) => {
+    await createMutation.mutateAsync({
+      name: recipe.title,
+      description: recipe.description,
+      trigger_collection: recipe.trigger_collection,
+      trigger_event: recipe.trigger_event,
+      trigger_conditions: recipe.trigger_conditions,
+      actions: recipe.actions,
+      is_active: true,
+    });
+  };
+
+  // Customize recipe in Wizard
+  const handleCustomizeRecipe = (recipe: WorkflowRecipe) => {
+    setEditingWorkflowId(null);
+    setWfName(recipe.title);
+    setWfDescription(recipe.description);
+    setWfTriggerCollection(recipe.trigger_collection);
+    setWfTriggerEvent(recipe.trigger_event);
+    setWfConditions(recipe.trigger_conditions);
+    setWfActions(recipe.actions);
+    setWfIsActive(true);
+    setLastTestResult(null);
+    setWizardStep(1);
+    setWizardOpen(true);
   };
 
   // Drag and drop reordering for actions
@@ -563,36 +766,113 @@ export default function WorkflowsPage() {
           </div>
 
           {/* TAB 1: WORKFLOWS LIST */}
-          <TabsContent value="workflows" className="space-y-4">
-            {filteredWorkflows.length === 0 ? (
-              <Card className="border-dashed p-12 text-center">
-                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
-                  <Zap className="h-6 w-6" />
+          <TabsContent value="workflows" className="space-y-6">
+            {/* Secção de Modelos / Receitas Recomendadas */}
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Modelos e Receitas Recomendadas (1-Click)
+                  </h2>
+                  <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">
+                    Pronto a Ativar
+                  </Badge>
                 </div>
-                <h3 className="text-lg font-semibold">Nenhum workflow encontrado</h3>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto mt-1 mb-6">
-                  Automatize notificações, envio de WhatsApp, criação de follow-ups e sincronização de dados
-                  quando ocorrem eventos no CRM.
-                </p>
-                <Button onClick={handleOpenNewWizard} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Criar Primeiro Workflow
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowRecipes(!showRecipes)}
+                  className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                >
+                  {showRecipes ? "Ocultar Modelos" : "Ver Todos os Modelos"}
                 </Button>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredWorkflows.map((wf) => {
-                  const triggerInfo = TRIGGER_COLLECTIONS.find((c) => c.value === wf.trigger_collection);
-                  const eventInfo = TRIGGER_EVENTS.find((e) => e.value === wf.trigger_event);
+              </div>
 
-                  return (
+              {showRecipes && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                  {WORKFLOW_RECIPES.map((recipe) => (
                     <Card
-                      key={wf.id}
-                      className={cn(
-                        "relative flex flex-col justify-between transition-all hover:shadow-md border",
-                        wf.is_active ? "border-border" : "border-border/60 bg-muted/20 opacity-80"
-                      )}
+                      key={recipe.id}
+                      className="bg-card/90 border shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
                     >
+                      <CardHeader className="p-3 pb-2 space-y-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <Badge variant="secondary" className="text-[10px] font-medium">
+                            {recipe.badge}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {recipe.actions.length} ação(ões)
+                          </span>
+                        </div>
+                        <CardTitle className="text-sm font-semibold leading-tight">
+                          {recipe.title}
+                        </CardTitle>
+                        <CardDescription className="text-xs line-clamp-2">
+                          {recipe.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardFooter className="p-3 pt-2 border-t flex items-center justify-between gap-2 bg-muted/20">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleCustomizeRecipe(recipe)}
+                        >
+                          Personalizar
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs px-2.5 gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                          onClick={() => void handleActivateRecipe(recipe)}
+                        >
+                          <Zap className="h-3 w-3" />
+                          Ativar
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Lista de Workflows Configurados */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Sliders className="h-4 w-4 text-muted-foreground" />
+                  Os Seus Workflows ({filteredWorkflows.length})
+                </h2>
+              </div>
+
+              {filteredWorkflows.length === 0 ? (
+                <Card className="border-dashed p-8 text-center bg-card/40">
+                  <div className="mx-auto w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-base font-semibold">Nenhum workflow personalizado criado</h3>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto mt-1 mb-4">
+                    Ative uma das receitas acima com 1-click ou crie um workflow personalizado do zero.
+                  </p>
+                  <Button onClick={handleOpenNewWizard} size="sm" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Criar Workflow do Zero
+                  </Button>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredWorkflows.map((wf) => {
+                    const triggerInfo = TRIGGER_COLLECTIONS.find((c) => c.value === wf.trigger_collection);
+                    const eventInfo = TRIGGER_EVENTS.find((e) => e.value === wf.trigger_event);
+
+                    return (
+                      <Card
+                        key={wf.id}
+                        className={cn(
+                          "relative flex flex-col justify-between transition-all hover:shadow-md border",
+                          wf.is_active ? "border-border" : "border-border/60 bg-muted/20 opacity-80"
+                        )}
+                      >
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="space-y-1">
@@ -729,8 +1009,9 @@ export default function WorkflowsPage() {
                     </Card>
                   );
                 })}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* TAB 2: EXECUTIONS & AUDIT LOGS */}
