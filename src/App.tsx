@@ -31,6 +31,7 @@ const FichaClienteConfig = lazy(() => import("./pages/FichaClienteConfig"));
 const WhatsappInstances = lazy(() => import("./pages/settings/WhatsappInstances"));
 const IaProviders = lazy(() => import("./pages/settings/IaProviders"));
 const AiSettings = lazy(() => import("./pages/settings/AiSettings"));
+const ScoringRules = lazy(() => import("./pages/settings/ScoringRules"));
 const PipelineTemplates = lazy(() => import("./pages/settings/PipelineTemplates"));
 const PipelineTemplateWizard = lazy(() => import("./pages/settings/PipelineTemplateWizard"));
 const UtilizadoresDirectus = lazy(() => import("./pages/UtilizadoresDirectus"));
@@ -118,6 +119,7 @@ const AppContent = () => {
         <Route path="/definicoes/whatsapp" element={<ProtectedRoute><WhatsappInstances /></ProtectedRoute>} />
         <Route path="/definicoes/ia-providers" element={<ProtectedRoute><IaProviders /></ProtectedRoute>} />
         <Route path="/definicoes/ia-settings" element={<ProtectedRoute><AiSettings /></ProtectedRoute>} />
+        <Route path="/definicoes/scoring-rules" element={<ProtectedRoute><ScoringRules /></ProtectedRoute>} />
         <Route path="/definicoes/pipelines" element={<ProtectedRoute><PipelineTemplates /></ProtectedRoute>} />
         <Route path="/definicoes/pipelines/templates" element={<ProtectedRoute><PipelineTemplates /></ProtectedRoute>} />
         <Route path="/definicoes/pipelines/new" element={<ProtectedRoute><PipelineTemplateWizard /></ProtectedRoute>} />
