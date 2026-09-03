@@ -136,6 +136,9 @@ export default function Relatorios() {
   };
 
   const isLoading = dealsLoading || contactsLoading || leadsQuery.isLoading;
+  const forecast30 = useForecast(30);
+  const forecast60 = useForecast(60);
+  const forecast90 = useForecast(90);
 
   return (
     <AppLayout>
@@ -218,7 +221,87 @@ export default function Relatorios() {
           </Card>
         </div>
 
-        {/* Pipeline Summary */}
+                {/* Forecast Ponderado 30/60/90 */}
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+          <Card>
+            <CardContent className="pt-4">
+              {forecast30.isLoading ? <Skeleton className="h-20 w-full" /> : (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Target className="h-4 w-4 text-primary" />
+                    <DeltaBadge value={forecast30.deltaMonthPercent} />
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {forecast30.forecast30.toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Forecast 30d &middot; {forecast30.activeDealsCount} negocios activos</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              {forecast60.isLoading ? <Skeleton className="h-20 w-full" /> : (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Target className="h-4 w-4 text-purple-500" />
+                    <DeltaBadge value={forecast60.deltaMonthPercent} />
+                  </div>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {forecast60.forecast60.toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Forecast 60d &middot; {forecast60.activeDealsCount} negocios activos</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              {forecast90.isLoading ? <Skeleton className="h-20 w-full" /> : (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Target className="h-4 w-4 text-amber-500" />
+                    <DeltaBadge value={forecast90.deltaMonthPercent} />
+                  </div>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {forecast90.forecast90.toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Forecast 90d &middot; {forecast90.activeDealsCount} negocios activos</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Grafico de Barras - Forecast por Estagio */}
+        {!forecast30.isLoading && forecast30.chartData?.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Forecast por Estagio (30d)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={forecast30.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                    <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k €`} />
+                    <Tooltip
+                      formatter={(value) => [Number(value).toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }), "Valor Ponderado"]}
+                      labelFormatter={(label) => `Estágio: ${label}`}
+                    />
+                    <Bar dataKey="valorPonderado" name="Valor Ponderado" radius={[4, 4, 0, 0]}>
+                      {forecast30.chartData.map((entry, idx) => (
+                        <Cell key={`cell-${idx}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+{/* Pipeline Summary */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Resumo do Pipeline</CardTitle>
