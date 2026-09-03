@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+﻿import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -31,6 +31,7 @@ const FichaClienteConfig = lazy(() => import("./pages/FichaClienteConfig"));
 const WhatsappInstances = lazy(() => import("./pages/settings/WhatsappInstances"));
 const IaProviders = lazy(() => import("./pages/settings/IaProviders"));
 const AiSettings = lazy(() => import("./pages/settings/AiSettings"));
+const PipelinesSettings = lazy(() => import("./pages/settings/Pipelines"));
 const UtilizadoresDirectus = lazy(() => import("./pages/UtilizadoresDirectus"));
 const MenuMobile = lazy(() => import("./pages/MenuMobile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -60,15 +61,10 @@ function PageLoader() {
   );
 }
 
-
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   useChannelSettingsSync();
-  // useFollowUpNotifications() — desligado em 2026-08-23 com a chegada do NotificationBell.
-  // O sino mostra as tarefas devidas (atrasadas + hoje) e permite marcar como feita
-  // inline. Manter este hook activo causaria toasts duplicados com o sino.
-  // useFollowUpNotifications();
   useNewEmailNotifications();
   const { incomingLead, isVisible: leadVisible, dismissLead } = useLeadListener360();
 
@@ -80,9 +76,7 @@ const AppContent = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/contactos" element={<ProtectedRoute><ContactosDirectus /></ProtectedRoute>} />
-        {/* Novo contacto - redireciona para Customer360 create mode */}
         <Route path="/contactos/novo" element={<ProtectedRoute><Navigate to="/customer360-shell/novo" replace /></ProtectedRoute>} />
-        {/* Dashboard360 deprecated — redirect to Customer360Shell */}
         <Route path="/dashboard360/:id" element={<ProtectedRoute><Navigate to="/customer360-shell" replace /></ProtectedRoute>} />
         <Route path="/dashboard360" element={<ProtectedRoute><Navigate to="/customer360-shell" replace /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
@@ -102,11 +96,9 @@ const AppContent = () => {
         <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
         <Route path="/comunicacoes" element={<ProtectedRoute><ComunicacoesPage /></ProtectedRoute>} />
         <Route path="/telecof" element={<ProtectedRoute><Telecof /></ProtectedRoute>} />
-
         <Route path="/inbox" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />
         <Route path="/email" element={<ProtectedRoute><Email /></ProtectedRoute>} />
         <Route path="/social" element={<ProtectedRoute><Social /></ProtectedRoute>} />
-
         <Route path="/newsletter" element={<ProtectedRoute><Newsletter /></ProtectedRoute>} />
         <Route path="/newsletter/:id" element={<ProtectedRoute><Newsletter360 /></ProtectedRoute>} />
         <Route path="/fornecedores" element={<ProtectedRoute><Fornecedores /></ProtectedRoute>} />
@@ -116,6 +108,7 @@ const AppContent = () => {
         <Route path="/definicoes/whatsapp" element={<ProtectedRoute><WhatsappInstances /></ProtectedRoute>} />
         <Route path="/definicoes/ia-providers" element={<ProtectedRoute><IaProviders /></ProtectedRoute>} />
         <Route path="/definicoes/ia-settings" element={<ProtectedRoute><AiSettings /></ProtectedRoute>} />
+        <Route path="/definicoes/pipelines" element={<ProtectedRoute><PipelinesSettings /></ProtectedRoute>} />
         <Route path="/utilizadores" element={<ProtectedRoute><UtilizadoresDirectus /></ProtectedRoute>} />
         <Route path="/menu" element={<ProtectedRoute><MenuMobile /></ProtectedRoute>} />
         <Route path="/customer360-shell" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />

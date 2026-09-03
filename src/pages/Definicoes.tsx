@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
@@ -107,7 +107,7 @@ export default function Definicoes() {
       const draft = JSON.parse(raw);
       if (!draft || typeof draft !== "object") return;
       setCompanyData((prev) => ({ ...prev, ...(draft.companyData || {}) }));
-      toast({ title: "Rascunho recuperado", description: "Recuperámos alterações não guardadas das Definições." });
+      toast({ title: "Rascunho recuperado", description: "RecuperÃ¡mos alteraÃ§Ãµes nÃ£o guardadas das DefiniÃ§Ãµes." });
     } catch {
       // ignore
     }
@@ -150,7 +150,7 @@ export default function Definicoes() {
 
     try {
       const token = getDirectusTokenForRequest();
-      if (!token) throw new Error("Sem sessão. Faça login para continuar.");
+      if (!token) throw new Error("Sem sessÃ£o. FaÃ§a login para continuar.");
 
       const fd = new FormData();
       fd.append("file", file, file.name);
@@ -182,10 +182,10 @@ export default function Definicoes() {
       await updateSettings.mutateAsync({ logo_url: assetUrl });
       setCompanyData(prev => ({ ...prev, logo_url: assetUrl }));
 
-      toast({ title: "Logótipo carregado com sucesso" });
+      toast({ title: "LogÃ³tipo carregado com sucesso" });
     } catch (error) {
       console.error('Upload error:', error);
-      toast({ title: "Erro ao carregar logótipo", variant: "destructive" });
+      toast({ title: "Erro ao carregar logÃ³tipo", variant: "destructive" });
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -198,9 +198,9 @@ export default function Definicoes() {
     try {
       await updateSettings.mutateAsync({ logo_url: null });
       setCompanyData(prev => ({ ...prev, logo_url: "" }));
-      toast({ title: "Logótipo removido" });
+      toast({ title: "LogÃ³tipo removido" });
     } catch (error) {
-      toast({ title: "Erro ao remover logótipo", variant: "destructive" });
+      toast({ title: "Erro ao remover logÃ³tipo", variant: "destructive" });
     }
   };
 
@@ -213,10 +213,10 @@ export default function Definicoes() {
       } catch {
         // ignore
       }
-      toast({ title: "Definições da empresa guardadas" });
+      toast({ title: "DefiniÃ§Ãµes da empresa guardadas" });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error || "");
-      toast({ title: "Erro ao guardar definições", description: msg || undefined, variant: "destructive" });
+      toast({ title: "Erro ao guardar definiÃ§Ãµes", description: msg || undefined, variant: "destructive" });
     }
   };
 
@@ -227,15 +227,15 @@ export default function Definicoes() {
 
   const handleSaveMeilisearch = () => {
     saveMeilisearchSettings(meilisearch);
-    toast({ title: "Configurações Meilisearch guardadas" });
+    toast({ title: "ConfiguraÃ§Ãµes Meilisearch guardadas" });
   };
 
   const handleSaveIntegrations = async () => {
     try {
       await updateSettings.mutateAsync(integrations);
-      toast({ title: "Integrações guardadas" });
+      toast({ title: "IntegraÃ§Ãµes guardadas" });
     } catch (error) {
-      toast({ title: "Erro ao guardar integrações", variant: "destructive" });
+      toast({ title: "Erro ao guardar integraÃ§Ãµes", variant: "destructive" });
     }
   };
 
@@ -254,14 +254,14 @@ export default function Definicoes() {
       const response = await fetch(`${meilisearch.meilisearch_host}/health`, { headers });
       
       if (response.ok) {
-        toast({ title: "Conexão Meilisearch OK", description: "Servidor a responder corretamente" });
+        toast({ title: "ConexÃ£o Meilisearch OK", description: "Servidor a responder corretamente" });
       } else {
         throw new Error(`Status: ${response.status}`);
       }
     } catch (error) {
       toast({ 
-        title: "Erro na conexão Meilisearch", 
-        description: error instanceof Error ? error.message : "Verifique as configurações",
+        title: "Erro na conexÃ£o Meilisearch", 
+        description: error instanceof Error ? error.message : "Verifique as configuraÃ§Ãµes",
         variant: "destructive" 
       });
     }
@@ -283,14 +283,14 @@ export default function Definicoes() {
     <AppLayout>
       <div className="space-y-6 max-w-2xl">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Definições</h1>
-          <p className="text-muted-foreground">Configurações do sistema</p>
+          <h1 className="text-2xl font-bold text-foreground">DefiniÃ§Ãµes</h1>
+          <p className="text-muted-foreground">ConfiguraÃ§Ãµes do sistema</p>
         </div>
 
         {/* Push Notifications */}
         <PushNotificationsCard />
 
-        {/* Ficha de Cliente — editor de campos/dropdowns (página própria) */}
+        {/* Ficha de Cliente â€” editor de campos/dropdowns (pÃ¡gina prÃ³pria) */}
         <Link to="/definicoes/ficha-cliente">
           <Card className="transition-colors hover:bg-muted/40 cursor-pointer">
             <CardContent className="flex items-center justify-between py-4">
@@ -305,19 +305,19 @@ export default function Definicoes() {
           </Card>
         </Link>
 
-        {/* WhatsApp Dual — Gestão Multi-Número Evolution + Meta */}
+        {/* WhatsApp Dual â€” GestÃ£o Multi-NÃºmero Evolution + Meta */}
         <Link to="/definicoes/whatsapp">
           <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-emerald-500/30 dark:border-emerald-500/20">
             <CardContent className="flex items-center justify-between py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-medium">WhatsApp Dual (Multi-Número)</p>
+                  <p className="font-medium">WhatsApp Dual (Multi-NÃºmero)</p>
                   <span className="text-[10px] font-semibold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full">
                     Evolution + Meta WABA
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Gestão de números, QR code, tokens oficiais Meta Cloud e rotas de webhooks
+                  GestÃ£o de nÃºmeros, QR code, tokens oficiais Meta Cloud e rotas de webhooks
                 </p>
               </div>
               <MessageCircle className="h-5 w-5 text-emerald-600" />
@@ -331,7 +331,7 @@ export default function Definicoes() {
             <CardContent className="flex items-center justify-between py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-medium">Provedores de Inteligência Artificial</p>
+                  <p className="font-medium">Provedores de InteligÃªncia Artificial</p>
                   <span className="text-[10px] font-semibold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full">
                     7 Provedores Plug-in
                   </span>
@@ -345,19 +345,33 @@ export default function Definicoes() {
           </Card>
         </Link>
 
-        {/* Configurações Globais de IA */}
-        <Link to="/definicoes/ia-settings">
+        {/* ConfiguraÃ§Ãµes Globais de IA */}
+        <Link to="/definicoes/pipelines">
+              <Button variant="outline" className="w-full justify-start h-auto py-3 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                    <span className="text-lg">🔀</span>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-medium">Pipelines</div>
+                    <div className="text-xs text-muted-foreground">Gerir pipelines e stages</div>
+                  </div>
+                </div>
+              </Button>
+            </Link>
+
+            <Link to="/definicoes/ia-settings">
           <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-primary/30 dark:border-primary/20">
             <CardContent className="flex items-center justify-between py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-medium">Configurações & Fallback de IA</p>
+                  <p className="font-medium">ConfiguraÃ§Ãµes & Fallback de IA</p>
                   <span className="text-[10px] font-semibold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                     Roteamento Unificado
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Provedor padrão, tolerância a falhas (fallback), tokens e system prompts globais
+                  Provedor padrÃ£o, tolerÃ¢ncia a falhas (fallback), tokens e system prompts globais
                 </p>
               </div>
               <Cpu className="h-5 w-5 text-primary" />
@@ -373,7 +387,7 @@ export default function Definicoes() {
               Dados da Empresa
             </CardTitle>
             <CardDescription>
-              Informações gerais da empresa
+              InformaÃ§Ãµes gerais da empresa
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -381,7 +395,7 @@ export default function Definicoes() {
             <div className="space-y-3">
               <Label className="flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                Logótipo da Empresa
+                LogÃ³tipo da Empresa
               </Label>
               <div className="flex items-start gap-4">
                 {/* Logo Preview */}
@@ -442,7 +456,7 @@ export default function Definicoes() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Formatos suportados: JPG, PNG, SVG, WebP. Tamanho máximo: 2MB
+                    Formatos suportados: JPG, PNG, SVG, WebP. Tamanho mÃ¡ximo: 2MB
                   </p>
                 </div>
               </div>
@@ -457,11 +471,11 @@ export default function Definicoes() {
                   id="company_address"
                   value={companyData.address}
                   onChange={(e) => setCompanyData((prev) => ({ ...prev, address: e.target.value }))}
-                  placeholder="Rua, nº, andar..."
+                  placeholder="Rua, nÂº, andar..."
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="company_postal_code">Código Postal</Label>
+                <Label htmlFor="company_postal_code">CÃ³digo Postal</Label>
                 <Input
                   id="company_postal_code"
                   value={companyData.postal_code}
@@ -498,7 +512,7 @@ export default function Definicoes() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="company_phone">Telemóvel</Label>
+                <Label htmlFor="company_phone">TelemÃ³vel</Label>
                 <Input
                   id="company_phone"
                   value={companyData.phone}
@@ -528,17 +542,17 @@ export default function Definicoes() {
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="company_payment_instructions">Instruções de pagamento (ex: Eu Pago)</Label>
+                <Label htmlFor="company_payment_instructions">InstruÃ§Ãµes de pagamento (ex: Eu Pago)</Label>
                 <Input
                   id="company_payment_instructions"
                   value={companyData.payment_instructions}
                   onChange={(e) => setCompanyData((prev) => ({ ...prev, payment_instructions: e.target.value }))}
-                  placeholder="ex: Pagamento via Eu Pago / referência ..."
+                  placeholder="ex: Pagamento via Eu Pago / referÃªncia ..."
                 />
               </div>
               <Separator className="sm:col-span-2" />
               <div className="sm:col-span-2">
-                <p className="text-sm font-medium mb-3">Pagamentos — Multibanco & MBWay</p>
+                <p className="text-sm font-medium mb-3">Pagamentos â€” Multibanco & MBWay</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="company_mb_entity">Entidade Multibanco</Label>
@@ -550,16 +564,16 @@ export default function Definicoes() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="company_mb_reference">Referência Multibanco</Label>
+                <Label htmlFor="company_mb_reference">ReferÃªncia Multibanco</Label>
                 <Input
                   id="company_mb_reference"
                   value={companyData.multibanco_reference}
                   onChange={(e) => setCompanyData((prev) => ({ ...prev, multibanco_reference: e.target.value }))}
-                  placeholder="Referência base"
+                  placeholder="ReferÃªncia base"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="company_mbway_phone">Número MBWay</Label>
+                <Label htmlFor="company_mbway_phone">NÃºmero MBWay</Label>
                 <Input
                   id="company_mbway_phone"
                   value={companyData.mbway_phone}
@@ -585,7 +599,7 @@ export default function Definicoes() {
               Meilisearch
             </CardTitle>
             <CardDescription>
-              Configuração da pesquisa de produtos
+              ConfiguraÃ§Ã£o da pesquisa de produtos
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -618,7 +632,7 @@ export default function Definicoes() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="meili_index">Índice</Label>
+                <Label htmlFor="meili_index">Ãndice</Label>
                 <Input
                   id="meili_index"
                   value={meilisearch.meilisearch_index || "products_stage"}
@@ -632,7 +646,7 @@ export default function Definicoes() {
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={handleTestMeilisearch}>
-                Testar Conexão
+                Testar ConexÃ£o
               </Button>
               <Button onClick={handleSaveMeilisearch}>
                 <Save className="h-4 w-4 mr-2" />
@@ -647,10 +661,10 @@ export default function Definicoes() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Webhook className="h-5 w-5" />
-              Integrações n8n
+              IntegraÃ§Ãµes n8n
             </CardTitle>
             <CardDescription>
-              Configure os URLs dos webhooks para integrações
+              Configure os URLs dos webhooks para integraÃ§Ãµes
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -758,13 +772,13 @@ export default function Definicoes() {
               <pre className="text-xs bg-background p-3 rounded border overflow-x-auto">
 {`{
   "phone": "+351912345678",
-  "name": "João Silva",
+  "name": "JoÃ£o Silva",
   "source": "whatsapp",
   "notes": "Interessado em equipamento"
 }`}
               </pre>
               <p className="text-xs text-muted-foreground">
-                Sources válidos: whatsapp, typebot, n8n, chatwoot, web, email, phone
+                Sources vÃ¡lidos: whatsapp, typebot, n8n, chatwoot, web, email, phone
               </p>
             </div>
           </CardContent>
@@ -775,10 +789,10 @@ export default function Definicoes() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5" />
-              Integrações Externas
+              IntegraÃ§Ãµes Externas
             </CardTitle>
             <CardDescription>
-              Configurações de Chatwoot, WhatsApp e Typebot
+              ConfiguraÃ§Ãµes de Chatwoot, WhatsApp e Typebot
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -837,7 +851,7 @@ export default function Definicoes() {
             <div className="flex justify-end pt-2">
               <Button onClick={handleSaveIntegrations} disabled={updateSettings.isPending}>
                 <Save className="h-4 w-4 mr-2" />
-                Guardar Integrações
+                Guardar IntegraÃ§Ãµes
               </Button>
             </div>
           </CardContent>
@@ -851,8 +865,8 @@ export default function Definicoes() {
         {/* AI Model Selection */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">🧠 Modelo de IA</CardTitle>
-            <CardDescription>Escolhe o modelo para sugestões de email, classificação e geração de texto.</CardDescription>
+            <CardTitle className="flex items-center gap-2">ðŸ§  Modelo de IA</CardTitle>
+            <CardDescription>Escolhe o modelo para sugestÃµes de email, classificaÃ§Ã£o e geraÃ§Ã£o de texto.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <select
@@ -862,30 +876,30 @@ export default function Definicoes() {
             >
               <optgroup label="Claude (Anthropic)">
                 <option value="claude-sonnet-5">Claude Sonnet 5 (mais capaz, mais lento)</option>
-                <option value="claude-opus-4-8">Claude Opus 4.8 (máximo, premium)</option>
-                <option value="claude-haiku-4-5">Claude Haiku 4.5 (rápido, económico)</option>
+                <option value="claude-opus-4-8">Claude Opus 4.8 (mÃ¡ximo, premium)</option>
+                <option value="claude-haiku-4-5">Claude Haiku 4.5 (rÃ¡pido, econÃ³mico)</option>
               </optgroup>
             </select>
-            <p className="text-xs text-muted-foreground">Haiku: rápido e barato (classificação, resumos). Sonnet: melhor qualidade (rascunhos, traduções). Opus: máxima qualidade.</p>
+            <p className="text-xs text-muted-foreground">Haiku: rÃ¡pido e barato (classificaÃ§Ã£o, resumos). Sonnet: melhor qualidade (rascunhos, traduÃ§Ãµes). Opus: mÃ¡xima qualidade.</p>
           </CardContent>
         </Card>
 
         {/* Email Signature */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">✉️ Assinatura de Email</CardTitle>
+            <CardTitle className="flex items-center gap-2">âœ‰ï¸ Assinatura de Email</CardTitle>
             <CardDescription>Assinatura HTML aplicada a todos os emails enviados pelo CRM.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <Label className="text-sm font-medium">Assinatura global (empresa)</Label>
-              <p className="text-xs text-muted-foreground mb-2">Usa o editor visual abaixo. Podes adicionar imagens (logo, prémios) arrastando ou colando.</p>
+              <p className="text-xs text-muted-foreground mb-2">Usa o editor visual abaixo. Podes adicionar imagens (logo, prÃ©mios) arrastando ou colando.</p>
               {/* Rich signature editor toolbar */}
               <div className="flex gap-1 border rounded-t-md bg-muted/30 px-2 py-1 mt-1">
                 <button type="button" onClick={() => document.execCommand("bold")} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center text-xs font-bold" title="Negrito">B</button>
-                <button type="button" onClick={() => document.execCommand("italic")} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center text-xs italic" title="Itálico">I</button>
-                <button type="button" onClick={() => { const url = prompt("URL da imagem (logo, prémio):"); if (url) document.execCommand("insertImage", false, url); }} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center text-xs" title="Inserir imagem">🖼</button>
-                <button type="button" onClick={() => { const url = prompt("URL do link:"); if (url) document.execCommand("createLink", false, url); }} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center text-xs text-blue-600" title="Link">🔗</button>
+                <button type="button" onClick={() => document.execCommand("italic")} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center text-xs italic" title="ItÃ¡lico">I</button>
+                <button type="button" onClick={() => { const url = prompt("URL da imagem (logo, prÃ©mio):"); if (url) document.execCommand("insertImage", false, url); }} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center text-xs" title="Inserir imagem">ðŸ–¼</button>
+                <button type="button" onClick={() => { const url = prompt("URL do link:"); if (url) document.execCommand("createLink", false, url); }} className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center text-xs text-blue-600" title="Link">ðŸ”—</button>
               </div>
               <div
                 contentEditable
@@ -893,13 +907,13 @@ export default function Definicoes() {
                 onBlur={(e) => updateSettings.mutate({ email_signature_html: (e.target as HTMLElement).innerHTML })}
                 className="min-h-[150px] w-full rounded-b-md border border-t-0 border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring email-content"
               />
-              <p className="text-xs text-muted-foreground mt-1">Dica: cola imagens do logo ou prémios directamente no editor. Grava ao sair.</p>
+              <p className="text-xs text-muted-foreground mt-1">Dica: cola imagens do logo ou prÃ©mios directamente no editor. Grava ao sair.</p>
             </div>
 
             {/* Signature Preview */}
             <div>
-              <Label className="text-sm font-medium">Pré-visualização</Label>
-              <p className="text-xs text-muted-foreground mb-2">Assim ficará no rodapé dos emails enviados:</p>
+              <Label className="text-sm font-medium">PrÃ©-visualizaÃ§Ã£o</Label>
+              <p className="text-xs text-muted-foreground mb-2">Assim ficarÃ¡ no rodapÃ© dos emails enviados:</p>
               <div className="rounded-md border border-border bg-card p-4">
                 <div className="border-t border-border pt-3 mt-2">
                   <div
@@ -915,12 +929,12 @@ export default function Definicoes() {
         {/* AI Email Prompts */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">🤖 Prompts da IA (Email)</CardTitle>
-            <CardDescription>Personaliza como a IA redige respostas. Deixa vazio para usar o padrão.</CardDescription>
+            <CardTitle className="flex items-center gap-2">ðŸ¤– Prompts da IA (Email)</CardTitle>
+            <CardDescription>Personaliza como a IA redige respostas. Deixa vazio para usar o padrÃ£o.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-sm font-medium">Prompt de sugestão de resposta</Label>
+              <Label className="text-sm font-medium">Prompt de sugestÃ£o de resposta</Label>
               <textarea rows={4} defaultValue={((settings as any)?.ai_email_prompts)?.suggest || ""} onBlur={(e) => { const c = (settings as any)?.ai_email_prompts || {}; updateSettings.mutate({ ai_email_prompts: { ...c, suggest: e.target.value } }); }} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Redige uma resposta profissional..." />
             </div>
             <div>
@@ -928,7 +942,7 @@ export default function Definicoes() {
               <textarea rows={3} defaultValue={((settings as any)?.ai_email_prompts)?.improve || ""} onBlur={(e) => { const c = (settings as any)?.ai_email_prompts || {}; updateSettings.mutate({ ai_email_prompts: { ...c, improve: e.target.value } }); }} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Melhora clareza e tom..." />
             </div>
             <div>
-              <Label className="text-sm font-medium">Prompt de tradução</Label>
+              <Label className="text-sm font-medium">Prompt de traduÃ§Ã£o</Label>
               <textarea rows={3} defaultValue={((settings as any)?.ai_email_prompts)?.translate || ""} onBlur={(e) => { const c = (settings as any)?.ai_email_prompts || {}; updateSettings.mutate({ ai_email_prompts: { ...c, translate: e.target.value } }); }} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Ex: Traduz mantendo tom profissional..." />
             </div>
             <p className="text-xs text-muted-foreground">Grava automaticamente ao sair do campo.</p>
@@ -939,7 +953,7 @@ export default function Definicoes() {
   );
 }
 
-// ─── AI Settings Section ──────────────────────────────────────────────────
+// â”€â”€â”€ AI Settings Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AISettingsSection() {
   const [aiModel, setAiModel] = useState("claude-haiku-4-5");
@@ -982,7 +996,7 @@ function AISettingsSection() {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ ai_model: aiModel, ...prompts }),
       });
-      toast({ title: "Definições de IA guardadas" });
+      toast({ title: "DefiniÃ§Ãµes de IA guardadas" });
     } catch {
       toast({ title: "Erro ao guardar", variant: "destructive" });
     } finally {
@@ -996,10 +1010,10 @@ function AISettingsSection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          ✨ Inteligência Artificial
+          âœ¨ InteligÃªncia Artificial
         </CardTitle>
         <CardDescription>
-          Configuração do modelo e prompts de IA usados nas propostas
+          ConfiguraÃ§Ã£o do modelo e prompts de IA usados nas propostas
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -1011,8 +1025,8 @@ function AISettingsSection() {
             onChange={(e) => setAiModel(e.target.value)}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
           >
-            <option value="claude-haiku-4-5">Claude Haiku 4.5 — rápido e económico (recomendado)</option>
-            <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — mais capaz, custo médio</option>
+            <option value="claude-haiku-4-5">Claude Haiku 4.5 â€” rÃ¡pido e econÃ³mico (recomendado)</option>
+            <option value="claude-sonnet-4-6">Claude Sonnet 4.6 â€” mais capaz, custo mÃ©dio</option>
           </select>
         </div>
 
@@ -1022,20 +1036,20 @@ function AISettingsSection() {
         <div className="space-y-4">
           <h4 className="text-sm font-medium">Prompts de IA</h4>
           <p className="text-xs text-muted-foreground">
-            Se vazios, são usados os prompts padrão do sistema.
+            Se vazios, sÃ£o usados os prompts padrÃ£o do sistema.
           </p>
           <div className="space-y-2">
-            <Label className="text-xs">Prompt — Descrição de produto</Label>
+            <Label className="text-xs">Prompt â€” DescriÃ§Ã£o de produto</Label>
             <textarea
               value={prompts.ai_prompt_product}
               onChange={(e) => setPrompts((p) => ({ ...p, ai_prompt_product: e.target.value }))}
-              placeholder="Ex: Escreve uma descrição comercial em português em 2 frases para {produto}..."
+              placeholder="Ex: Escreve uma descriÃ§Ã£o comercial em portuguÃªs em 2 frases para {produto}..."
               rows={3}
               className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">Prompt — Mensagem de boas-vindas</Label>
+            <Label className="text-xs">Prompt â€” Mensagem de boas-vindas</Label>
             <textarea
               value={prompts.ai_prompt_welcome}
               onChange={(e) => setPrompts((p) => ({ ...p, ai_prompt_welcome: e.target.value }))}
@@ -1045,11 +1059,11 @@ function AISettingsSection() {
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">Prompt — Termos e condições</Label>
+            <Label className="text-xs">Prompt â€” Termos e condiÃ§Ãµes</Label>
             <textarea
               value={prompts.ai_prompt_terms}
               onChange={(e) => setPrompts((p) => ({ ...p, ai_prompt_terms: e.target.value }))}
-              placeholder="Ex: Gera termos e condições para {produtos} com sinal de {pct}%..."
+              placeholder="Ex: Gera termos e condiÃ§Ãµes para {produtos} com sinal de {pct}%..."
               rows={3}
               className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
@@ -1059,7 +1073,7 @@ function AISettingsSection() {
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />
-            Guardar definições IA
+            Guardar definiÃ§Ãµes IA
           </Button>
         </div>
 
@@ -1070,11 +1084,11 @@ function AISettingsSection() {
           <div>
             <p className="text-sm font-medium">Proxy AI</p>
             <p className="text-xs text-muted-foreground">
-              As chamadas de IA passam pelo proxy seguro n8n. A chave API nunca é exposta no browser.
+              As chamadas de IA passam pelo proxy seguro n8n. A chave API nunca Ã© exposta no browser.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-            ✓ Seguro
+            âœ“ Seguro
           </span>
         </div>
       </CardContent>
@@ -1082,7 +1096,7 @@ function AISettingsSection() {
   );
 }
 
-// ─── Message Templates CRUD ──────────────────────────────────────────────
+// â”€â”€â”€ Message Templates CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function MessageTemplatesSection() {
   const { data: templates, isLoading } = useMessageTemplates();
@@ -1105,7 +1119,7 @@ function MessageTemplatesSection() {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.content.trim()) {
-      toast({ title: "Nome e conteúdo são obrigatórios", variant: "destructive" });
+      toast({ title: "Nome e conteÃºdo sÃ£o obrigatÃ³rios", variant: "destructive" });
       return;
     }
     try {
@@ -1138,8 +1152,8 @@ function MessageTemplatesSection() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">📋 Templates de Mensagem</CardTitle>
-            <CardDescription>Templates reutilizáveis para email e WhatsApp. Variáveis: {'{nome}'}, {'{empresa}'}</CardDescription>
+            <CardTitle className="flex items-center gap-2">ðŸ“‹ Templates de Mensagem</CardTitle>
+            <CardDescription>Templates reutilizÃ¡veis para email e WhatsApp. VariÃ¡veis: {'{nome}'}, {'{empresa}'}</CardDescription>
           </div>
           <Button size="sm" onClick={startNew} className="gap-1.5">
             + Novo template
@@ -1200,7 +1214,7 @@ function TemplateForm({ form, setForm, onSave, onCancel, saving }: {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Nome</Label>
-          <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Resposta a orçamento" className="h-8 mt-1" />
+          <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Resposta a orÃ§amento" className="h-8 mt-1" />
         </div>
         <div>
           <Label className="text-xs">Canal</Label>
@@ -1212,12 +1226,12 @@ function TemplateForm({ form, setForm, onSave, onCancel, saving }: {
         </div>
       </div>
       <div>
-        <Label className="text-xs">Conteúdo</Label>
+        <Label className="text-xs">ConteÃºdo</Label>
         <textarea
           rows={4}
           value={form.content}
           onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-          placeholder="Olá {nome}, obrigado pelo contacto..."
+          placeholder="OlÃ¡ {nome}, obrigado pelo contacto..."
           className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
       </div>
