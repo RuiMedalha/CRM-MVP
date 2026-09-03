@@ -1,5 +1,6 @@
 // WA·913 — WABA oficial (Meta Cloud API) — reads from Directus, sends via /wa-proxy
 import { DIRECTUS_ADMIN_TOKEN as DIRECTUS_TOKEN, directusRequest } from "./client";
+import { DIRECTUS_URL } from "@/lib/env";
 
 export const META_TOKEN = ""; // Moved server-side to /wa-proxy endpoint
 export const PHONE_NUMBER_ID = "943101945557713"; // Kept for reference only
