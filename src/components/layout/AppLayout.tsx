@@ -66,7 +66,12 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
         {/* Reduzir padding em tablet (md+ mas <lg) — em iPad landscape 1024x600
             com sidebar 220px + card de lead com botão 'Promover' de 110px fica
             apertado e o botão sai do viewport. md:p-4 (16px) em vez de p-6. */}
-        <div className="crm-layout-content flex min-h-0 flex-1 flex-col overflow-auto p-4 md:p-4 lg:p-6">{children}</div>
+        <div
+          key={typeof window !== "undefined" ? window.location.pathname : "page"}
+          className="crm-layout-content page-enter flex min-h-0 flex-1 flex-col overflow-auto p-4 md:p-4 lg:p-6"
+        >
+          {children}
+        </div>
       </main>
       <BottomNav />
       <QuickActions />
