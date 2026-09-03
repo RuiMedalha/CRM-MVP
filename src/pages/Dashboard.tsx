@@ -22,26 +22,21 @@ export default function Dashboard() {
   const { data: deals, isLoading: dealsLoading } = useDeals();
   const { data: contacts, isLoading: contactsLoading } = useContacts();
 
-  // Overdue follow-ups
   const overdueFollowUpsQuery = useFollowUpsLite();
 
   const activeDeals = deals?.filter((d) => !["ganho", "perdido"].includes(d.status || "")).length || 0;
   const wonDeals = deals?.filter((d) => d.status === "ganho").length || 0;
 
-  // Inbox unificada
   const unreadCount = useNotificationStore((s) => s.badgeCounts.unreadCount);
 
-  // Email stats
   const emailStatsQuery = useEmailStatsLite();
 
-  // Mobile tab — bottom-nav style
   const [mobileTab, setMobileTab] = useState<"conversas" | "hoje">("conversas");
 
   const totalDealsValue = deals?.reduce((sum, deal) => sum + (deal.total_amount || 0), 0) || 0;
 
   const isLoading = dealsLoading || contactsLoading;
 
-  // D2: Saudação dinâmica baseada na hora
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bom dia" : hour < 19 ? "Boa tarde" : "Boa noite";
   const userName = (user as any)?.first_name || user?.email?.split("@")[0] || "";
@@ -68,7 +63,6 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="flex h-full min-h-0 flex-col gap-3">
-        {/* Header */}
         <motion.header
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
@@ -92,7 +86,6 @@ export default function Dashboard() {
           </Link>
         </motion.header>
 
-        {/* Mobile tab switcher */}
         <div className="lg:hidden">
           <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as typeof mobileTab)}>
             <TabsList className="grid w-full grid-cols-2">
@@ -131,9 +124,7 @@ export default function Dashboard() {
           </Tabs>
         </div>
 
-        {/* Desktop split 50/50 */}
         <div className="hidden min-h-0 flex-1 gap-3 lg:grid lg:grid-cols-2">
-          {/* LEFT — Omnichannel inbox */}
           <Card className="flex min-h-0 flex-col overflow-hidden">
             <CardHeader className="shrink-0 border-b border-border pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
@@ -159,7 +150,6 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          {/* RIGHT — KPIs + Forecast */}
           <div className="flex min-h-0 flex-col gap-3 overflow-auto pr-1">
             <div className="grid shrink-0 grid-cols-2 gap-2">
               <KpiTile
@@ -231,7 +221,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Below-fold analytics — desktop only */}
         <div className="hidden lg:block">
           <BelowFold
             contacts={contacts}
@@ -245,8 +234,6 @@ export default function Dashboard() {
     </AppLayout>
   );
 }
-
-// ─── Sub-components ──────────────────────────────────────────────────────
 
 function KpiTile({
   icon,
@@ -504,8 +491,6 @@ function BelowFold({
     </div>
   );
 }
-
-// ─── Lightweight data hooks (inline to avoid pulling too much into Dashboard) ─
 
 function useFollowUpsLite() {
   return useQuery({
