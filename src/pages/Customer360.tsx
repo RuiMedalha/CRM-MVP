@@ -293,13 +293,13 @@ function Customer360() {
   };
 
   if (isLoading) return <LoadingSkeleton />;
-  if (error) return (<div className="flex items-center justify-center h-screen bg-gray-50"><div className="text-center"><div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3"><X className="w-6 h-6 text-red-500"/></div><p className="font-semibold text-sm">Erro ao carregar</p><p className="text-muted-foreground text-xs mt-1">{error}</p></div></div>);
-  if (!data) return (<div className="flex items-center justify-center h-screen bg-gray-50"><EmptyState icon={User} title="Contacto não encontrado" desc="Este contacto pode ter sido eliminado."/></div>);
+  if (error) return (<div className="flex items-center justify-center h-screen bg-gray-50"><div className="text-center"><div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3"><X className="w-6 h-6 text-red-500"/></div><p className="font-semibold text-sm">Erro ao carregar</p><p className="text-muted-foreground text-xs mt-1">{(error as any)?.message || String(error)}</p></div></div>);
+  if (!data || (!data.organization && !data.contact)) return (<div className="flex items-center justify-center h-screen bg-gray-50"><EmptyState icon={User} title="Contacto não encontrado" desc="Este contacto pode ter sido eliminado ou não existe."/></div>);
 
-  const org = data.organization;
-  const name = org.company_name || org.contact_name || "Sem nome";
-  const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
-  const city = org.city;
+  const org = data.organization || data.contact || {};
+  const name = org.company_name || org.contact_name || org.name || "Sem nome";
+  const initials = (name || "C").split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const city = org.city || "";
   const score = org.score != null ? Number(org.score) : undefined;
 
   return (
@@ -316,10 +316,10 @@ function Customer360() {
             </Avatar>
             <div className="min-w-0 flex-1">
               <h1 className="text-white font-bold text-lg leading-tight truncate">{name}</h1>
-              {(org.name||city||org.vatNumber)&&<div className="flex items-center gap-2 mt-0.5 text-white/70 text-xs flex-wrap">
-                {org.name&&<span className="flex items-center gap-1"><Building2 className="w-3 h-3"/>{org.name}</span>}
+              {(org.name||city||org.vatNumber||org.vat_number)&&<div className="flex items-center gap-2 mt-0.5 text-white/70 text-xs flex-wrap">
+                {(org.name || org.company_name)&&<span className="flex items-center gap-1"><Building2 className="w-3 h-3"/>{org.name || org.company_name}</span>}
                 {city&&<span>{city}</span>}
-                {org.vatNumber&&<span>NIF: {org.vatNumber}</span>}</div>}
+                {(org.vatNumber||org.vat_number)&&<span>NIF: {org.vatNumber || org.vat_number}</span>}</div>}
               {score!=null&&<div className="flex items-center gap-1.5 mt-1.5">
                 <Star className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300"/><span className="text-white font-semibold text-sm">{Math.round(score)}</span>
                 <span className="text-white/50 text-[10px]">score</span></div>}
@@ -358,7 +358,7 @@ function Customer360() {
 
         <div className="flex-1 overflow-hidden">
           <TabsContent value="timeline" className="data-[state=active]:flex-1 m-0" forceMount><TimelineTab timeline={data.timeline}/></TabsContent>
-          <TabsContent value="propostas" className="data-[state=active]:flex-1 m-0" forceMount><PropostasTab proposals={data.proposals}/></TabsContent>
+          <TabsContent value="propostas" className="data-[state=active]:flex-1 m-0" forceMount><PropostasTab proposals={data.proposals || (data as any).quotations}/></TabsContent>
           <TabsContent value="compras" className="data-[state=active]:flex-1 m-0" forceMount><ComprasTab orders={data.orders}/></TabsContent>
           <TabsContent value="comunicacao" className="data-[state=active]:flex-1 m-0" forceMount><ComunicacaoTab timeline={data.timeline}/></TabsContent>
           <TabsContent value="notas" className="data-[state=active]:flex-1 m-0" forceMount><NotasTab notes={data.notes} contactId={id} onCreateNote={(p)=>data.createNote?.(p)} onUpdateNote={data.updateNote} onDeleteNote={data.deleteNote}/></TabsContent>
