@@ -22,7 +22,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { directusRequest } from "@/integrations/directus/client";
 import { createContact, listContacts } from "@/integrations/directus/contacts";
 import { CreateContactForm } from "@/components/customer360/edit/CreateContactForm";
-import { Search, UserPlus, ArrowRight, Phone, Mail, History, Plus, RefreshCw, AlertCircle, Zap } from "lucide-react";
+import { Search, UserPlus, ArrowRight, Phone, Mail, History, Plus, RefreshCw, AlertCircle, Zap, Flame, Thermometer, Snowflake } from "lucide-react";
 import { LeadTimelineModal } from "@/components/contacts/LeadTimelineModal";
 import { format } from "date-fns/format";
 import { pt } from "date-fns/locale";
