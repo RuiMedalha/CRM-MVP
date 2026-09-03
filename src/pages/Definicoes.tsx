@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Building2, Webhook, FileText, RefreshCw, ShoppingCart, Search, Database, Copy, ArrowDownToLine, MessageCircle, Upload, Trash2, Loader2, Sparkles, Cpu } from "lucide-react";
+import { Save, Building2, Webhook, FileText, RefreshCw, ShoppingCart, Search, Database, Copy, ArrowDownToLine, MessageCircle, Upload, Trash2, Loader2, Sparkles, Cpu, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PushNotificationsCard } from "@/components/PushNotificationsCard";
 import { useMessageTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate, type MessageTemplate } from "@/hooks/useMessageTemplates";
@@ -321,6 +321,26 @@ export default function Definicoes() {
                 </p>
               </div>
               <MessageCircle className="h-5 w-5 text-emerald-600" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Automação de Workflows */}
+        <Link to="/definicoes/workflows">
+          <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-blue-500/30 dark:border-blue-500/20">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">Automação de Workflows</p>
+                  <span className="text-[10px] font-semibold uppercase bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                    If-This-Then-That
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Triggers visuais, notificações automáticas, follow-ups, WhatsApp e webhooks
+                </p>
+              </div>
+              <Zap className="h-5 w-5 text-blue-500" />
             </CardContent>
           </Card>
         </Link>

@@ -23,6 +23,7 @@ import {
   Settings,
   Users,
   Wrench,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { isSuperAdminEmail } from "@/lib/superadmin";
@@ -67,6 +68,7 @@ const moreSections: MoreSection[] = [
     label: "Sistema",
     items: [
       { icon: Plug, label: "Integrações", path: "/integracoes", superAdminOnly: true },
+      { icon: Zap, label: "Workflows", path: "/definicoes/workflows" },
       { icon: Settings, label: "Definições", path: "/definicoes" },
       { icon: Users, label: "Utilizadores", path: "/utilizadores" },
       { icon: Wrench, label: "Dev Tools", path: "/developer-tools", superAdminOnly: true },

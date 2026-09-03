@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,6 +32,7 @@ const WhatsappInstances = lazy(() => import("./pages/settings/WhatsappInstances"
 const IaProviders = lazy(() => import("./pages/settings/IaProviders"));
 const AiSettings = lazy(() => import("./pages/settings/AiSettings"));
 const PipelinesSettings = lazy(() => import("./pages/settings/Pipelines"));
+const WorkflowsSettings = lazy(() => import("./pages/settings/Workflows"));
 const UtilizadoresDirectus = lazy(() => import("./pages/UtilizadoresDirectus"));
 const MenuMobile = lazy(() => import("./pages/MenuMobile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -109,6 +110,8 @@ const AppContent = () => {
         <Route path="/definicoes/ia-providers" element={<ProtectedRoute><IaProviders /></ProtectedRoute>} />
         <Route path="/definicoes/ia-settings" element={<ProtectedRoute><AiSettings /></ProtectedRoute>} />
         <Route path="/definicoes/pipelines" element={<ProtectedRoute><PipelinesSettings /></ProtectedRoute>} />
+        <Route path="/definicoes/workflows" element={<ProtectedRoute><WorkflowsSettings /></ProtectedRoute>} />
+        <Route path="/settings/workflows" element={<ProtectedRoute><WorkflowsSettings /></ProtectedRoute>} />
         <Route path="/utilizadores" element={<ProtectedRoute><UtilizadoresDirectus /></ProtectedRoute>} />
         <Route path="/menu" element={<ProtectedRoute><MenuMobile /></ProtectedRoute>} />
         <Route path="/customer360-shell" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
