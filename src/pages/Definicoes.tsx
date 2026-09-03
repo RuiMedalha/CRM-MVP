@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Building2, Webhook, FileText, RefreshCw, ShoppingCart, Search, Database, Copy, ArrowDownToLine, MessageCircle, Upload, Trash2, Loader2 } from "lucide-react";
+import { Save, Building2, Webhook, FileText, RefreshCw, ShoppingCart, Search, Database, Copy, ArrowDownToLine, MessageCircle, Upload, Trash2, Loader2, Sparkles, Cpu } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PushNotificationsCard } from "@/components/PushNotificationsCard";
 import { useMessageTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate, type MessageTemplate } from "@/hooks/useMessageTemplates";
@@ -321,6 +321,46 @@ export default function Definicoes() {
                 </p>
               </div>
               <MessageCircle className="h-5 w-5 text-emerald-600" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Provedores de IA Plug-in */}
+        <Link to="/definicoes/ia-providers">
+          <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-amber-500/30 dark:border-amber-500/20">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">Provedores de Inteligência Artificial</p>
+                  <span className="text-[10px] font-semibold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                    7 Provedores Plug-in
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Anthropic Claude, OpenAI, OpenRouter, DeepSeek, MiniMax, OpenCode e Local LLM
+                </p>
+              </div>
+              <Sparkles className="h-5 w-5 text-amber-500" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Configurações Globais de IA */}
+        <Link to="/definicoes/ia-settings">
+          <Card className="transition-colors hover:bg-muted/40 cursor-pointer border-primary/30 dark:border-primary/20">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">Configurações & Fallback de IA</p>
+                  <span className="text-[10px] font-semibold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    Roteamento Unificado
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Provedor padrão, tolerância a falhas (fallback), tokens e system prompts globais
+                </p>
+              </div>
+              <Cpu className="h-5 w-5 text-primary" />
             </CardContent>
           </Card>
         </Link>
