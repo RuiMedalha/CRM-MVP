@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { useDeals, DEAL_STATUSES } from "@/hooks/useDeals";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Kanban, TrendingUp, Euro, Phone, MessageCircle, Mail, Globe, Building2, AlertCircle, MessagesSquare, Inbox, CalendarClock } from "lucide-react";
+import { Users, Kanban, TrendingUp, Euro, Phone, MessageCircle, Mail, Globe, Building2, AlertCircle, MessagesSquare, Inbox, CalendarClock, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
@@ -14,6 +14,8 @@ import { listFollowUps } from "@/integrations/directus/follow-ups";
 import { useConversationStore } from "@/store/conversationStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { CheckSquare } from "lucide-react";
+import { useRealtime } from "@/hooks/useRealtime";
+
 import {
   BarChart,
   Bar,
@@ -54,6 +56,34 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { data: deals, isLoading: dealsLoading } = useDeals();
   const { data: contacts, isLoading: contactsLoading } = useContacts();
+
+  // Realtime subscription for cross-tab KPI updates (<2s)
+  useRealtime(
+    [
+      "leads",
+      "deals",
+      "contacts",
+      "whatsapp_messages",
+      "messages",
+      "email_threads",
+      "activity",
+      "follow_ups",
+      "quotations",
+    ],
+    {
+      queryKeys: [
+        ["deals"],
+        ["contacts"],
+        ["leads-recent-dashboard"],
+        ["dashboard-overdue-followups"],
+        ["dashboard-email-stats"],
+        ["monitor-leads"],
+        ["monitor-emails"],
+        ["monitor-proposals"],
+      ],
+    }
+  );
+
   const recentLeadsQuery = useQuery({
     queryKey: ["leads-recent-dashboard"],
     queryFn: async () => await fetchRecentLeads(300),
@@ -242,11 +272,17 @@ export default function Dashboard() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header com saudação dinâmica */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {greeting}{userName ? `, ${userName}` : ""}.
-          </h1>
-          <p className="text-muted-foreground">Aqui está o resumo da tua operação.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              {greeting}{userName ? `, ${userName}` : ""}.
+            </h1>
+            <p className="text-muted-foreground">Aqui está o resumo da tua operação.</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full w-fit">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+            <span>Sincronização em tempo real ativa</span>
+          </div>
         </div>
 
         {/* NOVO D2: Inbox unificada (WhatsApp + Email + Phone) */}

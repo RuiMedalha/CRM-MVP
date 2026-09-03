@@ -9,13 +9,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarClock, Check, Phone, Mail, MessageCircle, Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarClock, Check, Phone, Mail, MessageCircle, Plus, Search, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getEmployeeByEmail } from "@/integrations/directus/employees";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCreateFollowUp, useFollowUps, usePatchFollowUp } from "@/hooks/useFollowUps";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useRealtime } from "@/hooks/useRealtime";
+import { useCrossTabBus } from "@/store/crossTabBus";
+import { Link } from "react-router-dom";
 
 function typeLabel(t: string) {
   if (t === "call") return "Chamada";
@@ -41,10 +44,27 @@ function getFirstDayOfMonth(date: Date): number {
 
 export default function Agenda() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [search, setSearch] = useState("");
   const [openCreate, setOpenCreate] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  const newLeads = useCrossTabBus((s) => s.newLeads);
+
+  // Realtime subscription for follow-ups and leads
+  const { emit } = useRealtime(["leads", "follow_ups", "activity"], {
+    queryKeys: [
+      ["follow-ups"],
+      ["dashboard-overdue-followups"],
+      ["agenda"],
+    ],
+    onEvent: (payload) => {
+      if (payload.collection === "follow_ups") {
+        qc.invalidateQueries({ queryKey: ["follow-ups"] });
+      }
+    },
+  });
 
   const employeeQuery = useQuery({
     queryKey: ["me", "employee", user?.email],
@@ -80,7 +100,7 @@ export default function Agenda() {
 
   const saveFollowUp = async () => {
     if (!meEmp?.id) {
-      toast({ title: "Sem funcionário", description: "O teu utilizador tem de existir em \`employees\` (por email).", variant: "destructive" });
+      toast({ title: "Sem funcionário", description: "O teu utilizador tem de existir em `employees` (por email).", variant: "destructive" });
       return;
     }
     if (!form.due_at) {
@@ -88,7 +108,7 @@ export default function Agenda() {
       return;
     }
     try {
-      await create.mutateAsync({
+      const created = await create.mutateAsync({
         status: "open",
         type: form.type,
         title: form.title || null,
@@ -98,6 +118,7 @@ export default function Agenda() {
         created_by_employee_id: meEmp.id,
       } as any);
       toast({ title: "Follow-up criado" });
+      emit("create", created, "follow_ups", { userName: user?.email });
       setOpenCreate(false);
       setForm({ type: "call", title: "", due_at: "", notes: "" });
     } catch (e: any) {
@@ -174,6 +195,26 @@ export default function Agenda() {
             </Badge>
           </div>
         </div>
+
+        {/* Real-time incoming leads banner */}
+        {newLeads.length > 0 && (
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-50/50 p-3 dark:bg-emerald-950/30 flex items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
+              <Zap className="h-4 w-4 text-emerald-600 animate-pulse" />
+              <span>
+                <strong>{newLeads.length} novo(s) lead(s)</strong> recebido(s) em tempo real.
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/leads"
+                className="text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
+              >
+                Ver Leads &rarr;
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Calendar Grid */}
         <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">

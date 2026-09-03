@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useActivityFeedStore, type ActivityItem } from "@/store/activityFeedStore";
+import { useCrossTabBus } from "@/store/crossTabBus";
+import type { ActivityItem } from "@/store/activityFeedStore";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
@@ -22,8 +23,8 @@ const ACTIVITY_CONFIG: Record<string, { icon: string; color: string; label: stri
 };
 
 function ActivityItemRow({ activity, onRead }: { activity: ActivityItem; onRead: () => void }) {
-  const config = ACTIVITY_CONFIG[activity.type];
-  const timeAgo = getTimeAgo(activity.timestamp);
+  const config = ACTIVITY_CONFIG[activity.type] || { icon: "🔔", color: "text-primary", label: "Atividade" };
+  const timeAgo = getTimeAgo(new Date(activity.timestamp));
 
   const content = (
     <div className="flex gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
@@ -67,8 +68,8 @@ function getTimeAgo(date: Date): string {
 
 export function ActivityFeedPopover() {
   const [open, setOpen] = useState(false);
-  const { activities, markAsRead, clearAll, getUnreadCount } = useActivityFeedStore();
-  const unreadCount = getUnreadCount();
+  const { activities, markActivityAsRead, clearAllActivities, getUnreadActivityCount } = useCrossTabBus();
+  const unreadCount = getUnreadActivityCount();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -92,7 +93,7 @@ export function ActivityFeedPopover() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => clearAll()}
+              onClick={() => clearAllActivities()}
               className="h-6 px-2"
             >
               <Trash2 className="h-3 w-3 mr-1" />
@@ -114,7 +115,7 @@ export function ActivityFeedPopover() {
                   key={activity.id}
                   activity={activity}
                   onRead={() => {
-                    markAsRead(activity.id);
+                    markActivityAsRead(activity.id);
                     if (activity.actionUrl) {
                       setOpen(false);
                     }

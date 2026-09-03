@@ -24,15 +24,13 @@ export const useActivityFeedStore = create<ActivityFeedState>((set, get) => ({
   activities: [],
 
   addActivity: (activity) => {
+    const newAct: ActivityItem = {
+      id: `${activity.type}-${Date.now()}-${Math.random()}`,
+      read: false,
+      ...activity,
+    };
     set((state) => ({
-      activities: [
-        {
-          id: `${activity.type}-${Date.now()}-${Math.random()}`,
-          read: false,
-          ...activity,
-        },
-        ...state.activities,
-      ].slice(0, 50), // Keep last 50 activities
+      activities: [newAct, ...state.activities].slice(0, 50),
     }));
   },
 
@@ -50,3 +48,4 @@ export const useActivityFeedStore = create<ActivityFeedState>((set, get) => ({
     return get().activities.filter((a) => !a.read).length;
   },
 }));
+
