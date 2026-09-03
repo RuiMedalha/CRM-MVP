@@ -357,11 +357,11 @@ function Customer360() {
         </div>
 
         <div className="flex-1 overflow-hidden">
-          <TabsContent value="timeline" className="data-[state=active]:flex-1 m-0" forceMount><TimelineTab timeline={data.timeline}/></TabsContent>
-          <TabsContent value="propostas" className="data-[state=active]:flex-1 m-0" forceMount><PropostasTab proposals={data.proposals || (data as any).quotations}/></TabsContent>
-          <TabsContent value="compras" className="data-[state=active]:flex-1 m-0" forceMount><ComprasTab orders={data.orders}/></TabsContent>
-          <TabsContent value="comunicacao" className="data-[state=active]:flex-1 m-0" forceMount><ComunicacaoTab timeline={data.timeline}/></TabsContent>
-          <TabsContent value="notas" className="data-[state=active]:flex-1 m-0" forceMount><NotasTab notes={data.notes} contactId={id} onCreateNote={(p)=>data.createNote?.(p)} onUpdateNote={data.updateNote} onDeleteNote={data.deleteNote}/></TabsContent>
+          <TabsContent value="timeline" className="data-[state=active]:flex-1 m-0"><TimelineTab timeline={data.timeline}/></TabsContent>
+          <TabsContent value="propostas" className="data-[state=active]:flex-1 m-0"><PropostasTab proposals={data.proposals || (data as any).quotations}/></TabsContent>
+          <TabsContent value="compras" className="data-[state=active]:flex-1 m-0"><ComprasTab orders={data.orders}/></TabsContent>
+          <TabsContent value="comunicacao" className="data-[state=active]:flex-1 m-0"><ComunicacaoTab timeline={data.timeline}/></TabsContent>
+          <TabsContent value="notas" className="data-[state=active]:flex-1 m-0"><NotasTab notes={data.notes} contactId={id} onCreateNote={(p)=>data.createNote?.(p)} onUpdateNote={data.updateNote} onDeleteNote={data.deleteNote}/></TabsContent>
         </div>
       </Tabs>
     </div>
