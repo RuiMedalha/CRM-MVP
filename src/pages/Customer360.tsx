@@ -6,7 +6,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
@@ -159,7 +159,7 @@ function ComprasTab({ orders }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">#'+str('(')+'o.order_number||"#"+o.wc_order_id'+str(')+'</span>
+                    <span className="font-semibold text-sm">#{o.order_number || o.wc_order_id || o.id}</span>
                     <Badge variant="outline" className={o.status==="completed"?"bg-green-100 text-green-800":o.status==="pending"||o.status==="processing"?"bg-yellow-100 text-yellow-800":o.status==="cancelled"?"bg-red-100 text-red-800":"bg-slate-100 text-slate-600"}>{sl2[o.status]||o.status}</Badge>
                   </div>
                   {o.items&&o.items.length>0&&<p className="text-xs text-muted-foreground mt-1">{o.items.length} item{o.items.length>1?"s":""}: {o.items.slice(0,3).map(i=>i.name).join(", ")}</p>}
