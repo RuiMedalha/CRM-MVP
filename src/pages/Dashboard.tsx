@@ -29,6 +29,7 @@ import {
 
 import { SlaCompliancePanel } from "@/components/dashboard/SlaCompliancePanel";
 import { EmployeeActivityPanel } from "@/components/dashboard/EmployeeActivityPanel";
+import ForecastWidget from "@/components/dashboard/ForecastWidget";
 
 const DEAL_STAGES_FUNNEL = [
   { value: "lead", label: "Lead", color: "#94a3b8" },
@@ -672,7 +673,10 @@ export default function Dashboard() {
 
         {/* SLA Compliance + Activity */}
         <div className="grid gap-4 lg:grid-cols-2">
-          {/* SLA Compliance */}
+                  {/* Forecast Widget */}
+        <ForecastWidget />
+
+        {/* SLA Compliance */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">SLA Email</CardTitle>
