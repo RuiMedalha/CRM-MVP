@@ -12,6 +12,7 @@ import { useLeadListener360 } from "@/hooks/useLeadListener360";
 import { useChannelSettingsSync } from "@/hooks/useChannelSettingsSync";
 import { useFollowUpNotifications } from "@/hooks/useFollowUpNotifications";
 import { useNewEmailNotifications } from "@/hooks/useNewEmailNotifications";
+import { ThemeProvider } from "@/hooks/useTheme";
 import { Loader2 } from "lucide-react";
 
 // Lazy-loaded pages (code splitting)
@@ -57,6 +58,7 @@ const CallsAI = lazy(() => import("./pages/CallsAI"));
 const LeadCaptureFormsSettings = lazy(() => import("./pages/settings/LeadCaptureForms"));
 const PublicLeadCapture = lazy(() => import("./pages/c/[slug]"));
 const Onboarding = lazy(() => import("./pages/onboarding"));
+const Appearance = lazy(() => import("./pages/settings/Appearance"));
 
 function PageLoader() {
   return (
@@ -131,6 +133,7 @@ const AppContent = () => {
         <Route path="/developer-tools" element={<ProtectedRoute><DeveloperTools /></ProtectedRoute>} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
         <Route path="/definicoes/lead-capture" element={<ProtectedRoute><LeadCaptureFormsSettings /></ProtectedRoute>} />
+        <Route path="/definicoes/aparencia" element={<ProtectedRoute><Appearance /></ProtectedRoute>} />
         <Route path="/c/:slug" element={<PublicLeadCapture />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -149,6 +152,7 @@ const AppContent = () => {
 
 const App = () => (
   <ErrorBoundary>
+    <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -160,6 +164,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   </ErrorBoundary>
 );
 
