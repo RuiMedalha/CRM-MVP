@@ -1,10 +1,12 @@
-﻿import { ArrowDownLeft, ArrowUpRight, Clock } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, Clock } from "lucide-react"
 
 import {
   isOperationallyUnhandled,
   operationalStatusLabel,
   operationalStatusTone,
 } from "@/lib/telecofQueue"
+
+import { useContactNameForPhone } from "@/services/contactIdentification"
 
 import type { TelecofCallEventRecord } from "@/types/telecof"
 
@@ -51,6 +53,8 @@ export function TelecofCallCard({ event, selected, onSelect }: Props) {
   const unhandled = isOperationallyUnhandled(event)
   const DirIcon = event.direction === "outbound" ? ArrowUpRight : ArrowDownLeft
   const phone = event.phone || event.normalizedPhone
+  const resolved = useContactNameForPhone(!event.customerName ? phone : undefined)
+  const displayName = event.customerName?.trim() || resolved.name || "Sem nome"
 
   return (
     <button
@@ -66,7 +70,7 @@ export function TelecofCallCard({ event, selected, onSelect }: Props) {
     >
       <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-          {event.customerName?.trim() || "Sem nome"}
+          {displayName}
         </span>
         <span
           className={`shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${TONE_CLASS[tone]}`}

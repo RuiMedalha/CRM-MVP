@@ -1,10 +1,12 @@
-﻿import { ArrowDownLeft, ArrowUpRight } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react"
 
 import {
   operationalStatusLabel,
   operationalStatusTone,
 } from "@/lib/telecofQueue"
 import { TelecofHubTags } from "./TelecofHubTags"
+
+import { useContactNameForPhone } from "@/services/contactIdentification"
 
 import type { TelecofCallEventRecord } from "@/types/telecof"
 
@@ -50,6 +52,8 @@ export function TelecofCallRow({ event, selected, onSelect }: Props) {
   const tone = operationalStatusTone(event)
   const DirIcon = event.direction === "outbound" ? ArrowUpRight : ArrowDownLeft
   const phone = event.phone || event.normalizedPhone
+  const resolved = useContactNameForPhone(!event.customerName ? phone : undefined)
+  const displayName = event.customerName?.trim() || resolved.name || "Sem nome"
 
   return (
     <button
@@ -64,7 +68,7 @@ export function TelecofCallRow({ event, selected, onSelect }: Props) {
       <span className="flex items-center gap-2">
         <DirIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-          {event.customerName?.trim() || "Sem nome"}
+          {displayName}
         </span>
         <span className="shrink-0 text-xs text-muted-foreground">
           {formatTime(event.startedAt ?? event.createdAt)}

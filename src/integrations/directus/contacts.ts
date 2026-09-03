@@ -344,24 +344,44 @@ export async function findDuplicateContact(input: {
 
   // Then phone across keys
   if (cleanPhone && cleanPhone.length >= 6) {
+    const { getPhoneSearchVariations } = await import("@/services/contactIdentification");
+    const variations = getPhoneSearchVariations(cleanPhone);
     const phoneKey = DIRECTUS_CONTACT_FIELD_MAP.phone || "phone";
     const waKey = DIRECTUS_CONTACT_FIELD_MAP.whatsapp_number || "whatsapp_number";
     const contactPhoneKey = DIRECTUS_CONTACT_FIELD_MAP.contact_phone || "contact_phone";
-    const normalized = normalizePhone(cleanPhone);
-    const filter = JSON.stringify({
-      _or: [
-        { [phoneKey]: { _ends_with: normalized } },
-        { [waKey]: { _ends_with: normalized } },
-        { [contactPhoneKey]: { _ends_with: normalized } },
-      ],
-    });
-    const rawRes = await fetch(
-      `https://api.hotelequip.pt/items/${DIRECTUS_CONTACTS_COLLECTION}?filter=${encodeURIComponent(filter)}&limit=1&fields=*`,
-      { headers: { Authorization: `Bearer ${DIRECTUS_ADMIN_TOKEN}` } },
-    );
-    const res = await rawRes.json() as { data: ContactItem[] };
-    const item = res?.data?.[0];
-    return item ? mapFromDirectusItem(item) : null;
+    const mobileKey = DIRECTUS_CONTACT_FIELD_MAP.mobile_phone || "mobile_phone";
+    const fields = [phoneKey, waKey, contactPhoneKey, mobileKey];
+
+    // 1. Fast match: _ends_with 9-digit tail
+    const tail9 = cleanPhone.replace(/\D/g, "").slice(-9);
+    if (tail9.length >= 6) {
+      for (const field of fields) {
+        try {
+          const res = await directusRequest<{ data: ContactItem[] }>(
+            `/items/${DIRECTUS_CONTACTS_COLLECTION}?filter[${field}][_ends_with]=${encodeURIComponent(tail9)}&limit=1&fields=*`
+          );
+          const item = res?.data?.[0];
+          if (item) return mapFromDirectusItem(item);
+        } catch {
+          // continue
+        }
+      }
+    }
+
+    // 2. Formatted variations match
+    for (const variant of variations) {
+      for (const field of fields) {
+        try {
+          const res = await directusRequest<{ data: ContactItem[] }>(
+            `/items/${DIRECTUS_CONTACTS_COLLECTION}?filter[${field}][_icontains]=${encodeURIComponent(variant)}&limit=1&fields=*`
+          );
+          const item = res?.data?.[0];
+          if (item) return mapFromDirectusItem(item);
+        } catch {
+          // continue
+        }
+      }
+    }
   }
 
   // Then email
