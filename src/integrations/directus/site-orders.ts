@@ -1,6 +1,8 @@
 import { directusAdminFetch, DIRECTUS_ADMIN_TOKEN } from "@/integrations/directus/client";
 import { qs } from "@/integrations/directus/utils";
-import { createQuotation, createQuotationItems } from "@/integrations/directus/quotations";
+import { createQuotation, createQuotationItems, patchQuotation } from "@/integrations/directus/quotations";
+import { createDeal, type DealRow, type DealStatus } from "@/integrations/directus/deals";
+import { auditMutation } from "@/integrations/directus/audit";
 
 /* ════════════════════════════════════════════════════════════════════════
    Pedidos (encomendas) do site WooCommerce — coleção Directus site_orders.
@@ -438,6 +440,85 @@ export interface UpdateWooTrackingResult {
   email_sent?: boolean;
   email_duplicate?: boolean;
   reason?: string;
+}
+
+/**
+ * Converte um pedido em **Oportunidade** (deal no pipeline) + **Proposta**
+ * linkada. Idempotente — se já houver `quotation_id` na order, devolve o id
+ * existente sem duplicar.
+ *
+ * Fluxo:
+ *  1. Idempotência: se `order.quotation_id` já existe, devolver esse.
+ *  2. Criar `deal` (status `lead`) com `customer_id` + `total_amount` da WC.
+ *  3. Criar `quotation` via `convertOrderToProposal(order)`.
+ *  4. Ligar `quotation.deal_id` = deal.id (PATCH) para a proposta aparecer
+ *     no contexto do deal no pipeline.
+ *  5. Audit: regista conversão no activity ledger (user_id/email do contexto).
+ *
+ * Devolve `{ dealId, quotationId }` para o caller poder navegar para qualquer
+ * um dos dois.
+ */
+export async function convertOrderToDeal(
+  order: SiteOrder,
+  extra?: { user_id?: string; user_email?: string },
+): Promise<{ dealId: string; quotationId: string }> {
+  // 1) Idempotência
+  if (order.quotation_id) {
+    const existingQuotationId = String(order.quotation_id);
+    // Buscar deal_id via quotation (se linkado)
+    try {
+      const res = await directusAdminFetch<{ data: { deal_id?: string | number } }>(
+        `/items/${import.meta.env.VITE_DIRECTUS_QUOTATIONS_COLLECTION || "quotations"}/${encodeURIComponent(existingQuotationId)}?fields=deal_id`,
+      );
+      const dealId = res?.data?.deal_id ? String(res.data.deal_id) : "";
+      if (dealId) return { dealId, quotationId: existingQuotationId };
+    } catch {
+      /* cai para o fluxo normal */
+    }
+    return { dealId: "", quotationId: existingQuotationId };
+  }
+
+  const cid = typeof order.contact_id === "object" ? (order.contact_id as any)?.id : order.contact_id;
+
+  // 2) Criar deal (lead) com total da WC
+  const totalAmount = Number(order.total) || 0;
+  const deal = (await createDeal({
+    title: order.order_number
+      ? `Encomenda #${order.order_number} — ${order.customer_name || "Cliente"}`
+      : `Encomenda #${order.id} — ${order.customer_name || "Cliente"}`,
+    customer_id: cid ? String(cid) : undefined,
+    status: "lead" as DealStatus,
+    total_amount: totalAmount,
+  } as Partial<DealRow>)) as DealRow | null;
+
+  const dealId = (deal as any)?.id ? String((deal as any).id) : "";
+
+  // 3) Criar quotation via função existente (passa a usar a versão com IVA real)
+  const quotationId = await convertOrderToProposal(order);
+
+  // 4) Ligar quotation.deal_id
+  if (dealId && quotationId) {
+    try {
+      await patchQuotation(quotationId, { deal_id: dealId } as any);
+    } catch (err) {
+      console.warn("[site-orders] falha ao ligar quotation.deal_id", err);
+    }
+  }
+
+  // 5) Audit (fire-and-forget — falhas não bloqueiam)
+  await auditMutation(
+    "site_orders",
+    "update",
+    null,
+    { id: order.id, quotation_id: quotationId, deal_id: dealId, status: order.status },
+    {
+      source: "convert_order_to_deal",
+      user_id: extra?.user_id,
+      user_email: extra?.user_email,
+    },
+  );
+
+  return { dealId, quotationId };
 }
 
 /**
