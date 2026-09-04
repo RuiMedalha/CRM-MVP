@@ -835,38 +835,15 @@ export function TelecofCallWorkspace() {
         )}
 
         {!identityLoading && identity?.kind === "lead" && (
-          <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/70 dark:bg-blue-950/20 dark:border-blue-800 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UserSearch className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-                  Lead Identificado (Prospeção)
-                </h3>
-              </div>
-              <Link
-                to="/leads"
-                className="inline-flex items-center gap-1 rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/40 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-200"
-              >
-                <ExternalLink className="h-3 w-3" /> Ver em Leads
-              </Link>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">
-                {String(identity.record?.display_name || identity.record?.contact_name || identity.record?.company_name || "Lead")}
-              </p>
-              {identity.record?.contact_name && (
-                <p className="text-xs text-muted-foreground">Contacto: {String(identity.record.contact_name)}</p>
-              )}
-              {identity.record?.email && (
-                <p className="text-xs text-muted-foreground">Email: {String(identity.record.email)}</p>
-              )}
-              {identity.record?.notes && (
-                <p className="text-xs text-muted-foreground line-clamp-2 bg-card/60 p-2 rounded-md border border-border">
-                  {String(identity.record.notes)}
-                </p>
-              )}
-            </div>
-          </div>
+          <CustomerDossierPanel
+            contactId={null}
+            leadId={identity.record?.id ? String(identity.record.id) : null}
+            variant="telecof"
+            defaultSource="telecof"
+            callId={selected.id}
+            noteQuickTags={Array.from(QUICK_TAGS)}
+            allowFollowUp
+          />
         )}
 
         {!identityLoading && identity?.kind === "contact" && (

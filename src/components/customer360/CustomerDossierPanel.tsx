@@ -348,8 +348,10 @@ export function CustomerDossierPanel({
         </section>
       )}
 
-      {/* Ações de conversão */}
-      {(cId || lId) && (cId || showConversionOnLead) && (
+      {/* Ações de conversão — sempre que houver contactId OU leadId.
+          (Para lead, ConvertActions decide internamente se mostra 'Promover
+          a Contacto' ou só 'Criar Oportunidade' consoante contact_id.) */}
+      {(cId || lId) && (
         <ConvertActions
           contactId={contactId}
           leadId={leadId}

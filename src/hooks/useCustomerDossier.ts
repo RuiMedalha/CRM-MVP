@@ -239,6 +239,20 @@ export function useCustomerDossier({
         );
       }
 
+      // 1b) Interações também filtradas por lead_id (quando estamos no fluxo
+      //     lead-only, antes de converter a contacto). Usa-se o segundo
+      //     filter do Directus para juntar contact_id+lead_id em paralelo.
+      if (!cId && lId) {
+        tasks.push(
+          (async () => {
+            const interactionsRes = await directusRequest<{ data: InteractionRow[] }>(
+              `/items/interactions?filter[lead_id][_eq]=${encodeURIComponent(lId)}&sort=-occurred_at,-date_created&limit=${maxInteractions}&fields=id,type,direction,status,source,external_id,occurred_at,summary,display_name,phone,email,payload,contact_id.id,lead_id.id,date_created,date_updated`,
+            ).catch(() => ({ data: [] }));
+            result.recentInteractions = interactionsRes?.data ?? [];
+          })(),
+        );
+      }
+
       // 2) Lead (se passado e ainda sem contact_id)
       if (lId) {
         tasks.push(
