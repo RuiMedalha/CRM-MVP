@@ -1,10 +1,11 @@
-﻿import { memo } from "react"
+import { memo } from "react"
 
 import { getChannelVisual } from "@/lib/channelRegistry"
 import { formatConversationUpdatedAt } from "@/lib/formatConversationTime"
 import { formatLastMessagePreview } from "@/lib/messageMetadata"
 import { getOperationalStatusLabel } from "./ConversationStatusBadge"
 import { ConversationTagBadges } from "./ConversationTagBadges"
+import { useContactNameForPhone } from "@/services/contactIdentification"
 
 import type { Conversation } from "@/types/conversation"
 
@@ -82,6 +83,12 @@ function ConversationItemBase({
   const priority = conversation.priority ?? "normal"
   const priorityDot = PRIORITY_DOT[priority] ?? PRIORITY_DOT.normal
 
+  const rawPhone = displayPhone(conversation) || conversation.customerName || ""
+  const isNamePhone = !conversation.customerName || isPhoneLike(conversation.customerName) || conversation.customerName.includes("@s.whatsapp.net")
+  const resolved = useContactNameForPhone(isNamePhone && rawPhone ? rawPhone : undefined)
+  const titleName = (!isNamePhone ? conversation.customerName?.trim() : null) || resolved.name || displayName(conversation)
+  const isResolvedRealName = Boolean(resolved.name || (!isNamePhone && conversation.customerName?.trim()))
+
   return (
     <article
       role="button"
@@ -111,7 +118,7 @@ function ConversationItemBase({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-1">
             <h2 className={`truncate font-semibold text-foreground ${compact ? "text-sm" : "text-base"}`}>
-              {displayName(conversation)}
+              {titleName}
             </h2>
             <time className="shrink-0 text-xs font-medium text-muted-foreground" dateTime={conversation.lastActivityAt || conversation.createdAt}>
               {formatConversationUpdatedAt(conversation.lastActivityAt || conversation.createdAt)}
@@ -119,14 +126,12 @@ function ConversationItemBase({
           </div>
 
           {(() => {
-            // Mostrar o número de telefone como subtítulo sempre que o nome
-            // apresentado for um nome real (não o próprio número formatado).
+            // Mostrar o número de telefone como subtítulo quando o nome for real
             if (compact) return null
-            const name = conversation.customerName || ""
-            if (!name || isPhoneLike(name)) return null
-            const phone = displayPhone(conversation)
-            if (!phone) return null
-            return <p className="truncate text-xs text-muted-foreground">{phone}</p>
+            if (isResolvedRealName && rawPhone) {
+              return <p className="truncate text-xs text-muted-foreground">{rawPhone}</p>
+            }
+            return null
           })()}
 
           {company && !compact && (

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Painel 360 lateral no inbox — campos editáveis + operações da conversa.
  * Replica as funcionalidades do HubChat CustomerPanel.
  */
@@ -14,6 +14,10 @@ import {
   Phone,
   Save,
   X,
+  Search,
+  Link2,
+  Building2,
+  UserPlus,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -180,9 +184,83 @@ export function ComunicacoesCliente360Panel({
   const [secAgente, setSecAgente] = useState(false);
   const [secHistorico, setSecHistorico] = useState(false);
 
-  // Hover expand
-  const [hovered, setHovered] = useState(false);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Search existing contact to link
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchingContacts, setSearchingContacts] = useState(false);
+  const [contactResults, setContactResults] = useState<Array<{
+    id: string | number;
+    company_name?: string;
+    contact_name?: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    nif?: string;
+    city?: string;
+  }>>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Search existing contacts debounce
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    const q = searchQuery.trim();
+    if (!q || q.length < 2) {
+      setContactResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+
+    setSearchingContacts(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const encoded = encodeURIComponent(q);
+        const res = await fetch(
+          `${DIRECTUS_URL}/items/contacts?search=${encoded}&limit=6&fields=id,company_name,contact_name,name,phone,email,nif,city`,
+          { headers: AUTH_HEADERS }
+        );
+        const data = await res.json();
+        setContactResults(data?.data || []);
+        setShowSearchDropdown(true);
+      } catch {
+        setContactResults([]);
+      } finally {
+        setSearchingContacts(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, [searchQuery]);
+
+  async function handleLinkExistingContact(c: any) {
+    if (!conversationId) return;
+    setSaving(true);
+    try {
+      const cId = String(c.id);
+      const companyName = String(c.company_name || c.name || c.contact_name || "").trim();
+      const resp = await fetch(`${DIRECTUS_URL}/items/conversations/${encodeURIComponent(conversationId)}`, {
+        method: "PATCH",
+        headers: AUTH_HEADERS,
+        body: JSON.stringify({
+          contact_id: cId,
+          customer_name: companyName || undefined,
+        }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      toast({ title: "Contacto associado!", description: `Conversa vinculada a ${companyName || `#${cId}`}.` });
+      setShowSearchDropdown(false);
+      setSearchQuery("");
+      qc.invalidateQueries({ queryKey: ["contact-360"] });
+      qc.invalidateQueries({ queryKey: ["conversation", conversationId] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+    } catch {
+      toast({ title: "Erro ao associar contacto", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function setField(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -419,6 +497,51 @@ export function ComunicacoesCliente360Panel({
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-3 space-y-0.5">
+
+          {/* Quick associate existing contact */}
+          {isNew && (
+            <div className="relative mb-3 pb-2 border-b border-border">
+              <div className="flex items-center rounded-md border border-border bg-background px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-primary/30">
+                <Search className="h-3.5 w-3.5 text-muted-foreground mr-1.5 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Pesquisar cliente existente no CRM..."
+                  className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                />
+                {searchingContacts && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0 ml-1" />}
+              </div>
+
+              {showSearchDropdown && contactResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">Clientes Encontrados:</p>
+                  {contactResults.map((c) => {
+                    const cName = c.company_name || c.name || c.contact_name || `Contacto #${c.id}`
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void handleLinkExistingContact(c)}
+                        className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs text-foreground hover:bg-accent transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold truncate">{cName}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {c.phone ? `Tel: ${c.phone}` : ""} {c.nif ? `· NIF: ${c.nif}` : ""} {c.city ? `· ${c.city}` : ""}
+                          </p>
+                        </div>
+                        <span className="ml-2 inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary shrink-0">
+                          <Link2 className="h-3 w-3" /> Associar
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Loading */}
           {!isNew && contactLoading && (

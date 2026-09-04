@@ -48,13 +48,20 @@ interface Props {
   onSelect?: () => void
 }
 
+function isPhoneLike(value?: string | null): boolean {
+  if (!value) return false
+  const stripped = value.replace(/[\s\-\+\(\)]/g, "")
+  return /^\d{7,15}$/.test(stripped)
+}
+
 export function TelecofCallCard({ event, selected, onSelect }: Props) {
   const tone = operationalStatusTone(event)
   const unhandled = isOperationallyUnhandled(event)
   const DirIcon = event.direction === "outbound" ? ArrowUpRight : ArrowDownLeft
   const phone = event.phone || event.normalizedPhone
-  const resolved = useContactNameForPhone(!event.customerName ? phone : undefined)
-  const displayName = event.customerName?.trim() || resolved.name || "Sem nome"
+  const isNamePhone = !event.customerName || isPhoneLike(event.customerName)
+  const resolved = useContactNameForPhone(isNamePhone ? phone : undefined)
+  const displayName = (!isNamePhone ? event.customerName?.trim() : null) || resolved.name || event.customerName?.trim() || "Sem nome"
 
   return (
     <button
