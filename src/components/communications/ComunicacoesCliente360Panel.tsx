@@ -177,6 +177,15 @@ export function ComunicacoesCliente360Panel({
 
   const [assignedAgent, setAssignedAgent] = useState("");
 
+  const [hovered, setHovered] = useState(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    };
+  }, []);
+
   const [secDados, setSecDados] = useState(true);
   const [secOps, setSecOps] = useState(true);
   const [secNota, setSecNota] = useState(false);
