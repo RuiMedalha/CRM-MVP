@@ -109,6 +109,69 @@ export async function fetchLatestIncomingLead(): Promise<LeadItem | null> {
   return null;
 }
 
+/**
+ * Converte uma Lead num Contacto (Lead → Contacto).
+ *
+ * Comportamento:
+ *  1. Se o lead já tem contact_id, devolve esse ID (idempotente).
+ *  2. Caso contrário, cria um Contacto novo (campos do override têm prioridade).
+ *  3. Faz PATCH do lead com { status: "processed", contact_id }.
+ *  4. (best-effort) PATCH do contacto com { source_lead_id } — campo opcional,
+ *     tolerado se o schema não tiver.
+ *
+ * NÃO cria registos em `interactions` — isso é responsabilidade do caller
+ * (ex.: useCustomerDossier.convertLeadToContact que também regista type=conversion).
+ *
+ * Devolve o contactId final.
+ */
+export async function convertLeadToContact(
+  lead: Pick<LeadItem, "id" | "display_name" | "phone" | "email" | "contact_id" | "notes">,
+  overrides?: {
+    company_name?: string;
+    contact_name?: string;
+    nif?: string;
+    email?: string;
+  },
+): Promise<{ contactId: string }> {
+  let contactId = lead.contact_id ? String(lead.contact_id) : "";
+
+  if (!contactId) {
+    const fallbackName =
+      overrides?.company_name || lead.display_name || "Lead Telecof";
+    // Import dinâmico para evitar ciclo de imports (contacts.ts já importa leads.ts)
+    const { createContact } = await import("./contacts");
+    const created = await createContact({
+      company_name: fallbackName,
+      contact_name: overrides?.contact_name || fallbackName,
+      phone: lead.phone || undefined,
+      email: overrides?.email || lead.email || undefined,
+      nif: overrides?.nif || undefined,
+      source: "telecof",
+      notes: lead.notes || "Lead promovido a Contacto",
+    } as any);
+    contactId = String((created as { id?: string | number })?.id ?? "");
+    if (!contactId) throw new Error("Falha a criar contacto a partir da lead");
+  }
+
+  await patchLead(lead.id, {
+    status: "processed",
+    contact_id: contactId,
+  } as Partial<LeadItem>);
+
+  // Tenta ligar a lead ao contacto (best-effort — campo source_lead_id pode não existir)
+  try {
+    const { patchContact } = await import("./contacts");
+    await patchContact(contactId, {
+      // @ts-expect-error: campo opcional não garantido pelo schema
+      source_lead_id: lead.id,
+    });
+  } catch {
+    /* silencioso */
+  }
+
+  return { contactId };
+}
+
 export async function fetchMissedLeads(): Promise<LeadItem[]> {
   const res = await directusRequest<{ data: LeadItem[] }>(
     `/items/${DIRECTUS_LEADS_COLLECTION}${qs({
