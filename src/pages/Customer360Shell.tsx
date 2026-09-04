@@ -36,6 +36,8 @@ import { CreateContactForm } from "@/components/customer360/edit/CreateContactFo
 import { Customer360Hub, addRecentContact } from "@/components/customer360/Customer360Hub";
 import { FollowUpsPanel } from "@/components/customer360/FollowUpsPanel";
 import { NewsletterBanner } from "@/components/customer360/NewsletterBanner";
+import { MobileTabDrawer, type TabDescriptor } from "@/components/customer360/MobileTabDrawer";
+import { Breadcrumb } from "@/components/customer360/Breadcrumb";
 import { SectionCard } from "@/components/customer360/ui/SectionCard";
 import { EmptyState } from "@/components/customer360/ui/EmptyState";
 import { useCustomer360 } from "@/hooks/useCustomer360";
@@ -55,15 +57,15 @@ import type { Customer360Data } from "@/types/customer360";
 
 type TabId = "geral" | "editar" | "comunicacoes" | "propostas" | "oportunidades" | "followups" | "historico" | "tracking";
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "geral", label: "Geral" },
-  { id: "editar", label: "Editar ficha" },
-  { id: "comunicacoes", label: "Comunicações" },
-  { id: "propostas", label: "Propostas" },
-  { id: "oportunidades", label: "Oportunidades" },
-  { id: "followups", label: "Follow-ups" },
-  { id: "historico", label: "Histórico" },
-  { id: "tracking", label: "Tracking" },
+const TABS: TabDescriptor[] = [
+  { id: "geral", label: "Geral", icon: "🏠" },
+  { id: "editar", label: "Editar ficha", icon: "✏️" },
+  { id: "comunicacoes", label: "Comunicações", icon: "💬" },
+  { id: "propostas", label: "Propostas", icon: "📄" },
+  { id: "oportunidades", label: "Oportunidades", icon: "🎯" },
+  { id: "followups", label: "Follow-ups", icon: "📅" },
+  { id: "historico", label: "Histórico", icon: "🕒" },
+  { id: "tracking", label: "Tracking", icon: "🚚" },
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -377,25 +379,25 @@ export default function Customer360Shell() {
               </Link>
             )}
           </div>
-          {/* Tab bar */}
-          <div className="flex gap-1 overflow-x-auto border-b border-border -mb-px">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "whitespace-nowrap px-3.5 py-2 text-sm font-medium transition-colors relative",
-                  activeTab === tab.id
-                    ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
         </div>
+
+        {/* Breadcrumb acima da nav */}
+        <div className="px-5 py-1.5 border-b border-border bg-card/40">
+          <Breadcrumb
+            items={[
+              { label: "HotelEquip", href: "/" },
+              { label: "Clientes", href: "/clientes" },
+              { label: org.name },
+            ]}
+          />
+        </div>
+
+        {/* MobileTabDrawer (coexiste: drawer em <lg + tabs em ≥lg) */}
+        <MobileTabDrawer
+          tabs={TABS}
+          activeId={activeTab}
+          onChange={(id) => setActiveTab(id as TabId)}
+        />
 
         {/* Tab content */}
         <div className="flex-1 min-h-0 overflow-auto">
