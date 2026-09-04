@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { ChevronLeft } from "lucide-react"
 
 import { TelecofCallsList } from "./TelecofCallsList"
@@ -13,18 +13,25 @@ export function TelecofAttendanceWorkbench() {
   const selectedEventId = useTelecofCallStore((s) => s.selectedEventId)
   const events = useTelecofCallStore((s) => s.events)
   const selectEvent = useTelecofCallStore((s) => s.selectEvent)
+  const hasInitializedSelectionRef = useRef(false)
 
   const selectedEvent = useTelecofCallStore((s) =>
     s.events.find((e) => e.id === selectedEventId),
   )
-  const clearSelection = () => useTelecofCallStore.getState().selectEvent(undefined)
+  const clearSelection = () => {
+    hasInitializedSelectionRef.current = true
+    useTelecofCallStore.getState().selectEvent(undefined)
+  }
 
-  // Auto-seleciona a primeira chamada (por tratar ou mais recente) caso não haja seleção inicial
+  // Auto-seleciona a primeira chamada apenas no carregamento inicial da página (uma única vez)
   useEffect(() => {
-    if (!selectedEventId && events.length > 0) {
-      const firstUnhandled = events.find((e) => e.operationalStatus === "unhandled" || e.operationalStatus === "new") || events[0]
-      if (firstUnhandled) {
-        selectEvent(firstUnhandled.id)
+    if (!hasInitializedSelectionRef.current && events.length > 0) {
+      hasInitializedSelectionRef.current = true
+      if (!selectedEventId) {
+        const firstUnhandled = events.find((e) => e.operationalStatus === "unhandled" || e.operationalStatus === "new") || events[0]
+        if (firstUnhandled) {
+          selectEvent(firstUnhandled.id)
+        }
       }
     }
   }, [selectedEventId, events, selectEvent])

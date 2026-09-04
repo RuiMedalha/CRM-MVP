@@ -4,7 +4,7 @@
  * - Resumo / nota rápida
  * - Botões de ação: Assumir, Tratado, Publicidade, Reclamar, WhatsApp, Apagar, CRM
  */
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import {
   ExternalLink,
   MessageCircle,
@@ -44,7 +44,6 @@ import { TelecofLeadCapture } from "./TelecofLeadCapture"
 import { toast } from "@/hooks/use-toast"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -103,7 +102,7 @@ export function TelecofCallWorkspace() {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [confirmCallback, setConfirmCallback] = useState(false)
 
-  // Caller identification (POST /identify-contact)
+  // Caller identification: default imediato para "unknown" para exibir a Ficha instantaneamente
   const [identity, setIdentity] = useState<{
     kind: "contact" | "lead" | "unknown"
     record?: Record<string, unknown>
@@ -112,8 +111,9 @@ export function TelecofCallWorkspace() {
     openDeals?: number
     interactionCount?: number
     lastActivity?: string | null
-  } | null>(null)
+  }>(() => ({ kind: "unknown" }))
   const [identityLoading, setIdentityLoading] = useState(false)
+  const lastLoadedKeyRef = useRef<string>("")
 
   // In-place contact editor state
   const [isEditingContact, setIsEditingContact] = useState(false)
@@ -144,7 +144,12 @@ export function TelecofCallWorkspace() {
     }
   }, [identity?.record, identity?.kind, selected?.phone, selected?.normalizedPhone])
 
-  const loadIdentityForPhone = useCallback(async (phone: string, contactId?: string) => {
+  const loadIdentityForPhone = useCallback(async (
+    phone: string,
+    contactId?: string,
+    callId?: string,
+    currentCustomerName?: string,
+  ) => {
     setIdentityLoading(true)
     try {
       // 1. Se o evento já tem contact_id associado, carrega imediatamente por ID
@@ -175,7 +180,7 @@ export function TelecofCallWorkspace() {
         }
       }
 
-      // 2. Pesquisa de contacto pelo número de telefone
+      // 2. Pesquisa de contacto pelo número de telefone (1 single fast query)
       if (phone && phone.trim()) {
         const { identifyByPhoneOrEmail } = await import("@/services/contactIdentification")
         const result = await identifyByPhoneOrEmail({ phone })
@@ -203,10 +208,10 @@ export function TelecofCallWorkspace() {
             lastActivity: result.lastActivity,
           })
 
-          if (selected) {
+          if (callId) {
             const identifiedName = String(result.record.company_name || result.record.contact_name || result.record.name || "").trim()
-            if (identifiedName && identifiedName !== selected.customerName) {
-              patchHubCommunicationEvent(selected.id, {
+            if (identifiedName && identifiedName !== currentCustomerName) {
+              patchHubCommunicationEvent(callId, {
                 customer_name: identifiedName,
                 contact_id: String(result.record.id),
               }).then((updated) => mergeEvent(updated)).catch(() => {})
@@ -229,30 +234,39 @@ export function TelecofCallWorkspace() {
         }
       }
 
-      // 3. Caso não identificado, disponibiliza de imediato o formulário de preenchimento
+      // 3. Caso não identificado, mantém o formulário pronto para preenchimento
       setIdentity({ kind: "unknown" })
     } catch {
       setIdentity({ kind: "unknown" })
     } finally {
       setIdentityLoading(false)
     }
-  }, [selected, mergeEvent])
+  }, [mergeEvent])
 
   useEffect(() => {
     if (!selected) {
-      setIdentity(null)
+      setIdentity({ kind: "unknown" })
       setIdentityLoading(false)
+      lastLoadedKeyRef.current = ""
       return
     }
     const phone = selected.normalizedPhone || selected.phone || ""
-    const contactId = selected.contactId
+    const contactId = selected.contactId || ""
+    const currentKey = `${selected.id}:${phone}:${contactId}`
+
+    if (lastLoadedKeyRef.current === currentKey) {
+      // Já carregado para esta chamada e número — previne loop infinito de polling
+      return
+    }
+    lastLoadedKeyRef.current = currentKey
+
     if (!phone && !contactId) {
       setIdentity({ kind: "unknown" })
       setIdentityLoading(false)
       return
     }
-    void loadIdentityForPhone(phone, contactId)
-  }, [selected?.id, selected?.contactId, selected?.normalizedPhone, selected?.phone, loadIdentityForPhone])
+    void loadIdentityForPhone(phone, contactId, selected.id, selected.customerName)
+  }, [selected?.id, selected?.contactId, selected?.normalizedPhone, selected?.phone, selected?.customerName, loadIdentityForPhone])
 
   const handleContactCreated = useCallback(async (contact: any, contactId: string | number) => {
     const cId = String(contactId)
@@ -740,14 +754,7 @@ export function TelecofCallWorkspace() {
           )}
         </dl>
 
-        {/* Identificação automática do chamador e Dossiê 360 */}
-        {identityLoading && !identity && (
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground animate-pulse">
-            <UserSearch className="h-4 w-4 animate-spin text-primary shrink-0" />
-            <span>A verificar ficha de cliente associada a {selected.phone || selected.normalizedPhone || "chamador"}…</span>
-          </div>
-        )}
-
+        {/* Ficha de Preenchimento Imediato (Contacto Novo / Não Registado) */}
         {identity?.kind === "unknown" && (
           <TelecofLeadCapture
             phone={selected.phone || selected.normalizedPhone || ""}

@@ -76,12 +76,14 @@ const POLL_MS = 4000
 
 export function useTelecofCallsPolling(): void {
   const inboxViewMode = useInboxFilterStore((s) => s.inboxViewMode)
-  const { setEvents, setLoading, events } = useTelecofCallStore()
+  const setEvents = useTelecofCallStore((s) => s.setEvents)
+  const setLoading = useTelecofCallStore((s) => s.setLoading)
 
   useEffect(() => {
     if (inboxViewMode !== "telecof_calls") return
 
     let cancelled = false
+    let isFirst = true
 
     async function tick() {
       if (!DIRECTUS_URL) {
@@ -92,15 +94,20 @@ export function useTelecofCallsPolling(): void {
         return
       }
 
-      setLoading(true)
+      if (isFirst) {
+        setLoading(true)
+      }
 
       try {
         const rows = await listTelecofQueueEvents(200)
         if (!cancelled) setEvents(rows)
-      } catch {
-        if (!cancelled && events.length === 0) setEvents([])
+      } catch (err) {
+        console.warn("[useTelecofCallsPolling] fetch failed", err)
       } finally {
-        if (!cancelled) setLoading(false)
+        if (isFirst && !cancelled) {
+          isFirst = false
+          setLoading(false)
+        }
       }
     }
 
@@ -111,5 +118,5 @@ export function useTelecofCallsPolling(): void {
       cancelled = true
       window.clearInterval(id)
     }
-  }, [inboxViewMode, setEvents, setLoading, events.length])
+  }, [inboxViewMode, setEvents, setLoading])
 }

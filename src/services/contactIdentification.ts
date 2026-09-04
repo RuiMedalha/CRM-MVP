@@ -97,155 +97,152 @@ export function getPhoneSearchVariations(raw: string): string[] {
  * Identify a contact or lead by phone number and/or email.
  * Priority: contact > lead. If found in both, returns contact with alsoLeadId.
  */
+const identificationCache = new Map<string, { result: IdentificationResult; timestamp: number }>();
+const CACHE_TTL_MS = 60_000;
+
 export async function identifyByPhoneOrEmail(
   params: IdentifyParams,
 ): Promise<IdentificationResult> {
   const { phone, email } = params;
-  const variations = phone ? getPhoneSearchVariations(phone) : [];
+  const cacheKey = `${(phone || "").trim()}:${(email || "").trim()}`;
+  if (cacheKey !== ":") {
+    const cached = identificationCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.result;
+    }
+  }
+
   const phoneTail = phone ? normalizePhone(phone) : "";
+  const variations = phone ? getPhoneSearchVariations(phone) : [];
 
-  // ─── Search contacts first ──────────────────────────────────────────
+  // ─── Search contacts (single fast OR query) ──────────────────────────
   if (phoneTail && isValidPhone(phoneTail)) {
-    const contactFields = ["phone", "mobile_phone", "contact_phone", "whatsapp_number"];
-
-    // 1. Fast match: _ends_with with 9-digit tail on all phone fields
-    for (const field of contactFields) {
-      try {
-        const res = await directusRequest<{ data: Record<string, unknown>[] }>(
-          `/items/contacts?filter[${field}][_ends_with]=${encodeURIComponent(phoneTail)}&limit=1&fields=*`
-        );
-        if (res?.data?.length) {
-          const contact = res.data[0];
-          const enrichment = await getContactEnrichment(contact.id as number);
-          const leadId = await findLeadByPhone(phoneTail);
-          return {
-            kind: "contact",
-            record: contact,
-            matchedBy: field as IdentificationResult["matchedBy"],
-            ...enrichment,
-            ...(leadId ? { alsoLeadId: leadId } : {}),
-          };
-        }
-      } catch { /* continue */ }
-    }
-
-    // 2. Formatted match: _icontains with phone variations (e.g. "917 226 585", "+351 917 226 585")
-    for (const variant of variations) {
-      if (variant === phoneTail) continue;
-      for (const field of contactFields) {
-        try {
-          const res = await directusRequest<{ data: Record<string, unknown>[] }>(
-            `/items/contacts?filter[${field}][_icontains]=${encodeURIComponent(variant)}&limit=1&fields=*`
-          );
-          if (res?.data?.length) {
-            const contact = res.data[0];
-            const enrichment = await getContactEnrichment(contact.id as number);
-            const leadId = await findLeadByPhone(phoneTail);
-            return {
-              kind: "contact",
-              record: contact,
-              matchedBy: field as IdentificationResult["matchedBy"],
-              ...enrichment,
-              ...(leadId ? { alsoLeadId: leadId } : {}),
-            };
-          }
-        } catch { /* continue */ }
+    const contactOrFilters: Record<string, unknown>[] = [
+      { phone: { _ends_with: phoneTail } },
+      { mobile_phone: { _ends_with: phoneTail } },
+      { contact_phone: { _ends_with: phoneTail } },
+      { whatsapp_number: { _ends_with: phoneTail } },
+    ];
+    for (const v of variations) {
+      if (v !== phoneTail && v.length >= 7) {
+        contactOrFilters.push({ phone: { _icontains: v } });
+        contactOrFilters.push({ mobile_phone: { _icontains: v } });
       }
     }
+
+    try {
+      const filterParam = encodeURIComponent(JSON.stringify({ _or: contactOrFilters }));
+      const res = await directusRequest<{ data: Record<string, unknown>[] }>(
+        `/items/contacts?filter=${filterParam}&limit=1&fields=*`
+      );
+      if (res?.data?.length) {
+        const contact = res.data[0];
+        const enrichment = await getContactEnrichment(contact.id as number);
+        const leadId = await findLeadByPhone(phoneTail);
+        const result: IdentificationResult = {
+          kind: "contact",
+          record: contact,
+          matchedBy: "phone",
+          ...enrichment,
+          ...(leadId ? { alsoLeadId: leadId } : {}),
+        };
+        identificationCache.set(cacheKey, { result, timestamp: Date.now() });
+        return result;
+      }
+    } catch { /* continue to email or leads */ }
   }
 
   if (email?.trim()) {
     const normalizedEmail = email.trim().toLowerCase();
-    for (const field of ["email", "contact_email"]) {
-      try {
-        const res = await directusRequest<{ data: Record<string, unknown>[] }>(
-          `/items/contacts?filter[${field}][_eq]=${encodeURIComponent(normalizedEmail)}&limit=1&fields=*`
-        );
-        if (res?.data?.length) {
-          const contact = res.data[0];
-          const enrichment = await getContactEnrichment(contact.id as number);
-          const leadId = await findLeadByEmail(normalizedEmail);
-          return {
-            kind: "contact",
-            record: contact,
-            matchedBy: "email",
-            ...enrichment,
-            ...(leadId ? { alsoLeadId: leadId } : {}),
-          };
-        }
-      } catch { /* continue */ }
-    }
+    try {
+      const emailFilter = encodeURIComponent(JSON.stringify({
+        _or: [
+          { email: { _eq: normalizedEmail } },
+          { contact_email: { _eq: normalizedEmail } },
+        ]
+      }));
+      const res = await directusRequest<{ data: Record<string, unknown>[] }>(
+        `/items/contacts?filter=${emailFilter}&limit=1&fields=*`
+      );
+      if (res?.data?.length) {
+        const contact = res.data[0];
+        const enrichment = await getContactEnrichment(contact.id as number);
+        const leadId = await findLeadByEmail(normalizedEmail);
+        const result: IdentificationResult = {
+          kind: "contact",
+          record: contact,
+          matchedBy: "email",
+          ...enrichment,
+          ...(leadId ? { alsoLeadId: leadId } : {}),
+        };
+        identificationCache.set(cacheKey, { result, timestamp: Date.now() });
+        return result;
+      }
+    } catch { /* continue to leads */ }
   }
 
-  // ─── Search leads ───────────────────────────────────────────────────
+  // ─── Search leads (single fast OR query) ────────────────────────────
   if (phoneTail && isValidPhone(phoneTail)) {
-    const leadFields = ["phone", "whatsapp_number", "contact_phone"];
-
-    // 1. Fast match on leads
-    for (const field of leadFields) {
-      try {
-        const res = await directusRequest<{ data: Record<string, unknown>[] }>(
-          `/items/leads?filter[${field}][_ends_with]=${encodeURIComponent(phoneTail)}&limit=1&fields=*`
-        );
-        if (res?.data?.length) {
-          return {
-            kind: "lead",
-            record: res.data[0],
-            matchedBy: field === "contact_phone" ? "phone" : field as IdentificationResult["matchedBy"],
-            interactionCount: 0,
-            openDeals: 0,
-            lastActivity: (res.data[0].last_attempt_at as string) || null,
-          };
-        }
-      } catch { /* continue */ }
-    }
-
-    // 2. Formatted match on leads
-    for (const variant of variations) {
-      if (variant === phoneTail) continue;
-      for (const field of leadFields) {
-        try {
-          const res = await directusRequest<{ data: Record<string, unknown>[] }>(
-            `/items/leads?filter[${field}][_icontains]=${encodeURIComponent(variant)}&limit=1&fields=*`
-          );
-          if (res?.data?.length) {
-            return {
-              kind: "lead",
-              record: res.data[0],
-              matchedBy: field === "contact_phone" ? "phone" : field as IdentificationResult["matchedBy"],
-              interactionCount: 0,
-              openDeals: 0,
-              lastActivity: (res.data[0].last_attempt_at as string) || null,
-            };
-          }
-        } catch { /* continue */ }
+    const leadOrFilters: Record<string, unknown>[] = [
+      { phone: { _ends_with: phoneTail } },
+      { contact_phone: { _ends_with: phoneTail } },
+      { whatsapp_number: { _ends_with: phoneTail } },
+    ];
+    for (const v of variations) {
+      if (v !== phoneTail && v.length >= 7) {
+        leadOrFilters.push({ phone: { _icontains: v } });
       }
     }
+
+    try {
+      const filterParam = encodeURIComponent(JSON.stringify({ _or: leadOrFilters }));
+      const res = await directusRequest<{ data: Record<string, unknown>[] }>(
+        `/items/leads?filter=${filterParam}&limit=1&fields=*`
+      );
+      if (res?.data?.length) {
+        const result: IdentificationResult = {
+          kind: "lead",
+          record: res.data[0],
+          matchedBy: "phone",
+          interactionCount: 0,
+          openDeals: 0,
+          lastActivity: (res.data[0].last_attempt_at as string) || null,
+        };
+        identificationCache.set(cacheKey, { result, timestamp: Date.now() });
+        return result;
+      }
+    } catch { /* continue */ }
   }
 
   if (email?.trim()) {
     const normalizedEmail = email.trim().toLowerCase();
-    for (const field of ["email", "contact_email"]) {
-      try {
-        const res = await directusRequest<{ data: Record<string, unknown>[] }>(
-          `/items/leads?filter[${field}][_eq]=${encodeURIComponent(normalizedEmail)}&limit=1&fields=*`
-        );
-        if (res?.data?.length) {
-          return {
-            kind: "lead",
-            record: res.data[0],
-            matchedBy: "email",
-            interactionCount: 0,
-            openDeals: 0,
-            lastActivity: (res.data[0].last_attempt_at as string) || null,
-          };
-        }
-      } catch { /* continue */ }
-    }
+    try {
+      const emailFilter = encodeURIComponent(JSON.stringify({
+        _or: [
+          { email: { _eq: normalizedEmail } },
+          { contact_email: { _eq: normalizedEmail } },
+        ]
+      }));
+      const res = await directusRequest<{ data: Record<string, unknown>[] }>(
+        `/items/leads?filter=${emailFilter}&limit=1&fields=*`
+      );
+      if (res?.data?.length) {
+        const result: IdentificationResult = {
+          kind: "lead",
+          record: res.data[0],
+          matchedBy: "email",
+          interactionCount: 0,
+          openDeals: 0,
+          lastActivity: (res.data[0].last_attempt_at as string) || null,
+        };
+        identificationCache.set(cacheKey, { result, timestamp: Date.now() });
+        return result;
+      }
+    } catch { /* continue */ }
   }
 
   // ─── Unknown ────────────────────────────────────────────────────────
-  return {
+  const result: IdentificationResult = {
     kind: "unknown",
     record: null,
     matchedBy: null,
@@ -253,6 +250,8 @@ export async function identifyByPhoneOrEmail(
     openDeals: 0,
     lastActivity: null,
   };
+  identificationCache.set(cacheKey, { result, timestamp: Date.now() });
+  return result;
 }
 
 /**

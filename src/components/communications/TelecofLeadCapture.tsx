@@ -373,179 +373,160 @@ export function TelecofLeadCapture({ phone = "", callId = "", onContactCreated, 
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-        <TabsList className="grid grid-cols-2 w-full h-8 bg-muted/60">
-          <TabsTrigger value="contact" className="text-xs data-[state=active]:bg-background gap-1 font-semibold">
-            <Building2 className="h-3.5 w-3.5 text-primary" />
-            Criar Ficha Cliente (360)
-          </TabsTrigger>
-          <TabsTrigger value="lead" className="text-xs data-[state=active]:bg-background gap-1 font-semibold">
-            <UserRoundPlus className="h-3.5 w-3.5 text-amber-600" />
-            Criar Lead Prospeção
-          </TabsTrigger>
-        </TabsList>
-
-        {/* TAB 1: CRIAR CONTACTO / CLIENTE 360 (DIRECT CONTACT LINES) */}
-        <TabsContent value="contact" className="space-y-2.5 pt-2 mt-0">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Empresa / Nome Comercial *</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Hotel Mar & Sol Lda"
-                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Pessoa de Contacto</label>
-              <input
-                type="text"
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-                placeholder="Ex: João Pereira"
-                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Telefone</label>
-              <input
-                type="text"
-                value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
-                placeholder="Ex: 917226585 ou +351917226585"
-                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Ex: compras@hotelmarsol.pt"
-                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">NIF / Contribuinte</label>
-              <input
-                type="text"
-                value={nif}
-                onChange={(e) => setNif(e.target.value)}
-                placeholder="Ex: 509123456"
-                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Cidade / Localidade</label>
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Ex: Lisboa"
-                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-          </div>
-
+      {/* Formulário Unificado de Preenchimento Imediato da Ficha */}
+      <div className="space-y-3 pt-1">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Observações / Notas da Chamada</label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ex: Interessado em forno combinado e mesa inox..."
-              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void handleSaveContact()}
-              className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm transition-all"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-              {saving ? "A criar Ficha..." : "Guardar e Abrir Ficha 360"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                const params = new URLSearchParams()
-                if (phone) params.set("phone", phone)
-                if (name.trim()) params.set("name", name.trim())
-                if (email.trim()) params.set("email", email.trim())
-                if (nif.trim()) params.set("nif", nif.trim())
-                if (city.trim()) params.set("city", city.trim())
-                params.set("source", "telecof_call")
-                navigate(`/customer360-shell/novo?${params.toString()}`)
-              }}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1"
-              title="Abrir no formulário avançado de criação"
-            >
-              <ExternalLink className="h-3.5 w-3.5" /> Ficha Completa
-            </button>
-          </div>
-        </TabsContent>
-
-        {/* TAB 2: CRIAR LEAD DE PROSPEÇÃO */}
-        <TabsContent value="lead" className="space-y-2.5 pt-2 mt-0">
-          <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Nome da Empresa / Contacto *</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+              Empresa / Nome Comercial *
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Restaurante O Pescador"
-              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+              placeholder="Ex: Hotel Mar & Sol Lda"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              autoFocus
             />
           </div>
-
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Tipo de Assunto</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+              Pessoa de Contacto
+            </label>
+            <input
+              type="text"
+              value={contactPerson}
+              onChange={(e) => setContactPerson(e.target.value)}
+              placeholder="Ex: João Pereira"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+              Telefone
+            </label>
+            <input
+              type="text"
+              value={phoneInput}
+              onChange={(e) => setPhoneInput(e.target.value)}
+              placeholder="Ex: 917226585 ou +351917226585"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Ex: compras@hotelmarsol.pt"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+              NIF / Contribuinte
+            </label>
+            <input
+              type="text"
+              value={nif}
+              onChange={(e) => setNif(e.target.value)}
+              placeholder="Ex: 509123456"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+              Cidade / Localidade
+            </label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Ex: Lisboa"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+              Tipo de Assunto
+            </label>
             <select
               value={requestType}
               onChange={(e) => setRequestType(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             >
               {REQUEST_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>
-
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Observações da Prospeção</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+              Observações / Notas da Chamada
+            </label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ex: Solicita visita técnica para remodelação de cozinha..."
-              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+              placeholder="Ex: Interessado em forno combinado e mesa inox..."
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
+        </div>
+
+        {/* Acções Diretas: Criar Contacto ou Criar Lead */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-3 border-t border-border">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void handleSaveContact()}
+            className="flex-1 rounded-lg bg-primary px-3.5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm transition-all"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
+            {saving ? "A guardar..." : "Criar Contacto (Ficha 360)"}
+          </button>
 
           <button
             type="button"
             disabled={saving}
             onClick={() => void handleSaveLead()}
-            className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm transition-all"
+            className="rounded-lg bg-amber-600 hover:bg-amber-700 px-3.5 py-2.5 text-sm font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm transition-all"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRoundPlus className="h-4 w-4" />}
-            {saving ? "A registar Lead..." : "Registar como Lead na Fila"}
+            Criar Lead (Prospeção)
           </button>
-        </TabsContent>
-      </Tabs>
+
+          <button
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams()
+              if (phoneInput.trim()) params.set("phone", phoneInput.trim())
+              if (name.trim()) params.set("name", name.trim())
+              if (email.trim()) params.set("email", email.trim())
+              if (nif.trim()) params.set("nif", nif.trim())
+              if (city.trim()) params.set("city", city.trim())
+              params.set("source", "telecof_call")
+              navigate(`/customer360-shell/novo?${params.toString()}`)
+            }}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-1"
+            title="Abrir no formulário avançado de criação"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Ficha Avançada
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
