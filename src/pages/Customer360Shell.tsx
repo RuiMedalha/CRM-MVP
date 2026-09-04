@@ -215,7 +215,7 @@ export default function Customer360Shell() {
                   entityStatus={org.entityStatus}
                   onEditField={() => setActiveTab("editar")}
                 />
-                <ContactListPanel contacts={c360.contacts} />
+                <ContactListPanel contacts={c360.contacts} organizationName={org.name} />
                 <KpiPanel annualValue={org.annualValue} potential={org.potential} totalProposals={c360.proposals.length} successRate={c360.proposals.length > 0 ? Math.round(c360.proposals.filter((p) => p.status === "approved").length / c360.proposals.length * 100) : undefined} daysSinceContact={org.lastActivityAt ? Math.floor((Date.now() - new Date(org.lastActivityAt).getTime()) / 86400000) : undefined} />
                 {id && (
                   <NewsletterBanner
