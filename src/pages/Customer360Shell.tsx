@@ -269,11 +269,6 @@ export default function Customer360Shell() {
                     </div>
                   </div>
                 </SectionCard>
-                      </button>
-                      {notesSuccess && <span className="text-xs text-green-600">✓ Guardado</span>}
-                    </div>
-                  </div>
-                </SectionCard>
               </>
             }
             center={
