@@ -151,31 +151,205 @@ export async function countSiteOrders(status?: string) {
   return Number(r?.data?.[0]?.count || 0);
 }
 
-/** Converte um pedido num orçamento/proposta (rascunho) e liga-os. Devolve o id da proposta (string). */
+/**
+ * Converte um pedido num orçamento/proposta (rascunho) e liga-os.
+ * Devolve o id da proposta (string).
+ *
+ * Regras:
+ *   • IVA é extraído por item de `order.tax_lines[]` (rate_percent). Se
+ *     não houver tax_lines, fallback 23% (regime geral PT).
+ *   • total_amount: prefere `order.total` (já com descontos + portes + IVA).
+ *     Fallback: subtotal + shipping - discount + IVA discriminado por linha.
+ *     Nunca `subtotal * 1.23` hardcoded.
+ *   • meta_data do WooCommerce é preservada como `[WooMeta] key=value` nas
+ *     notas da proposta, para auditoria.
+ *   • **Idempotência**: se `order.quotation_id` já existir (clique duplo,
+ *     retry, etc.), devolve esse id sem criar nova quotation.
+ */
 export async function convertOrderToProposal(order: SiteOrder): Promise<string> {
+  // 1) Idempotência
+  const existing = order.quotation_id ? String(order.quotation_id) : "";
+  if (existing) return existing;
+
   const cid = typeof order.contact_id === "object" ? (order.contact_id as any)?.id : order.contact_id;
   const items = order.items || [];
-  const subtotal = items.reduce((s, i) => s + Number((i as any).total || (i as any).line_total || 0), 0);
+
+  // 2) Calcular IVA por item a partir de tax_lines[]
+  const fallbackRate: VatRate = 23;
+  const itemVatRates = pickItemVatRates(items, order.tax_lines, fallbackRate);
+
+  // 3) Calcular totais com IVA discriminado
+  const { subtotal, taxByRate, totalAmount } = computeOrderTotals(items, itemVatRates, {
+    orderSubtotal: order.subtotal,
+    orderTotal: order.total,
+    discountTotal: order.discount_total,
+    shippingTotal: order.shipping_total,
+  });
+
+  // 4) Notas com auditoria + meta_data
+  const notesLines: string[] = [];
+  if (order.customer_note) notesLines.push(`Nota do Cliente: ${order.customer_note}`);
+  notesLines.push(
+    order.order_number
+      ? `Convertido da Encomenda #${order.order_number}`
+      : `Convertido da Encomenda ID ${order.id}`,
+  );
+  if (order.payment_method_title) {
+    notesLines.push(`Método de Pagamento Original: ${order.payment_method_title}`);
+  }
+  // Meta-data do Woo (NIF faturação, entity_type, etc.) — auditoria
+  const wooMeta = (order.meta_data || [])
+    .filter((m) => m.key && m.value != null && String(m.value) !== "")
+    .filter((m) => m.key.startsWith("_billing_") || m.key.startsWith("_shipping_"))
+    .slice(0, 30);
+  if (wooMeta.length > 0) {
+    notesLines.push(`\n[WooMeta]\n${wooMeta.map((m) => `${m.key}=${m.value}`).join("\n")}`);
+  }
+  // Resumo IVA discriminado
+  const vatSummary = Object.entries(taxByRate)
+    .sort(([a], [b]) => Number(b) - Number(a))
+    .map(([rate, value]) => `${rate}%: €${value.toFixed(2)}`)
+    .join(" | ");
+  if (vatSummary) notesLines.push(`\n[IVA discriminado] ${vatSummary}`);
+  if (order.coupon_codes?.length) {
+    notesLines.push(`Cupões: ${order.coupon_codes.join(", ")}`);
+  }
+
+  // 5) Criar quotation + items
   const prop = await createQuotation({
     customer_id: cid ? String(cid) : undefined,
     status: "draft",
-    subtotal,
-    notes: order.customer_note || undefined,
+    subtotal: subtotal || 0,
+    discount_amount: Number(order.discount_total) || undefined,
+    total_amount: totalAmount,
+    notes: notesLines.join("\n") || undefined,
   } as any);
-  await createQuotationItems(
-    items.map((it: any, idx: number) => ({
-      quotation_id: prop.id,
-      product_name: it.name || "",
-      sku: it.sku || "",
-      quantity: Number(it.qty || 1),
-      unit_price: Number(it.price || 0),
-      line_total: Number(it.total || it.line_total || 0),
-      iva_percent: 23,
-      sort_order: idx,
-    })),
-  );
+
+  if (items.length > 0) {
+    await createQuotationItems(
+      items.map((it: any, idx: number) => ({
+        quotation_id: prop.id,
+        product_name: it.name || "Artigo",
+        sku: it.sku || "",
+        quantity: Number(it.qty || it.quantity || 1),
+        unit_price: Number(it.price || it.unit_price || 0),
+        line_total: Number(
+          it.total || it.line_total || Number(it.price || 0) * Number(it.qty || 1),
+        ),
+        iva_percent: itemVatRates[idx] ?? fallbackRate,
+        sort_order: idx,
+      })),
+    );
+  }
+
+  // 6) Ligar order → quotation
   await updateSiteOrder(order.id, { quotation_id: prop.id } as any);
   return prop.id;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   IVA helpers — taxas legais PT: 0% (isenção), 6% (alimentar), 13%
+   (restauração em alguns casos), 23% (regime geral). Aceitamos valores
+   intermédios que o WooCommerce possa trazer, mas normalizamos para inteiros.
+   ────────────────────────────────────────────────────────────────────────── */
+
+export type VatRate = 0 | 6 | 13 | 23;
+
+const KNOWN_RATES: VatRate[] = [0, 6, 13, 23];
+
+/** Mapeia um valor de taxa (string/number) para VatRate conhecida. */
+export function normalizeVatRate(value: number | string | null | undefined): VatRate {
+  const n = Math.round(Number(value ?? 23));
+  if ((KNOWN_RATES as number[]).includes(n)) return n as VatRate;
+  // valores intermédios: arredondar ao conhecido mais próximo
+  if (n <= 3) return 0;
+  if (n <= 9) return 6;
+  if (n <= 18) return 13;
+  return 23;
+}
+
+/**
+ * Atribui IVA por item a partir de tax_lines[] do WooCommerce.
+ *  1. Se tax_lines vazio → fallback uniforme (regime geral).
+ *  2. Se 1 taxa → todos os itens com essa taxa (regime simplificado).
+ *  3. Se múltiplas taxas → distribuir pela ordem dos itens (1ª taxa → 1º item).
+ */
+export function pickItemVatRates(
+  items: SiteOrderItem[],
+  taxLines: SiteOrderTaxLine[] | undefined,
+  fallbackRate: VatRate,
+): VatRate[] {
+  if (!items.length) return [];
+  if (!taxLines || taxLines.length === 0) {
+    return items.map(() => fallbackRate);
+  }
+  const rates = taxLines
+    .map((t) => normalizeVatRate(t.rate_percent ?? fallbackRate))
+    .filter((r) => r >= 0);
+  if (rates.length === 0) return items.map(() => fallbackRate);
+  if (rates.length === 1) {
+    return items.map(() => rates[0]);
+  }
+  return items.map((_, idx) => rates[idx % rates.length]);
+}
+
+interface ComputeTotalsInput {
+  orderSubtotal?: number;
+  orderTotal?: number;
+  discountTotal?: number | string;
+  shippingTotal?: number | string;
+}
+
+interface ComputeTotalsResult {
+  subtotal: number;
+  /** Map: rate (string) → total de IVA em EUR */
+  taxByRate: Record<string, number>;
+  totalAmount: number;
+}
+
+/**
+ * Calcula subtotal, IVA discriminado por taxa e total.
+ *  • Se `orderTotal` existir, usa directamente como totalAmount.
+ *  • Senão, soma (line × (1 + rate)) + shipping - discount.
+ */
+export function computeOrderTotals(
+  items: SiteOrderItem[],
+  itemVatRates: VatRate[],
+  input: ComputeTotalsInput,
+): ComputeTotalsResult {
+  const taxByRate: Record<string, number> = {};
+  let subtotal = 0;
+  let totalWithTax = 0;
+
+  items.forEach((it, idx) => {
+    const lineTotal = Number(
+      (it as any).total ||
+        (it as any).line_total ||
+        Number(it.price || 0) * Number(it.qty || it.quantity || 1),
+    );
+    const rate = itemVatRates[idx] ?? 23;
+    const lineTax = lineTotal * (rate / 100);
+    subtotal += lineTotal;
+    totalWithTax += lineTotal + lineTax;
+    taxByRate[String(rate)] = (taxByRate[String(rate)] || 0) + lineTax;
+  });
+
+  const discount = Number(input.discountTotal || 0);
+  const shipping = Number(input.shippingTotal || 0);
+
+  if (input.orderTotal && Number(input.orderTotal) > 0) {
+    return {
+      subtotal: subtotal || Number(input.orderSubtotal || 0),
+      taxByRate,
+      totalAmount: Number(input.orderTotal),
+    };
+  }
+
+  return {
+    subtotal: subtotal || Number(input.orderSubtotal || 0),
+    taxByRate,
+    totalAmount: Math.max(0, totalWithTax + shipping - discount),
+  };
 }
 
 /** Envia um email (transacional) ao cliente do pedido, via crm-campaign-sender/SES. */
