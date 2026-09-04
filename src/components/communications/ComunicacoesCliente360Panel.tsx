@@ -22,6 +22,11 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import { CustomerTimeline } from "@/components/contacts/CustomerTimeline";
+import { CompactTimeline } from "@/components/customer360/CompactTimeline";
+import { AddNoteInline } from "@/components/customer360/AddNoteInline";
+import { ConvertActions } from "@/components/customer360/ConvertActions";
+import { Input } from "@/components/ui/input";
+import { useCustomerDossier } from "@/hooks/useCustomerDossier";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -140,6 +145,104 @@ function Section({
   );
 }
 
+/**
+ * DossieContinuoHubChat — sub-componente inline do ComunicacoesCliente360Panel.
+ * Mostra timeline compacta + addNote inline + datetime picker para follow-up
+ * + ConvertActions (Lead → Contacto, Contacto → Oportunidade).
+ * Usa useCustomerDossier hook (mesmo cérebro do Telecof + 360).
+ */
+function DossieContinuoHubChat({ contactId }: { contactId: string }) {
+  const dossier = useCustomerDossier({ contactId });
+  const [followUpAt, setFollowUpAt] = useState("");
+  const [followUpNote, setFollowUpNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleScheduleFollowUp() {
+    if (!followUpAt) {
+      toast({ title: "Escolhe data e hora", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const result = await dossier.scheduleFollowUp({
+        due_at: new Date(followUpAt).toISOString(),
+        type: "call",
+        notes: followUpNote.trim() || undefined,
+        title: dossier.contact?.company_name
+          ? `Rechamar ${dossier.contact.company_name}`
+          : undefined,
+      });
+      if (result?.id) {
+        toast({ title: "Follow-up agendado", description: "Visível na Agenda." });
+        setFollowUpAt("");
+        setFollowUpNote("");
+      } else {
+        toast({ title: "Não foi possível agendar", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({
+        title: "Erro a agendar follow-up",
+        description: String(err instanceof Error ? err.message : err),
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <CompactTimeline
+        interactions={dossier.recentInteractions}
+        maxItems={5}
+        variant="hubchat"
+        emptyMessage="Sem interações. Adicione a primeira nota abaixo."
+      />
+
+      <AddNoteInline
+        contactId={contactId}
+        source="hubchat"
+        variant="hubchat"
+        placeholder="Nota sobre esta conversa..."
+      />
+
+      {/* Follow-up inline (sem modal) */}
+      <div className="space-y-1.5 rounded-md border border-border bg-card p-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Follow-up
+        </p>
+        <Input
+          type="datetime-local"
+          value={followUpAt}
+          onChange={(e) => setFollowUpAt(e.target.value)}
+          className="text-xs h-8"
+        />
+        <Input
+          type="text"
+          value={followUpNote}
+          onChange={(e) => setFollowUpNote(e.target.value)}
+          placeholder="Nota (opcional)"
+          className="text-xs h-8"
+        />
+        <Button
+          type="button"
+          onClick={handleScheduleFollowUp}
+          disabled={!followUpAt || submitting}
+          className="w-full h-8 text-xs"
+        >
+          {submitting ? "A agendar…" : "📅 Agendar"}
+        </Button>
+      </div>
+
+      <ConvertActions
+        contactId={contactId}
+        contactName={dossier.contact?.company_name || dossier.contact?.contact_name}
+        variant="hubchat"
+      />
+    </div>
+  );
+}
+
 export function ComunicacoesCliente360Panel({
   contactId = "",
   contact,
@@ -192,6 +295,7 @@ export function ComunicacoesCliente360Panel({
   const [secFollowUp, setSecFollowUp] = useState(false);
   const [secAgente, setSecAgente] = useState(false);
   const [secHistorico, setSecHistorico] = useState(false);
+  const [secDossieContinuo, setSecDossieContinuo] = useState(true);
 
   // Search existing contact to link
   const [searchQuery, setSearchQuery] = useState("");
@@ -730,6 +834,14 @@ export function ComunicacoesCliente360Panel({
           {!isNew && contact && (
             <Section label="Histórico" open={secHistorico} onToggle={() => setSecHistorico(v => !v)}>
               <CustomerTimeline contactId={String(contact.id)} />
+            </Section>
+          )}
+
+          {/* DOSSIÊ CONTÍNUO — vista partilhada, integrada via useCustomerDossier hook.
+              Mostra timeline compacta + addNote inline + follow-up + conversão. */}
+          {!isNew && contactId && (
+            <Section label="Dossiê contínuo" open={secDossieContinuo} onToggle={() => setSecDossieContinuo(v => !v)}>
+              <DossieContinuoHubChat contactId={contactId} />
             </Section>
           )}
         </div>
