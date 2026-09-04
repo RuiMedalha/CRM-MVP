@@ -1,4 +1,5 @@
-﻿import { useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { UserPlus } from "lucide-react"
 
 import { filterTelecofEventsByQueue, usesCompactTelecofRow } from "@/lib/telecofQueue"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
@@ -11,15 +12,6 @@ import { TelecofInboxFilters } from "./TelecofInboxFilters"
 import { AsyncState } from "@/components/patterns/AsyncState"
 import { EmptyState } from "@/components/patterns/EmptyState"
 
-/**
- * Redesign landscape — coluna master (320px).
- *
- * Estrutura: header compacto (título + contador) → filtros → scroller de
- * chamadas. Em landscape (index.css) o header extra e o botão de bulk são
- * escondidos para dar toda a altura ao scroller, deixando os cards/rows
- * de 64px como conteúdo essencial. Os dados e handlers (bulk resolve,
- * filtros) permanecem intactos.
- */
 export function TelecofCallsList() {
   const { events, selectedEventId, selectEvent, loading } = useTelecofCallStore()
   const mergeEvent = useTelecofCallStore((s) => s.mergeEvent)
@@ -56,16 +48,28 @@ export function TelecofCallsList() {
 
   return (
     <section className="flex h-full min-w-0 flex-col bg-muted">
-      <div className="crm-telecof-list-header flex shrink-0 items-baseline justify-between gap-2 border-b border-border bg-card px-3 py-2.5">
-        <h1 className="text-sm font-semibold text-foreground">Fila Telecof</h1>
-        <p className="crm-telecof-list-counter text-xs text-muted-foreground">
-          {filtered.length}
-          {unhandledCount > 0 && (
-            <span className="ml-1 font-semibold text-amber-700">
-              · {unhandledCount} por tratar
-            </span>
-          )}
-        </p>
+      <div className="crm-telecof-list-header flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5">
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-sm font-semibold text-foreground">Fila Telecof</h1>
+          <p className="crm-telecof-list-counter text-xs text-muted-foreground">
+            {filtered.length}
+            {unhandledCount > 0 && (
+              <span className="ml-1 font-semibold text-amber-700">
+                · {unhandledCount} por tratar
+              </span>
+            )}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => selectEvent(undefined)}
+          className="inline-flex items-center gap-1 rounded-md bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 text-xs font-semibold transition-colors"
+          title="Abrir ficha para registar novo contacto ou atendimento manual"
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+          <span>+ Novo</span>
+        </button>
       </div>
 
       <TelecofInboxFilters />

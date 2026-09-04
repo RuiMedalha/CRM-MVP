@@ -593,12 +593,30 @@ export function TelecofCallWorkspace() {
 
   if (!selected) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-muted p-8 text-center">
-        <Phone className="mb-3 h-12 w-12 text-primary/40" />
-        <h2 className="text-lg font-semibold text-foreground">Fila de chamadas Telecof</h2>
-        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-          Selecione uma chamada na coluna à esquerda.
-        </p>
+      <div className="crm-telecof-workspace flex min-h-0 flex-1 flex-col bg-muted">
+        <header className="crm-telecof-ws-header flex min-h-[48px] shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold shadow-sm">
+              <Phone className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground leading-tight">
+                Novo Atendimento / Registo de Contacto
+              </h2>
+              <p className="text-xs text-muted-foreground leading-tight">
+                Preencha os dados do cliente ou pesquise para vincular a uma ficha existente
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <div className="crm-telecof-ws-body min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+          <TelecofLeadCapture
+            phone=""
+            onContactCreated={handleContactCreated}
+            onLeadCreated={handleLeadCreated}
+          />
+        </div>
       </div>
     )
   }

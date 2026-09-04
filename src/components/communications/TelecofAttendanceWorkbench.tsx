@@ -1,4 +1,5 @@
-﻿import { ChevronLeft } from "lucide-react"
+import { useEffect } from "react"
+import { ChevronLeft } from "lucide-react"
 
 import { TelecofCallsList } from "./TelecofCallsList"
 import { TelecofCallWorkspace } from "./TelecofCallWorkspace"
@@ -6,36 +7,27 @@ import { useTelecofCallStore } from "@/store/telecofCallStore"
 import { useTelecofCallsPolling } from "@/hooks/useTelecofCallsPolling"
 import { cn } from "@/lib/utils"
 
-/**
- * Redesign landscape (redesign/telecof-landscape).
- *
- * Layout master-detail em duas colunas:
- *   [ lista 320px fixa ]  [ workspace flex-1 ]
- *
- * - Landscape (phone e iPad, >=700px de largura): split SEMPRE visível.
- *   O CSS em index.css (@media orientation:landscape and min-width:700px)
- *   força a lista a 320px e o workspace a flex-1, ocupando 100dvh e
- *   escondendo topbar/bottom-nav/headers globais.
- * - Portrait / ecrãs estreitos: navegação drill-down. A lista ocupa o
- *   ecrã todo; ao seleccionar uma chamada mostra o workspace com botão
- *   "Voltar".
- *
- * O detalhe é UM só painel: o TelecofCallWorkspace, que já traz header
- * compacto, identidade do chamador, histórico, resumo e composer sticky.
- * (O antigo TelecofCustomerPanel inline foi removido — duplicava o
- * conteúdo do Workspace e colapsava a altura útil em landscape.)
- *
- * Os dados (store, polling, patchs) NÃO são tocados: continuamos a usar
- * useTelecofCallStore e useTelecofCallsPolling tal como antes.
- */
 export function TelecofAttendanceWorkbench() {
   useTelecofCallsPolling()
 
   const selectedEventId = useTelecofCallStore((s) => s.selectedEventId)
+  const events = useTelecofCallStore((s) => s.events)
+  const selectEvent = useTelecofCallStore((s) => s.selectEvent)
+
   const selectedEvent = useTelecofCallStore((s) =>
     s.events.find((e) => e.id === selectedEventId),
   )
   const clearSelection = () => useTelecofCallStore.getState().selectEvent(undefined)
+
+  // Auto-seleciona a primeira chamada (por tratar ou mais recente) caso não haja seleção inicial
+  useEffect(() => {
+    if (!selectedEventId && events.length > 0) {
+      const firstUnhandled = events.find((e) => e.operationalStatus === "unhandled" || e.operationalStatus === "new") || events[0]
+      if (firstUnhandled) {
+        selectEvent(firstUnhandled.id)
+      }
+    }
+  }, [selectedEventId, events, selectEvent])
 
   const hasSelection = Boolean(selectedEvent)
 

@@ -25,21 +25,26 @@ const REQUEST_TYPES = [
 ] as const
 
 interface Props {
-  phone: string
-  callId: string
+  phone?: string
+  callId?: string
   onContactCreated?: (contact: any, contactId: string | number) => void
   onLeadCreated?: (lead: any, leadId: string | number) => void
 }
 
-export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCreated }: Props) {
+export function TelecofLeadCapture({ phone = "", callId = "", onContactCreated, onLeadCreated }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const mergeEvent = useTelecofCallStore((s) => s.mergeEvent)
-  const draftKey = `telecof_lead_${callId}`
+  const draftKey = `telecof_lead_${callId || "manual"}`
 
   const [activeTab, setActiveTab] = useState<"contact" | "lead">("contact")
 
   // Draft state
+  const [phoneInput, setPhoneInput] = useState(phone || "")
+  useEffect(() => {
+    setPhoneInput(phone || "")
+  }, [phone])
+
   const [name, setName] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(draftKey) || "{}").name || "" } catch { return "" }
   })
@@ -161,7 +166,7 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
       const contactPayload = {
         company_name: companyName,
         contact_name: contactPerson.trim() || companyName,
-        phone: phone || undefined,
+        phone: phoneInput.trim() || undefined,
         email: email.trim() || undefined,
         nif: nif.trim() || undefined,
         city: city.trim() || undefined,
@@ -173,7 +178,7 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
       const contactId = created?.id ?? (created as any)?.data?.id
       if (contactId) {
         setCreatedContactId(contactId)
-        // Associar imediatamente à chamada
+        // Associar imediatamente à chamada se houver callId
         if (callId) {
           const updated = await patchHubCommunicationEvent(callId, {
             contact_id: String(contactId),
@@ -203,7 +208,7 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
     } finally {
       setSaving(false)
     }
-  }, [name, contactPerson, phone, email, nif, city, notes, requestType, callId, draftKey, mergeEvent, queryClient, onContactCreated])
+  }, [name, contactPerson, phoneInput, email, nif, city, notes, requestType, callId, draftKey, mergeEvent, queryClient, onContactCreated])
 
   // 2. Criar Lead (pipeline de prospeção)
   const handleSaveLead = useCallback(async () => {
@@ -213,12 +218,12 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
     }
     setSaving(true)
     try {
-      const displayName = name.trim() || `Chamada ${phone}`
+      const displayName = name.trim() || (phoneInput.trim() ? `Chamada ${phoneInput.trim()}` : "Novo Lead")
       const leadPayload = {
         display_name: displayName,
         contact_name: contactPerson.trim() || displayName,
-        phone,
-        contact_phone: phone,
+        phone: phoneInput.trim() || undefined,
+        contact_phone: phoneInput.trim() || undefined,
         email: email.trim() || undefined,
         source: "telecof",
         status: "incoming",
@@ -229,7 +234,7 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
         ].filter(Boolean).join("\n\n") || undefined,
         lead_data: {
           request_type: requestType || undefined,
-          call_id: callId,
+          call_id: callId || undefined,
           city: city.trim() || undefined,
         },
       }
@@ -410,9 +415,10 @@ export function TelecofLeadCapture({ phone, callId, onContactCreated, onLeadCrea
               <label className="text-[11px] font-medium text-muted-foreground">Telefone</label>
               <input
                 type="text"
-                value={phone}
-                readOnly
-                className="w-full rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground outline-none"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                placeholder="Ex: 917226585 ou +351917226585"
+                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div>
