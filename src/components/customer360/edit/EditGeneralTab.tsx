@@ -1,4 +1,4 @@
-﻿/**
+/**
  * EditGeneralTab — Ficha Mestre da Entidade (completa).
  * 14 secções visíveis. Campos existentes editáveis. Campos futuros como info.
  */
@@ -136,7 +136,10 @@ export function EditGeneralTab({ organizationId, organization }: EditGeneralTabP
   }
   const initDelivery = useCallback((): DeliveryAddress => {
     try {
-      const raw = (organization as unknown as Record<string, unknown> | null)?.delivery_addresses;
+      let raw = (organization as unknown as Record<string, unknown> | null)?.delivery_addresses;
+      if (typeof raw === "string") {
+        try { raw = JSON.parse(raw); } catch { /* ignore parse error */ }
+      }
       if (Array.isArray(raw) && raw[0]) return { same_as_billing: false, address: "", postal_code: "", city: "", district: "", contact_name: "", phone: "", notes: "", ...raw[0] };
       if (raw && typeof raw === "object") return { same_as_billing: false, address: "", postal_code: "", city: "", district: "", contact_name: "", phone: "", notes: "", ...(raw as object) };
     } catch { /* fallback */ }

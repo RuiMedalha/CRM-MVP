@@ -181,7 +181,7 @@ export function OrderDetailModal({ order, open, onOpenChange, onConverted }: Pro
       const qid = await convertOrderToProposal(o);
       toast({ title: "Orçamento criado a partir do pedido" });
       onConverted?.();
-      navigate(`/propostas/${qid}/editar`);
+      navigate(`/propostas/${qid}/detalhe`);
     } catch (e: any) {
       toast({ title: "Erro ao converter", description: String(e?.message || e), variant: "destructive" });
     } finally { setBusy(""); }
@@ -426,7 +426,7 @@ export function OrderDetailModal({ order, open, onOpenChange, onConverted }: Pro
           {/* Ações */}
           <div className="flex flex-wrap gap-2">
             {converted ? (
-              <Button variant="outline" onClick={() => navigate(`/propostas/${o.quotation_id}/editar`)}>
+              <Button variant="outline" onClick={() => navigate(`/propostas/${o.quotation_id}/detalhe`)}>
                 <ExternalLink className="h-4 w-4 mr-1" /> Ver orçamento
               </Button>
             ) : (

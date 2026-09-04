@@ -142,7 +142,7 @@ export default function PublicQuotation() {
         }
 
         // Record view (non-blocking)
-        recordView(quotationData.id, (quotationData as any).view_count || 0).catch(() => {});
+        recordView(quotationData.id, (quotationData as any).view_count || 0, quotationData.status || undefined).catch(() => {});
       } catch {
         if (!cancelled) setError("Erro ao carregar a proposta.");
       } finally {

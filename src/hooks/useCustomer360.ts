@@ -43,7 +43,27 @@ export function useCustomer360(organizationId: string | undefined): UseCustomer3
         `/items/quotations?filter[customer_id][_eq]=${organizationId}&sort=-date_created&limit=20&fields=id,quotation_number,status,total_amount,sent_at,date_created`
       ).catch(() => ({ data: [] }));
 
-      // 4. Timeline — Activity Ledger (fonte única) com fallback para queries legacy
+      // 4. Fetch site orders for this customer (eCommerce orders)
+      const siteOrdersRes = await directusRequest<{ data: Record<string, unknown>[] }>(
+        `/items/site_orders?filter[contact_id][_eq]=${organizationId}&sort=-date_ordered&limit=15&fields=id,order_number,status,total,currency,date_ordered,items,date_created`
+      ).catch(() => ({ data: [] as Record<string, unknown>[] }));
+
+      const orderEvents = (siteOrdersRes.data ?? []).map((o) => {
+        const orderNum = o.order_number || o.id;
+        const totalEur = Number(o.total || 0).toLocaleString("pt-PT", { style: "currency", currency: (o.currency as string) || "EUR" });
+        const itemsCount = Array.isArray(o.items) ? o.items.length : 0;
+        return {
+          id: `order-${o.id}`,
+          type: "order",
+          title: `Encomenda #${orderNum} — ${totalEur}`,
+          description: `Estado: ${o.status || "registada"}${itemsCount > 0 ? ` · ${itemsCount} artigo(s)` : ""}`,
+          occurred_at: o.date_ordered || o.date_created,
+          actor: "Loja Online",
+          _source: "site_orders",
+        };
+      });
+
+      // 5. Timeline — Activity Ledger (fonte única) com fallback para queries legacy
       let allTimeline: Record<string, unknown>[] = [];
 
       // Tentar ler do activity ledger primeiro (Fase C)
@@ -52,12 +72,19 @@ export function useCustomer360(organizationId: string | undefined): UseCustomer3
       ).catch(() => ({ data: [] as Record<string, unknown>[] }));
 
       if ((activityRes.data ?? []).length > 0) {
-        // Activity ledger tem dados — usar como fonte única
-        allTimeline = (activityRes.data ?? []).map((a) => ({
-          ...a,
-          _source: (a.source_collection as string) || "activity",
-          created_at: a.occurred_at || a.date_created,
-        }));
+        // Activity ledger tem dados — usar como base e intercalar encomendas
+        allTimeline = [
+          ...(activityRes.data ?? []).map((a) => ({
+            ...a,
+            _source: (a.source_collection as string) || "activity",
+            created_at: a.occurred_at || a.date_created,
+          })),
+          ...orderEvents,
+        ].sort((a, b) => {
+          const dateA = String(a.occurred_at || a.created_at || a.date_created || "");
+          const dateB = String(b.occurred_at || b.created_at || b.date_created || "");
+          return dateB.localeCompare(dateA);
+        }).slice(0, 40);
       } else {
         // Fallback: queries legacy (para contactos sem dados no activity ledger ainda)
         const [commEventsRes, interactionsRes, emailThreadsRes, conversationsRes] = await Promise.all([
@@ -80,11 +107,12 @@ export function useCustomer360(organizationId: string | undefined): UseCustomer3
           ...(interactionsRes.data ?? []).map((e) => ({ ...e, _source: "interactions" })),
           ...(emailThreadsRes.data ?? []).map((e) => ({ ...e, _source: "email_threads", type: "email", title: `Email: ${e.subject || "(sem assunto)"}`, occurredAt: e.date_created })),
           ...(conversationsRes.data ?? []).map((e) => ({ ...e, _source: "conversations", type: "whatsapp", title: `WhatsApp: ${e.customer_name || e.last_message || "conversa"}`, occurredAt: e.updated_at, created_at: e.updated_at })),
+          ...orderEvents,
         ].sort((a, b) => {
           const dateA = String(a.created_at || a.occurred_at || a.date_created || "");
           const dateB = String(b.created_at || b.occurred_at || b.date_created || "");
           return dateB.localeCompare(dateA);
-        }).slice(0, 30);
+        }).slice(0, 40);
       }
 
       // 5. Contacts — no modelo actual, a org IS the contact (mesma tabela)

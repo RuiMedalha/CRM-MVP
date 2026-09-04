@@ -195,7 +195,7 @@ export async function verifyPhoneGate(token: string, lastFourDigits: string): Pr
 // Recebe o id numérico da proposta (campo "id" da collection quotations).
 // Nunca deve bloquear a página pública — try/catch completo.
 
-export async function recordView(quotationId: number | string, viewCount: number): Promise<void> {
+export async function recordView(quotationId: number | string, viewCount: number, currentStatus?: string): Promise<void> {
   // Guard: only accept numeric IDs (integer or numeric string)
   const numericId = Number(quotationId);
   if (!Number.isFinite(numericId) || numericId <= 0) {
@@ -205,14 +205,14 @@ export async function recordView(quotationId: number | string, viewCount: number
 
   try {
     const now = new Date().toISOString();
-    // Only patch metadata (view_count, last_viewed_at, viewed_at). Never overwrite status —
-    // status transitions only happen in: sendQuotation (sent) and respondToQuotation (approved/rejected).
+    const shouldUpdateStatus = currentStatus === "sent";
     await directusAdminFetch(`/items/${DIRECTUS_QUOTATIONS_COLLECTION}/${numericId}`, {
       method: "PATCH",
       body: JSON.stringify({
         view_count: viewCount + 1,
         last_viewed_at: now,
         ...(viewCount === 0 ? { viewed_at: now } : {}),
+        ...(shouldUpdateStatus ? { status: "viewed" } : {}),
       }),
     });
   } catch {

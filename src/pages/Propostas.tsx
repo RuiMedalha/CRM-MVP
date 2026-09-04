@@ -1,12 +1,13 @@
-import { useState } from "react";
+﻿import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { listQuotations } from "@/integrations/directus/quotations";
+import { listQuotations, duplicateQuotation } from "@/integrations/directus/quotations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { toast } from "@/hooks/use-toast";
 import {
   Table,
   TableHeader,
@@ -15,7 +16,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { Plus, Search, Eye, Copy, MoreHorizontal } from "lucide-react";
+import { Plus, Search, Eye, Copy, MoreHorizontal, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,8 +47,10 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 export default function Propostas() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const { data: quotations = [], isLoading } = useQuery({
     queryKey: ["propostas", searchQuery],
@@ -62,6 +65,28 @@ export default function Propostas() {
   const filtered = activeTab === "all"
     ? proposals
     : proposals.filter((q: any) => q.status === activeTab);
+
+  const handleDuplicate = useCallback(async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDuplicatingId(id);
+    try {
+      const duplicated = await duplicateQuotation(id);
+      toast({
+        title: "Proposta duplicada!",
+        description: `Criada nova proposta ${duplicated.quotation_number || "em rascunho"}.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["propostas"] });
+      navigate(`/propostas/${duplicated.id}/detalhe`);
+    } catch (err) {
+      toast({
+        title: "Erro ao duplicar proposta",
+        description: String((err as Error)?.message || err),
+        variant: "destructive",
+      });
+    } finally {
+      setDuplicatingId(null);
+    }
+  }, [navigate, queryClient]);
 
   return (
     <AppLayout>
@@ -167,8 +192,8 @@ export default function Propostas() {
                               <Eye className="h-4 w-4 mr-2" />
                               Ver detalhe
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); }}>
-                              <Copy className="h-4 w-4 mr-2" />
+                            <DropdownMenuItem onClick={(e) => handleDuplicate(q.id, e)} disabled={duplicatingId === q.id}>
+                              {duplicatingId === q.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Copy className="h-4 w-4 mr-2" />}
                               Duplicar
                             </DropdownMenuItem>
                           </DropdownMenuContent>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Customer360Actions — toolbar with 9 quick-action buttons.
  * Each button performs a real action tied to the current contact.
  */
@@ -15,6 +15,7 @@ import { useCompanySettings } from "@/hooks/useSettings";
 import { DEAL_STATUSES } from "@/hooks/useDeals";
 import { useCustomerDossier } from "@/hooks/useCustomerDossier";
 import { useCreateInteraction } from "@/hooks/useInteractions";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ interface Customer360ActionsProps {
 
 export function Customer360Actions({ contactId, contactName, contactPhone, contactEmail, contactEmailAssistencia }: Customer360ActionsProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   // Hook unificado do dossiê — single read + 4 mutações coerentes com o resto da app.
   const dossier = useCustomerDossier({ contactId });
   const createInteraction = useCreateInteraction(); // assistência ainda usa (legacy)
@@ -91,9 +93,11 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
   const [dealTitle, setDealTitle] = useState("");
   const [dealStatus, setDealStatus] = useState("lead");
   const [dealAmount, setDealAmount] = useState("");
+  const [savingDeal, setSavingDeal] = useState(false);
 
   const handleSaveDeal = useCallback(async () => {
     if (!contactId || !dealTitle.trim()) return;
+    setSavingDeal(true);
     try {
       const deal = await dossier.createOpportunity({
         title: dealTitle,
@@ -111,6 +115,8 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
       }
     } catch {
       toast({ title: "Erro ao criar oportunidade", variant: "destructive" });
+    } finally {
+      setSavingDeal(false);
     }
   }, [contactId, dealTitle, dealStatus, dealAmount, dossier]);
 
@@ -166,22 +172,38 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
       return;
     }
     try {
-      // Create interaction/note in timeline
+      // Create interaction/ticket in timeline as support_request with structured payload
       await createInteraction.mutateAsync({
-        type: "note", direction: "out", status: "done",
+        type: "support_request",
+        direction: "out",
+        status: "open",
         contact_id: contactId,
+        phone: contactPhone,
+        email: contactEmailAssistencia || contactEmail,
         display_name: contactName || "",
-        summary: `[ASSISTÊNCIA] ${assistEquip}: ${assistDesc.slice(0, 100)}`,
+        summary: `[ASSISTÊNCIA] ${assistEquip}: ${assistDesc.slice(0, 80)}`,
+        payload: {
+          equipment: assistEquip,
+          text: assistDesc,
+          urgency: assistUrgency,
+          preferred_contact: assistContact,
+          phone: contactPhone || null,
+          email: contactEmailAssistencia || contactEmail || null,
+        },
       });
+
+      // Invalidate customer360 cache so timeline updates instantly
+      queryClient.invalidateQueries({ queryKey: ["customer360", contactId] });
+      queryClient.invalidateQueries({ queryKey: ["interactions"] });
 
       // Open email composer pre-filled
       const assistEmail = (settings as unknown as Record<string, unknown>)?.email_assistencia_interna || "apoio.cliente@hotelequip.pt";
       const subject = encodeURIComponent(`Pedido de Assistência - ${contactName || "Cliente"} - ${assistEquip}`);
       const body = encodeURIComponent(
-        `Pedido de Assistência\n\n` +
+        `Pedido de Assistência Técnica\n\n` +
         `Cliente: ${contactName || "-"}\n` +
         `Equipamento: ${assistEquip}\n` +
-        `Descrição: ${assistDesc}\n` +
+        `Descrição da avaria: ${assistDesc}\n` +
         `Urgência: ${assistUrgency}\n` +
         `Contacto preferido: ${assistContact}\n` +
         `Telefone: ${contactPhone || "-"}\n` +
@@ -189,14 +211,16 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
       );
       window.open(`mailto:${assistEmail}?subject=${subject}&body=${body}`, "_self");
 
-      toast({ title: "Assistência registada", description: "Email aberto para envio." });
+      toast({ title: "Assistência registada", description: "Pedido adicionado ao histórico e email aberto." });
       setAssistOpen(false);
       setAssistEquip("");
       setAssistDesc("");
       setAssistUrgency("normal");
       setAssistContact("telefone");
-    } catch { toast({ title: "Erro", variant: "destructive" }); }
-  }, [contactId, contactName, contactPhone, contactEmail, contactEmailAssistencia, assistEquip, assistDesc, assistUrgency, assistContact, settings, createInteraction]);
+    } catch {
+      toast({ title: "Erro ao registar assistência", variant: "destructive" });
+    }
+  }, [contactId, contactName, contactPhone, contactEmail, contactEmailAssistencia, assistEquip, assistDesc, assistUrgency, assistContact, settings, createInteraction, queryClient]);
 
   return (
     <>
@@ -337,8 +361,8 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDealOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveDeal} disabled={!dealTitle.trim() || createDeal.isPending}>
-              {createDeal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Criar"}
+            <Button onClick={handleSaveDeal} disabled={!dealTitle.trim() || savingDeal}>
+              {savingDeal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Criar"}
             </Button>
           </DialogFooter>
         </DialogContent>

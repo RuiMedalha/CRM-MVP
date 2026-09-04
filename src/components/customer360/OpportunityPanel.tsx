@@ -1,4 +1,6 @@
-﻿import { SectionCard } from "./ui/SectionCard";
+import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
+import { SectionCard } from "./ui/SectionCard";
 import { StatusBadge } from "./ui/StatusBadge";
 import { EmptyState } from "./ui/EmptyState";
 
@@ -28,7 +30,17 @@ const STAGE_CONFIG: Record<string, { label: string; variant: "default" | "succes
 
 export function OpportunityPanel({ opportunities }: OpportunityPanelProps) {
   return (
-    <SectionCard title="Pipeline">
+    <SectionCard
+      title={`Pipeline (${opportunities.length})`}
+      action={
+        <Link
+          to="/pipeline"
+          className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-0.5"
+        >
+          Ver funil <ExternalLink className="h-2.5 w-2.5" />
+        </Link>
+      }
+    >
       {opportunities.length === 0 ? (
         <EmptyState icon="🎯" message="Ainda não existem oportunidades para esta empresa." />
       ) : (

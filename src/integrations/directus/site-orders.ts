@@ -156,24 +156,37 @@ export async function convertOrderToProposal(order: SiteOrder): Promise<string> 
   const cid = typeof order.contact_id === "object" ? (order.contact_id as any)?.id : order.contact_id;
   const items = order.items || [];
   const subtotal = items.reduce((s, i) => s + Number((i as any).total || (i as any).line_total || 0), 0);
+  const totalAmount = Number(order.total) || (subtotal > 0 ? Number((subtotal * 1.23).toFixed(2)) : 0);
+  
+  const notesLines = [
+    order.customer_note ? `Nota do Cliente: ${order.customer_note}` : null,
+    order.order_number ? `Convertido da Encomenda #${order.order_number}` : `Convertido da Encomenda ID ${order.id}`,
+    order.payment_method_title ? `Método de Pagamento Original: ${order.payment_method_title}` : null,
+  ].filter(Boolean).join("\n");
+
   const prop = await createQuotation({
     customer_id: cid ? String(cid) : undefined,
     status: "draft",
-    subtotal,
-    notes: order.customer_note || undefined,
+    subtotal: subtotal || Number(order.subtotal) || 0,
+    total_amount: totalAmount,
+    notes: notesLines || undefined,
   } as any);
-  await createQuotationItems(
-    items.map((it: any, idx: number) => ({
-      quotation_id: prop.id,
-      product_name: it.name || "",
-      sku: it.sku || "",
-      quantity: Number(it.qty || 1),
-      unit_price: Number(it.price || 0),
-      line_total: Number(it.total || it.line_total || 0),
-      iva_percent: 23,
-      sort_order: idx,
-    })),
-  );
+
+  if (items.length > 0) {
+    await createQuotationItems(
+      items.map((it: any, idx: number) => ({
+        quotation_id: prop.id,
+        product_name: it.name || "Artigo",
+        sku: it.sku || "",
+        quantity: Number(it.qty || it.quantity || 1),
+        unit_price: Number(it.price || it.unit_price || 0),
+        line_total: Number(it.total || it.line_total || (Number(it.price || 0) * Number(it.qty || 1))),
+        iva_percent: 23,
+        sort_order: idx,
+      })),
+    );
+  }
+  
   await updateSiteOrder(order.id, { quotation_id: prop.id } as any);
   return prop.id;
 }
@@ -220,12 +233,12 @@ const TRACKING_FIELDS = [
   "token",
 ] as const;
 
-/** Lê o tracking do `billing.tracking` (ou `shipping.tracking`) de uma encomenda. */
+/** Lê o tracking de uma encomenda (prioriza billing.tracking onde o CRM grava). */
 export function getOrderTracking(order: Pick<SiteOrder, "billing" | "shipping"> | null | undefined): OrderTracking {
-  const source: any =
-    (order?.shipping && (order.shipping as any).tracking) ||
-    (order?.billing && (order.billing as any).tracking) ||
-    {};
+  const bTracking = order?.billing && typeof order.billing === "object" ? (order.billing as any).tracking : undefined;
+  const sTracking = order?.shipping && typeof order.shipping === "object" ? (order.shipping as any).tracking : undefined;
+  const source: any = bTracking?.code || bTracking?.carrier ? bTracking : (sTracking || bTracking || {});
+  
   const result: OrderTracking = {};
   for (const key of TRACKING_FIELDS) {
     if (source[key] != null && source[key] !== "") result[key] = String(source[key]);
@@ -246,6 +259,81 @@ export async function listSiteOrdersByContact(contactId: string | number, limit 
     })}`,
   );
   return r?.data || [];
+}
+
+/** Lista encomendas de um contacto por contact_id, email e telefone (deduplicadas e ordenadas por data). */
+export async function listSiteOrdersForCustomer(params: {
+  contactId?: string | number;
+  email?: string;
+  phone?: string;
+  limit?: number;
+}): Promise<SiteOrder[]> {
+  const { contactId, email, phone, limit = 50 } = params;
+  const queries: Promise<{ data: SiteOrder[] } | null>[] = [];
+
+  if (contactId !== undefined && contactId !== null && String(contactId).trim() !== "") {
+    queries.push(
+      directusAdminFetch<{ data: SiteOrder[] }>(
+        `/items/site_orders${qs({
+          "filter[contact_id][_eq]": String(contactId),
+          sort: "-date_ordered",
+          limit,
+          fields: FIELDS,
+        })}`,
+      ).catch(() => null),
+    );
+  }
+
+  if (email && email.trim()) {
+    queries.push(
+      directusAdminFetch<{ data: SiteOrder[] }>(
+        `/items/site_orders${qs({
+          "filter[customer_email][_eq]": email.trim(),
+          sort: "-date_ordered",
+          limit,
+          fields: FIELDS,
+        })}`,
+      ).catch(() => null),
+    );
+  }
+
+  if (phone && phone.trim()) {
+    const rawPhone = phone.trim();
+    const digits = rawPhone.replace(/\D/g, "");
+    queries.push(
+      directusAdminFetch<{ data: SiteOrder[] }>(
+        `/items/site_orders${qs({
+          "filter[customer_phone][_icontains]": digits.length >= 9 ? digits.slice(-9) : rawPhone,
+          sort: "-date_ordered",
+          limit,
+          fields: FIELDS,
+        })}`,
+      ).catch(() => null),
+    );
+  }
+
+  if (queries.length === 0) return [];
+
+  const results = await Promise.all(queries);
+  const seen = new Set<number | string>();
+  const orders: SiteOrder[] = [];
+
+  for (const r of results) {
+    for (const ord of r?.data || []) {
+      const uid = ord.id || ord.wc_order_id;
+      if (!uid || seen.has(uid)) continue;
+      seen.add(uid);
+      orders.push(ord);
+    }
+  }
+
+  return orders
+    .sort((a, b) => {
+      const da = a.date_ordered ? new Date(a.date_ordered).getTime() : 0;
+      const db = b.date_ordered ? new Date(b.date_ordered).getTime() : 0;
+      return db - da;
+    })
+    .slice(0, limit);
 }
 
 export interface UpdateWooTrackingPayload {

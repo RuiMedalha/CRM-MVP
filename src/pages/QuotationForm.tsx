@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProposalFormProvider, useProposalForm } from "@/contexts/ProposalFormContext";
@@ -327,7 +327,27 @@ function mapQuotationToFormState(quotation: any, items: any[]): Partial<Proposal
 export default function QuotationForm() {
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
-  const prefillData = (location.state as { prefill?: QuotationFormPrefill } | null)?.prefill;
+  const [searchParams] = useSearchParams();
+
+  const statePrefill = (location.state as { prefill?: QuotationFormPrefill } | null)?.prefill;
+  const queryPrefill: QuotationFormPrefill | undefined =
+    searchParams.has("customer_id") ||
+    searchParams.has("contactId") ||
+    searchParams.has("name") ||
+    searchParams.has("contactName") ||
+    searchParams.has("phone") ||
+    searchParams.has("email")
+      ? {
+          contactId: searchParams.get("customer_id") || searchParams.get("contactId") || undefined,
+          contactName: searchParams.get("name") || searchParams.get("contactName") || undefined,
+          company: searchParams.get("company") || searchParams.get("company_name") || undefined,
+          email: searchParams.get("email") || undefined,
+          phone: searchParams.get("phone") || undefined,
+          notes: searchParams.get("notes") || undefined,
+        }
+      : undefined;
+
+  const prefillData = statePrefill || queryPrefill;
   const isNewProposal = location.pathname.includes("/nova");
   const isEditing = !!id && !isNewProposal;
 

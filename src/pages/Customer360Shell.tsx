@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Customer 360 Command Center — centro operacional do Hotelequip OS.
  * Rota: /customer360-shell/:id (dados reais) ou /customer360-shell (mock)
  *
@@ -39,6 +39,7 @@ import { NewsletterBanner } from "@/components/customer360/NewsletterBanner";
 import { SectionCard } from "@/components/customer360/ui/SectionCard";
 import { EmptyState } from "@/components/customer360/ui/EmptyState";
 import { useCustomer360 } from "@/hooks/useCustomer360";
+import { CustomerOrdersTab } from "@/components/customer360/CustomerOrdersTab";
 import { ContactOrderTracking } from "@/components/orders/ContactOrderTracking";
 import { CustomerRequestsPanel } from "@/components/contacts/CustomerRequestsPanel";
 import { calculateHealthScore } from "@/services/customer360/CustomerHealthService";
@@ -53,17 +54,17 @@ import type { Customer360Data } from "@/types/customer360";
 
 // ─── Tab definition ────────────────────────────────────────────────────────
 
-type TabId = "geral" | "editar" | "comunicacoes" | "propostas" | "oportunidades" | "followups" | "historico" | "tracking";
+type TabId = "geral" | "editar" | "comunicacoes" | "propostas" | "pedidos" | "oportunidades" | "followups" | "historico" | "tracking";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "geral", label: "Geral" },
   { id: "editar", label: "Editar ficha" },
   { id: "comunicacoes", label: "Comunicações" },
   { id: "propostas", label: "Propostas" },
+  { id: "pedidos", label: "Pedidos & Encomendas" },
   { id: "oportunidades", label: "Oportunidades" },
   { id: "followups", label: "Follow-ups" },
   { id: "historico", label: "Histórico" },
-  { id: "tracking", label: "Tracking" },
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -257,7 +258,7 @@ export default function Customer360Shell() {
             right={
               <>
                 <OpportunityPanel opportunities={c360.opportunities} />
-                <ProposalPanel proposals={c360.proposals} />
+                <ProposalPanel proposals={c360.proposals} contactId={id} contactName={org.name} />
                 <AISuggestions suggestions={recommendations} />
               </>
             }
@@ -284,7 +285,7 @@ export default function Customer360Shell() {
       case "propostas":
         return (
           <div className="p-4 max-w-3xl mx-auto">
-            <ProposalPanel proposals={c360.proposals} />
+            <ProposalPanel proposals={c360.proposals} contactId={id} contactName={org.name} />
           </div>
         );
 
@@ -309,18 +310,15 @@ export default function Customer360Shell() {
           </div>
         );
 
+      case "pedidos":
       case "tracking":
         return (
-          <div className="p-4 max-w-3xl mx-auto space-y-6">
-            <SectionCard title="Tracking de encomendas">
-              {id ? <ContactOrderTracking contactId={id} /> : <EmptyState title="Sem contacto" description="Abra um contacto para ver o tracking." />}
-            </SectionCard>
-            <SectionCard title="Pedidos do site">
-              {id || org.email || org.phone
-                ? <CustomerRequestsPanel contactId={id} contactEmail={org.email} contactPhone={org.phone || org.mobile_phone} />
-                : <EmptyState title="Sem dados de contacto" description="Este contacto não tem id/email/telefone registados." />}
-            </SectionCard>
-          </div>
+          <CustomerOrdersTab
+            contactId={id}
+            contactName={org.name}
+            contactEmail={org.email}
+            contactPhone={org.phone || org.mobile_phone}
+          />
         );
 
       default:

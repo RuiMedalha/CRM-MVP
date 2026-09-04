@@ -42,14 +42,21 @@ export function CustomerRequestsPanel({
   contactEmail?: string;
   contactPhone?: string;
 }) {
+  const hasContactId = Boolean(contactId !== undefined && contactId !== null && String(contactId).trim() !== "");
+  const hasEmail = Boolean(contactEmail && contactEmail.trim());
+  const hasPhone = Boolean(contactPhone && contactPhone.trim());
+
   const byContactId = useInteractions(
-    contactId ? { contactId: String(contactId), limit: 200, page: 1 } : undefined,
+    hasContactId ? { contactId: String(contactId), limit: 200, page: 1 } : undefined,
+    { enabled: hasContactId }
   );
   const byEmail = useInteractions(
-    contactEmail && contactEmail.trim() ? { email: contactEmail, limit: 200, page: 1 } : undefined,
+    hasEmail ? { email: contactEmail!.trim(), limit: 200, page: 1 } : undefined,
+    { enabled: hasEmail }
   );
   const byPhone = useInteractions(
-    contactPhone && contactPhone.trim() ? { phone: contactPhone, limit: 200, page: 1 } : undefined,
+    hasPhone ? { phone: contactPhone!.trim(), limit: 200, page: 1 } : undefined,
+    { enabled: hasPhone }
   );
 
   const loading = byContactId.isLoading || byEmail.isLoading || byPhone.isLoading;

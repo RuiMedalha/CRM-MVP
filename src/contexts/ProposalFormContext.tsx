@@ -256,6 +256,9 @@ export function ProposalFormProvider({ children, editingId, prefillData, existin
       fields.sent_to_phone = prefillData.phone;
     }
     if (prefillData.notes) fields.notes = prefillData.notes;
+    if (prefillData.contactId || prefillData.email || prefillData.phone) {
+      fields.isExistingCustomer = true;
+    }
     if (Object.keys(fields).length > 0) {
       dispatch({ type: "UPDATE_FIELDS", fields });
     }
@@ -264,8 +267,10 @@ export function ProposalFormProvider({ children, editingId, prefillData, existin
         const item: QuotationItem = {
           item_type: "product",
           product_name: p.name,
+          sku: (p as any).sku || "",
           quantity: p.quantity || 1,
           unit_price: p.price || 0,
+          iva_percent: 23,
           line_total: (p.price || 0) * (p.quantity || 1),
         };
         dispatch({ type: "ADD_ITEM", item });

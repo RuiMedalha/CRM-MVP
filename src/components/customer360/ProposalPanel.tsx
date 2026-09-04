@@ -1,8 +1,9 @@
-﻿import { SectionCard } from "./ui/SectionCard";
+import { Link, useNavigate } from "react-router-dom";
+import { SectionCard } from "./ui/SectionCard";
 import { StatusBadge } from "./ui/StatusBadge";
 import { EmptyState } from "./ui/EmptyState";
 import { Button } from "@/components/ui/button";
-import { FileText, Download } from "lucide-react";
+import { FileText, Plus, ExternalLink } from "lucide-react";
 
 interface ProposalEntry {
   id: string;
@@ -16,6 +17,8 @@ interface ProposalEntry {
 
 interface ProposalPanelProps {
   proposals: ProposalEntry[];
+  contactId?: string;
+  contactName?: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "success" | "warning" | "danger" | "info" | "muted" }> = {
@@ -27,9 +30,37 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "succe
   expired: { label: "Expirada", variant: "muted" },
 };
 
-export function ProposalPanel({ proposals }: ProposalPanelProps) {
+export function ProposalPanel({ proposals, contactId, contactName }: ProposalPanelProps) {
+  const navigate = useNavigate();
+
   return (
-    <SectionCard title="Propostas">
+    <SectionCard
+      title={`Propostas (${proposals.length})`}
+      action={
+        <div className="flex items-center gap-2">
+          {contactId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                navigate("/propostas/nova", {
+                  state: { prefill: { contactId, contactName } },
+                })
+              }
+              className="h-6 text-xs gap-1"
+            >
+              <Plus className="h-3 w-3" /> Nova
+            </Button>
+          )}
+          <Link
+            to="/propostas"
+            className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-0.5"
+          >
+            Ver todas <ExternalLink className="h-2.5 w-2.5" />
+          </Link>
+        </div>
+      }
+    >
       {proposals.length === 0 ? (
         <EmptyState icon="📄" message="Ainda não existem propostas para este cliente." />
       ) : (
@@ -37,20 +68,36 @@ export function ProposalPanel({ proposals }: ProposalPanelProps) {
           {proposals.map((p) => {
             const config = STATUS_CONFIG[p.status] ?? { label: p.status, variant: "muted" as const };
             return (
-              <div key={p.id} className="rounded-lg border border-border p-2.5 hover:shadow-sm hover:bg-accent/30 transition-all cursor-pointer" onClick={() => window.location.href = `/propostas/${p.id}/detalhe`}>
+              <div
+                key={p.id}
+                className="rounded-lg border border-border p-2.5 hover:shadow-sm hover:bg-accent/30 transition-all cursor-pointer"
+                onClick={() => navigate(`/propostas/${p.id}/detalhe`)}
+              >
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="font-mono text-xs text-muted-foreground">{p.number}</span>
                   <StatusBadge label={config.label} variant={config.variant} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    {p.totalAmount && <span className="font-mono font-medium text-foreground text-[12px]">€{p.totalAmount.toLocaleString("pt-PT")}</span>}
+                    {p.totalAmount && (
+                      <span className="font-mono font-medium text-foreground text-[12px]">
+                        €{p.totalAmount.toLocaleString("pt-PT")}
+                      </span>
+                    )}
                     {p.sentAt && <span>Enviada {p.sentAt}</span>}
                     {p.viewedAt && <span>👁 Vista</span>}
                     {p.approvedAt && <span>✅ Aceite</span>}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); window.location.href = `/propostas/${p.id}/detalhe`; }}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/propostas/${p.id}/detalhe`);
+                      }}
+                    >
                       <FileText className="h-3 w-3" />
                     </Button>
                   </div>

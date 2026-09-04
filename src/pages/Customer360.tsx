@@ -2,7 +2,7 @@
  * Customer 360 - Vista remodulada mobile-first
  */
 import { useState, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -47,8 +47,9 @@ function getBadgeStyle(ch) {
     default: return 'bg-slate-100 text-slate-700';
   }
 }
-function QuickActionsSheet({ name, phone, email, whatsapp }) {
+function QuickActionsSheet({ contactId, name, phone, email, whatsapp }: { contactId?: string; name: string; phone?: string; email?: string; whatsapp?: string }) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -66,9 +67,20 @@ function QuickActionsSheet({ name, phone, email, whatsapp }) {
           <div className="grid grid-cols-2 gap-3">
             {[
               { icon: Phone, label: "Ligar", color: "text-green-600", fn: () => phone && window.open("tel:"+phone) },
-              { icon: MessageCircle, label: "WhatsApp", color: "text-emerald-600", fn: () => { const n = whatsapp?.replace(/\D/g,""); if(n) window.open("https://wa.me/"+n); } },
+              { icon: MessageCircle, label: "WhatsApp", color: "text-emerald-600", fn: () => { const n = whatsapp?.replace(/\D/g,"") || phone?.replace(/\D/g,""); if(n) window.open("https://wa.me/"+n); } },
               { icon: Mail, label: "Email", color: "text-blue-600", fn: () => email && window.open("mailto:"+email) },
-              { icon: FileText, label: "Proposta", color: "text-purple-600", fn: () => {} },
+              {
+                icon: FileText,
+                label: "Nova Proposta",
+                color: "text-purple-600",
+                fn: () => {
+                  if (contactId) {
+                    navigate("/propostas/nova", {
+                      state: { prefill: { contactId, contactName: name, email, phone } },
+                    });
+                  }
+                },
+              },
             ].map(({icon:Ic,label,color,fn}) => (
               <button key={label} onClick={() => { fn(); setOpen(false); }}
                 className="flex flex-col items-center justify-center p-4 rounded-xl border transition-all active:scale-95 bg-card shadow-sm hover:shadow-md hover:bg-gray-50">
@@ -337,7 +349,7 @@ function Customer360() {
             {org.phone&&<a href={"tel:"+org.phone} className="flex items-center gap-2 text-white/90 text-sm group"><Phone className="w-4 h-4 shrink-0 text-white/50"/><span className="truncate">{org.phone}</span><button onClick={(e)=>{e.preventDefault();navigator.clipboard?.writeText(org.phone)}} className="ml-auto text-white/30 hover:text-white transition-colors shrink-0"><Copy className="w-3.5 h-3.5"/></button></a>}
             {org.email&&<a href={"mailto:"+org.email} className="flex items-center gap-2 text-white/90 text-sm group"><Mail className="w-4 h-4 shrink-0 text-white/50"/><span className="truncate">{org.email}</span><button onClick={(e)=>{e.preventDefault();navigator.clipboard?.writeText(org.email)}} className="ml-auto text-white/30 hover:text-white transition-colors shrink-0"><Copy className="w-3.5 h-3.5"/></button></a>}
           </div>
-          <QuickActionsSheet name={name} phone={org.phone} email={org.email} whatsapp={org.whatsapp_number}/>
+          <QuickActionsSheet contactId={id} name={name} phone={org.phone} email={org.email} whatsapp={org.whatsapp_number}/>
         </div>
       </div>
 

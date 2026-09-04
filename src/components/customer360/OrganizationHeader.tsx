@@ -1,4 +1,4 @@
-﻿import { StatusBadge } from "./ui/StatusBadge";
+import { StatusBadge } from "./ui/StatusBadge";
 
 interface KpiCardProps {
   label: string;
@@ -65,10 +65,9 @@ export function OrganizationHeader({
   annualValue, pipelineActive, dealsWon, dealsLost, commercialScore, lastContactDays, nextTask,
 }: OrganizationHeaderProps) {
   return (
-    <div className="bg-card border-b border-border px-5 py-4">
-      <div className="flex items-start justify-between gap-6">
-        {/* Left — Identity */}
-        <div className="min-w-0 flex-1">
+    <div className="flex items-start justify-between gap-6">
+      {/* Left — Identity */}
+      <div className="min-w-0 flex-1">
           {/* Name + badges */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
             <h1 className="text-xl font-bold text-foreground truncate">{name}</h1>
@@ -106,6 +105,5 @@ export function OrganizationHeader({
           <KpiCard label="Dias s/ contacto" value={lastContactDays} />
         </div>
       </div>
-    </div>
   );
 }
