@@ -40,6 +40,7 @@ import { patchContact, getContactById } from "@/integrations/directus/contacts"
 import { createFollowUp } from "@/integrations/directus/follow-ups"
 import { useEmployees } from "@/hooks/useEmployees"
 import { ProductSearchTab } from "@/components/contacts/ProductSearchTab"
+import { CustomerDossierPanel } from "@/components/customer360/CustomerDossierPanel"
 import { TelecofLeadCapture } from "./TelecofLeadCapture"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -800,31 +801,23 @@ export function TelecofCallWorkspace() {
         )}
 
         {!identityLoading && identity?.kind === "contact" && (
-          <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/15 dark:border-emerald-800 p-4">
-            {/* Header da Ficha / Dossiê */}
-            <div className="flex items-start justify-between gap-2 border-b border-emerald-200/60 dark:border-emerald-800/60 pb-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-sm shadow-sm">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-bold text-foreground">
-                      {String(identity.record?.company_name || identity.record?.name || identity.record?.contact_name || "Cliente")}
-                    </h3>
-                    <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                      Cliente 360
-                    </span>
-                  </div>
-                  {identity.record?.contact_name && identity.record?.company_name && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      Pessoa de contacto: <span className="font-medium text-foreground">{String(identity.record.contact_name)}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
+          <div className="space-y-3">
+            {/* Dossiê contínuo — vista partilhada (CustomerDossierPanel) */}
+            <CustomerDossierPanel
+              contactId={identity.record?.id ? String(identity.record.id) : null}
+              variant="telecof"
+              defaultSource="telecof"
+              callId={selected.id}
+              noteQuickTags={Array.from(QUICK_TAGS)}
+              allowFollowUp
+            />
 
-              <div className="flex shrink-0 items-center gap-1.5">
+            {/* Modo de Edição Rápida — específico Telecof (não está no painel partilhado) */}
+            <div className="space-y-2.5 rounded-xl border border-border bg-card p-3 text-xs">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-foreground uppercase tracking-wider text-[11px]">
+                  Dados do cliente — edição rápida
+                </p>
                 <button
                   type="button"
                   onClick={() => setIsEditingContact((v) => !v)}
@@ -834,173 +827,114 @@ export function TelecofCallWorkspace() {
                   <Edit2 className="h-3 w-3" />
                   {isEditingContact ? "Fechar" : "Editar"}
                 </button>
-                <Link
-                  to={`/customer360-shell/${encodeURIComponent(String(identity.record?.id || ""))}`}
-                  className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 shadow-sm"
-                  title="Abrir página completa do Cliente 360"
-                >
-                  <ExternalLink className="h-3 w-3" /> Abrir 360
-                </Link>
               </div>
+
+              {isEditingContact ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-muted-foreground font-medium block mb-0.5">Empresa *</label>
+                      <input
+                        type="text"
+                        value={contactEditForm.company_name}
+                        onChange={(e) => setContactEditForm({ ...contactEditForm, company_name: e.target.value })}
+                        placeholder="Nome da empresa"
+                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground font-medium block mb-0.5">Pessoa de Contacto</label>
+                      <input
+                        type="text"
+                        value={contactEditForm.contact_name}
+                        onChange={(e) => setContactEditForm({ ...contactEditForm, contact_name: e.target.value })}
+                        placeholder="Nome do interlocutor"
+                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground font-medium block mb-0.5">Email</label>
+                      <input
+                        type="email"
+                        value={contactEditForm.email}
+                        onChange={(e) => setContactEditForm({ ...contactEditForm, email: e.target.value })}
+                        placeholder="email@empresa.com"
+                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground font-medium block mb-0.5">NIF / Contribuinte</label>
+                      <input
+                        type="text"
+                        value={contactEditForm.nif}
+                        onChange={(e) => setContactEditForm({ ...contactEditForm, nif: e.target.value })}
+                        placeholder="Ex: 501234567"
+                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground font-medium block mb-0.5">Cidade / Localidade</label>
+                      <input
+                        type="text"
+                        value={contactEditForm.city}
+                        onChange={(e) => setContactEditForm({ ...contactEditForm, city: e.target.value })}
+                        placeholder="Ex: Lisboa, Porto"
+                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground font-medium block mb-0.5">Telefone</label>
+                      <input
+                        type="text"
+                        value={contactEditForm.phone}
+                        onChange={(e) => setContactEditForm({ ...contactEditForm, phone: e.target.value })}
+                        placeholder="Telefone"
+                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1 border-t border-border mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingContact(false)}
+                      className="rounded px-2.5 py-1 text-xs border border-border text-muted-foreground hover:bg-muted"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingContact || !contactEditForm.company_name.trim()}
+                      onClick={() => void handleSaveContactEdit()}
+                      className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      <Save className="h-3 w-3" />
+                      {savingContact ? "A guardar…" : "Guardar Dados"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-xs bg-card/70 p-2.5 rounded-lg border border-border">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground truncate">
+                      {String(identity.record?.phone || identity.record?.mobile_phone || selected?.phone || "—")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground truncate">{String(identity.record?.email || "Sem email")}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <CreditCard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground truncate">NIF: {String(identity.record?.nif || "—")}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground truncate">{String(identity.record?.city || "—")}</span>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Modo de Edição Rápida */}
-            {isEditingContact ? (
-              <div className="space-y-2.5 rounded-lg border border-border bg-card p-3 text-xs">
-                <p className="font-semibold text-foreground uppercase tracking-wider text-[11px]">
-                  Atualizar Dados do Cliente
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-muted-foreground font-medium block mb-0.5">Empresa *</label>
-                    <input
-                      type="text"
-                      value={contactEditForm.company_name}
-                      onChange={(e) => setContactEditForm({ ...contactEditForm, company_name: e.target.value })}
-                      placeholder="Nome da empresa"
-                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground font-medium block mb-0.5">Pessoa de Contacto</label>
-                    <input
-                      type="text"
-                      value={contactEditForm.contact_name}
-                      onChange={(e) => setContactEditForm({ ...contactEditForm, contact_name: e.target.value })}
-                      placeholder="Nome do interlocutor"
-                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground font-medium block mb-0.5">Email</label>
-                    <input
-                      type="email"
-                      value={contactEditForm.email}
-                      onChange={(e) => setContactEditForm({ ...contactEditForm, email: e.target.value })}
-                      placeholder="email@empresa.com"
-                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground font-medium block mb-0.5">NIF / Contribuinte</label>
-                    <input
-                      type="text"
-                      value={contactEditForm.nif}
-                      onChange={(e) => setContactEditForm({ ...contactEditForm, nif: e.target.value })}
-                      placeholder="Ex: 501234567"
-                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground font-medium block mb-0.5">Cidade / Localidade</label>
-                    <input
-                      type="text"
-                      value={contactEditForm.city}
-                      onChange={(e) => setContactEditForm({ ...contactEditForm, city: e.target.value })}
-                      placeholder="Ex: Lisboa, Porto"
-                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground font-medium block mb-0.5">Telefone</label>
-                    <input
-                      type="text"
-                      value={contactEditForm.phone}
-                      onChange={(e) => setContactEditForm({ ...contactEditForm, phone: e.target.value })}
-                      placeholder="Telefone"
-                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-1 border-t border-border mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingContact(false)}
-                    className="rounded px-2.5 py-1 text-xs border border-border text-muted-foreground hover:bg-muted"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={savingContact || !contactEditForm.company_name.trim()}
-                    onClick={() => void handleSaveContactEdit()}
-                    className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    <Save className="h-3 w-3" />
-                    {savingContact ? "A guardar…" : "Guardar Dados"}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Grelha de Dados Rápidos */
-              <div className="grid grid-cols-2 gap-2 text-xs bg-card/70 p-2.5 rounded-lg border border-border">
-                <div className="flex items-center gap-1.5 truncate">
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-muted-foreground truncate">
-                    {String(identity.record?.phone || identity.record?.mobile_phone || selected?.phone || "—")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 truncate">
-                  <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-muted-foreground truncate">{String(identity.record?.email || "Sem email")}</span>
-                </div>
-                <div className="flex items-center gap-1.5 truncate">
-                  <CreditCard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-muted-foreground truncate">NIF: {String(identity.record?.nif || "—")}</span>
-                </div>
-                <div className="flex items-center gap-1.5 truncate">
-                  <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-muted-foreground truncate">{String(identity.record?.city || "—")}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Dossiê: Negócios Abertos */}
-            {Array.isArray(identity.openDealsRecords) && identity.openDealsRecords.length > 0 && (
-              <div className="space-y-1.5 border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Negócios & Propostas ({identity.openDealsRecords.length})
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  {identity.openDealsRecords.map((d: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between rounded-md bg-card/80 p-2 text-xs border border-border/60">
-                      <span className="font-medium text-foreground truncate">{d.title || `Negócio #${d.id}`}</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 ml-2">
-                        {Number(d.total_amount || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Dossiê: Histórico de Interações ("Tudo o que fez com ele") */}
-            {Array.isArray(identity.recentInteractions) && identity.recentInteractions.length > 0 && (
-              <div className="space-y-1.5 border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Histórico & Interações ({identity.recentInteractions.length})
-                  </p>
-                </div>
-                <div className="space-y-1 max-h-48 overflow-y-auto pr-0.5">
-                  {identity.recentInteractions.map((h: any, i: number) => (
-                    <div key={i} className="rounded-md bg-card/80 p-2 text-xs border border-border/60 space-y-0.5">
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span className="font-semibold uppercase text-foreground">
-                          {h.type || h.channel || "interação"} {h.direction === "out" ? "↑ Saída" : "↓ Entrada"}
-                        </span>
-                        <span>{formatDateTime(h.occurred_at || h.date_created)}</span>
-                      </div>
-                      <p className="text-foreground text-xs line-clamp-2">
-                        {h.summary || h.notes || "Registo de contacto"}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -1027,48 +961,17 @@ export function TelecofCallWorkspace() {
           </div>
         )}
 
-        {/* Resumo do atendimento */}
-        <div className="space-y-2 rounded-xl border border-border bg-card p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Resumo do atendimento
-          </h3>
-          {selected.resolutionNote && (
+        {/* Resumo do atendimento (Telecof-específico — grava resolution_note na chamada) */}
+        {selected.resolutionNote && (
+          <div className="space-y-2 rounded-xl border border-border bg-card p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Resolução desta chamada
+            </h3>
             <p className="whitespace-pre-wrap rounded-lg bg-muted px-3 py-2 text-xs text-foreground">
               {selected.resolutionNote}
             </p>
-          )}
-          <textarea
-            value={summaryNote}
-            onChange={(e) => setSummaryNote(e.target.value)}
-            placeholder="Resumo da chamada, próximos passos, pedido do cliente…"
-            rows={3}
-            className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-          />
-          <div className="flex flex-wrap gap-1.5">
-            {QUICK_TAGS.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => void handleAddQuickTag(tag)}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                  activeTags.includes(tag)
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-border bg-card text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
           </div>
-          <button
-            type="button"
-            onClick={() => void handleSaveSummary()}
-            disabled={savingSummary || !summaryNote.trim()}
-            className="min-h-[44px] w-full rounded-lg bg-primary py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
-            {savingSummary ? "A guardar…" : "Guardar no cliente"}
-          </button>
-        </div>
+        )}
 
         {/* Pesquisa de produtos (Meilisearch) */}
         {selected.contactId && (
