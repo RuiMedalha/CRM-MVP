@@ -22,6 +22,7 @@ import { createFollowUp } from "@/integrations/directus/follow-ups"
 import type { ContactItem } from "@/integrations/directus/contacts"
 
 import { useTelecofCallStore } from "@/store/telecofCallStore"
+import { CustomerDossierPanel } from "@/components/customer360/CustomerDossierPanel"
 import { TelecofHubTags, TelecofTagPicker } from "./TelecofHubTags"
 
 import type { TelecofCallEventRecord } from "@/types/telecof"
@@ -479,10 +480,29 @@ export function TelecofCustomerPanel({ event: eventProp, variant = "sidebar" }: 
         <TelecofTagPicker activeTags={hubTags} disabled={saving} onToggle={(tag) => void handleToggleTag(tag)} />
       </section>
 
-      {/* NOTAS */}
-      <section className="space-y-3 border-b border-border p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notas do atendimento</h3>
-        {hubNotes.length > 0 ? (
+      {/* DOSSIÊ CONTÍNUO — vista partilhada (CustomerDossierPanel).
+          Substitui as antigas secções NOTAS + FOLLOW-UP. Mantém hubNotes como
+          notas legadas da chamada (legado raw_payload.hub_notes) — o dossier
+          novo vive em interactions. */}
+      {(crmContact?.id || event.contactId) && (
+        <section className="border-b border-border p-4">
+          <CustomerDossierPanel
+            contactId={crmContact?.id ? String(crmContact.id) : event.contactId || null}
+            variant="telecof"
+            defaultSource="telecof"
+            callId={event.id}
+            hideHeader
+            allowFollowUp={false}
+          />
+        </section>
+      )}
+
+      {/* Notas legadas do raw_payload.hub_notes — mantidas para compatibilidade */}
+      {hubNotes.length > 0 && (
+        <section className="space-y-3 border-b border-border p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Notas legadas do atendimento
+          </h3>
           <ul className="max-h-36 space-y-2 overflow-y-auto rounded-lg border border-border bg-muted p-2">
             {hubNotes.map((note) => (
               <li key={note.id} className="text-xs text-foreground">
@@ -493,51 +513,8 @@ export function TelecofCustomerPanel({ event: eventProp, variant = "sidebar" }: 
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="text-xs text-muted-foreground">Sem notas ainda.</p>
-        )}
-        <textarea
-          value={attendanceNote}
-          onChange={(e) => setAttendanceNote(e.target.value)}
-          rows={3}
-          placeholder="Nota interna deste atendimento…"
-          className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-        />
-        <button
-          type="button"
-          disabled={saving || !attendanceNote.trim()}
-          onClick={() => void handleSaveNote()}
-          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {saving ? "A guardar…" : "Guardar nota"}
-        </button>
-      </section>
-
-      {/* FOLLOW-UP — Phase 3: secção visível por defeito no Telecof */}
-      <section className="space-y-3 border-b border-border p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Agendar follow-up</h3>
-        <input
-          type="datetime-local"
-          value={followUpDate}
-          onChange={(e) => setFollowUpDate(e.target.value)}
-          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-        />
-        <textarea
-          value={followUpNote}
-          onChange={(e) => setFollowUpNote(e.target.value)}
-          rows={2}
-          placeholder="Nota do follow-up (opcional)…"
-          className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-        />
-        <button
-          type="button"
-          disabled={savingFollowUp || !followUpDate}
-          onClick={() => void handleSaveFollowUp()}
-          className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
-        >
-          {savingFollowUp ? "A agendar…" : "📅 Agendar follow-up"}
-        </button>
-      </section>
+        </section>
+      )}
 
       {/* AÇÕES */}
       <section className="space-y-2 p-4">
