@@ -224,7 +224,7 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
 
   return (
     <>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5 items-center">
         <ActionBtn icon={Phone} label="Ligar" onClick={handleCall} variant="green" />
         <ActionBtn icon={MessageCircle} label="WhatsApp" onClick={handleWhatsApp} variant="green" />
         <ActionBtn icon={Mail} label="Email" onClick={handleEmail} variant="blue" />
@@ -372,16 +372,24 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
 }
 
 const VARIANT_CLASSES = {
-  green: "text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40",
-  blue: "text-blue-700 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40",
-  default: "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+  green: "text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 border-emerald-200/80 dark:text-emerald-400 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 dark:border-emerald-800/40",
+  blue: "text-blue-700 bg-blue-50/80 hover:bg-blue-100/90 border-blue-200/80 dark:text-blue-400 dark:bg-blue-950/40 dark:hover:bg-blue-950/70 dark:border-blue-800/40",
+  default: "text-muted-foreground bg-card hover:text-foreground hover:bg-muted/70 border-border/80 shadow-xs",
 } as const;
 
 function ActionBtn({ icon: Icon, label, onClick, variant = "default" }: { icon: typeof Phone; label: string; onClick?: () => void; variant?: keyof typeof VARIANT_CLASSES }) {
   return (
-    <Button variant="ghost" size="sm" className={cn("h-7 text-xs gap-1.5 rounded-md px-2", VARIANT_CLASSES[variant])} onClick={onClick}>
-      <Icon className="h-3.5 w-3.5" />
-      <span className="hidden sm:inline">{label}</span>
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn(
+        "min-h-[34px] text-xs gap-1.5 rounded-lg px-2.5 py-1 font-medium border transition-all active:scale-95",
+        VARIANT_CLASSES[variant]
+      )}
+      onClick={onClick}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span>{label}</span>
     </Button>
   );
 }

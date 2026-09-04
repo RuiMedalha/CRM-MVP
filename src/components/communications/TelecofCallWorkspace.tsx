@@ -46,15 +46,14 @@ import { CustomerDossierPanel } from "@/components/customer360/CustomerDossierPa
 import { TelecofLeadCapture } from "./TelecofLeadCapture"
 import { toast } from "@/hooks/use-toast"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 function formatDateTime(iso?: string): string {
   if (!iso) return "—"
@@ -1051,29 +1050,31 @@ export function TelecofCallWorkspace() {
         >
           Reclamar
         </button>
-        <AlertDialog open={confirmCallback} onOpenChange={setConfirmCallback}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Marcar para reclamar?</AlertDialogTitle>
-              <AlertDialogDescription>
+        <Dialog open={confirmCallback} onOpenChange={setConfirmCallback}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Marcar para reclamar?</DialogTitle>
+              <DialogDescription>
                 {selected?.contactId
                   ? `Vai criar um follow-up "Rechamar ${selected.customerName || selected.phone || "cliente"}" agendado para daqui a 1 hora, visível na Agenda.`
                   : "Este número ainda não está identificado, por isso não é criado nenhum follow-up na Agenda — só se regista o estado da chamada."}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setConfirmCallback(false)}>
+                Cancelar
+              </Button>
+              <Button
                 onClick={() => {
                   setConfirmCallback(false)
                   void handleCallback()
                 }}
               >
                 Confirmar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         {wa && (
           <a
             href={`https://wa.me/${wa}`}
