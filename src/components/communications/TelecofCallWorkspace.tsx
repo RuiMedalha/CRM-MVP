@@ -25,6 +25,8 @@ import {
   BadgeAlert,
   ChevronDown,
   ChevronUp,
+  Search,
+  Package,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 
@@ -39,7 +41,7 @@ import { directusRequest } from "@/integrations/directus/client"
 import { patchContact, getContactById } from "@/integrations/directus/contacts"
 import { createFollowUp } from "@/integrations/directus/follow-ups"
 import { useEmployees } from "@/hooks/useEmployees"
-import { ProductSearchTab } from "@/components/contacts/ProductSearchTab"
+import { ProductSearchTab, matchesShortcut, type ProductSearchTabHandle } from "@/components/contacts/ProductSearchTab"
 import { CustomerDossierPanel } from "@/components/customer360/CustomerDossierPanel"
 import { TelecofLeadCapture } from "./TelecofLeadCapture"
 import { toast } from "@/hooks/use-toast"
@@ -103,6 +105,36 @@ export function TelecofCallWorkspace() {
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [confirmCallback, setConfirmCallback] = useState(false)
+
+  // Secção de pesquisa de produtos: colapsável, default aberto (o operador precisa)
+  const [productSearchOpen, setProductSearchOpen] = useState(true)
+  const productSearchRef = useRef<ProductSearchTabHandle | null>(null)
+  const isMac =
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || "")
+
+  /**
+   * Atalho global Ctrl+K (Windows/Linux) / Cmd+K (Mac) foca o input de pesquisa
+   * de produtos. Ignora quando o foco está num campo editável que não seja
+   * o próprio input (ex: textarea de notas) para não roubar atalhos ao utilizador.
+   */
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!matchesShortcut(event, "mod+k", isMac)) return
+      const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase()
+      const isEditable =
+        tag === "input" || tag === "textarea" || (event.target as HTMLElement)?.isContentEditable
+      // Se o foco já está num input/textarea que não seja o nosso input, deixa passar.
+      if (isEditable && (event.target as HTMLElement) !== productSearchRef.current) {
+        // Mas se for Ctrl+K, queremos sempre roubar — é convenção universal.
+        if (!matchesShortcut(event, "mod+k", isMac)) return
+      }
+      event.preventDefault()
+      productSearchRef.current?.focus()
+      productSearchRef.current?.select()
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isMac])
 
   // Caller identification: default imediato para "unknown" para exibir a Ficha instantaneamente
   const [identity, setIdentity] = useState<{
@@ -756,6 +788,42 @@ export function TelecofCallWorkspace() {
           )}
         </dl>
 
+        {/* PESQUISA RÁPIDA DE PRODUTOS — sempre visível na chamada.
+            Atalho Ctrl+K (Cmd+K em Mac) foca o input via productSearchRef. */}
+        <div className="rounded-xl border border-amber-200/60 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/15">
+          <button
+            type="button"
+            onClick={() => setProductSearchOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+            aria-expanded={productSearchOpen}
+          >
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                Pesquisa rápida de produtos
+              </h3>
+              <span className="hidden sm:inline-flex items-center gap-1 rounded bg-amber-200/60 dark:bg-amber-900/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-300">
+                <Search className="h-3 w-3" />
+                {isMac ? "⌘K" : "Ctrl+K"} para focar
+              </span>
+            </div>
+            {productSearchOpen ? (
+              <ChevronUp className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" />
+            )}
+          </button>
+          {productSearchOpen && (
+            <div className="px-4 pb-4">
+              <ProductSearchTab
+                ref={productSearchRef}
+                clientPhone={selected?.phone || selected?.normalizedPhone}
+                showAddToQuotation
+              />
+            </div>
+          )}
+        </div>
+
         {/* Ficha de Preenchimento Imediato (Contacto Novo / Não Registado) */}
         {identity?.kind === "unknown" && (
           <TelecofLeadCapture
@@ -974,12 +1042,6 @@ export function TelecofCallWorkspace() {
           </div>
         )}
 
-        {/* Pesquisa de produtos (Meilisearch) */}
-        {selected.contactId && (
-          <div className="rounded-xl border border-border bg-card p-4">
-            <ProductSearchTab clientPhone={selected.phone || selected.normalizedPhone} showAddToQuotation />
-          </div>
-        )}
       </div>
 
       {/* Composer sticky — barra de acções secundárias (48-56px), sempre

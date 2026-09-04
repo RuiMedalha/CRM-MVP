@@ -9,7 +9,7 @@
  *   • Pode ser consumido diretamente em outras superfícies se desejado.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, StickyNote, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -48,13 +48,41 @@ export function AddNoteInline({
   direction = "out",
   variant = "telecof",
   disabled = false,
-  placeholder = "Notas / próximos passos / pedido do cliente…",
+  placeholder = "Escreve à vontade — esta nota fica guardada no dossier do cliente.",
   onSaved,
 }: AddNoteInlineProps) {
   const dossier = useCustomerDossier({ contactId, leadId });
   const [text, setText] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  /**
+   * Auto-grow da textarea: ajusta a altura ao conteúdo com cap a MAX_HEIGHT.
+   * - MIN_HEIGHT garante ~6 linhas visíveis no arranque (variant telecof).
+   * - MAX_HEIGHT impede que a textarea ocupe a página inteira.
+   * - onInput + onChange mantêm-se no componente controlado.
+   */
+  const MIN_HEIGHT = variant === "hubchat" ? 48 : 144; // ~3 vs ~6 linhas
+  const MAX_HEIGHT = 400;
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(Math.max(el.scrollHeight, MIN_HEIGHT), MAX_HEIGHT);
+    el.style.height = `${next}px`;
+    // Indica visualmente que há mais conteúdo abaixo do cap
+    el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+  }, [text, variant, MIN_HEIGHT]);
+
+  /** Reset explícito do tamanho após gravar (auto-grow recalcula) */
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || text) return;
+    el.style.height = `${MIN_HEIGHT}px`;
+    el.style.overflowY = "hidden";
+  }, [text, MIN_HEIGHT]);
 
   function toggleTag(tag: string) {
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
@@ -132,13 +160,15 @@ export function AddNoteInline({
       </div>
 
       <textarea
+        ref={textareaRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
-        rows={compact ? 2 : 3}
+        rows={variant === "hubchat" ? 2 : 6}
         disabled={disabled || saving || !dossier.canAddNote}
+        style={{ minHeight: MIN_HEIGHT }}
         className={cn(
-          "w-full resize-none rounded-lg border border-border bg-background outline-none transition focus:ring-2 focus:ring-primary/30 focus:border-primary",
+          "w-full resize-none rounded-lg border border-border bg-background outline-none transition focus:ring-2 focus:ring-primary/30 focus:border-primary leading-relaxed",
           compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm",
           (disabled || !dossier.canAddNote) && "opacity-60 cursor-not-allowed",
         )}

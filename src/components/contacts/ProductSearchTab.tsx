@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useMeilisearch, getMeilisearchSettings, type MeilisearchProduct } from "@/hooks/useMeilisearch";
 import { useQuotationBuilderOptional } from "@/contexts/QuotationBuilderContext";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,26 @@ import { useCompanySettings } from "@/hooks/useSettings";
 interface ProductSearchTabProps {
   clientPhone?: string | null;
   showAddToQuotation?: boolean;
+  /** Atalho de teclado para focar o input. Default "mod+k" (Ctrl+K no Windows/Linux). */
+  shortcut?: string;
+  /** Mostrar dica do atalho à direita do input. Default true se `shortcut` definido. */
+  showShortcutHint?: boolean;
 }
 
-export function ProductSearchTab({ clientPhone, showAddToQuotation = false }: ProductSearchTabProps) {
+/**
+ * Ref público: { focus(), select() }.
+ * Permite que o pai (TelecofCallWorkspace) capture Ctrl+K e faça focus + select.
+ */
+export interface ProductSearchTabHandle {
+  focus: () => void;
+  select: () => void;
+}
+
+export const ProductSearchTab = forwardRef<ProductSearchTabHandle, ProductSearchTabProps>(
+  function ProductSearchTab(
+    { clientPhone, showAddToQuotation = false, shortcut = "mod+k", showShortcutHint },
+    ref,
+  ) {
   const [query, setQuery] = useState("");
   const [manualUrl, setManualUrl] = useState("");
   const [showManualInput, setShowManualInput] = useState<string | null>(null);
@@ -22,7 +39,18 @@ export function ProductSearchTab({ clientPhone, showAddToQuotation = false }: Pr
   const { search, results, isSearching, error, clearResults } = useMeilisearch();
   const { data: settings } = useCompanySettings();
   const wooUrl = (settings as any)?.woo_url || "";
-  
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Expõe focus/select ao pai (TelecofCallWorkspace usa para Ctrl+K)
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus: () => inputRef.current?.focus(),
+      select: () => inputRef.current?.select(),
+    }),
+    [],
+  );
+
   // Pode ser usado fora do provider (ex: tab Comercial na ficha)
   const quotationBuilder = useQuotationBuilderOptional();
 
@@ -135,18 +163,26 @@ export function ProductSearchTab({ clientPhone, showAddToQuotation = false }: Pr
     );
   }
 
+  const showHint = showShortcutHint ?? Boolean(shortcut);
+
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium">Pesquisa de Produtos</h3>
-      
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
+          ref={inputRef}
           placeholder="Pesquisar por nome, SKU ou categoria..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-10 h-9 text-sm"
+          className={showHint ? "pl-10 pr-16 h-9 text-sm" : "pl-10 h-9 text-sm"}
         />
+        {showHint && (
+          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+            {shortcutLabel(shortcut)}
+          </kbd>
+        )}
       </div>
 
       {error && (
@@ -311,4 +347,61 @@ export function ProductSearchTab({ clientPhone, showAddToQuotation = false }: Pr
       )}
     </div>
   );
+  });
+
+/**
+ * Renderiza um atalho como string amigável.
+ * "mod+k" -> "⌘K" no Mac, "Ctrl+K" no resto.
+ * Útil para mostrar a dica visualmente no input.
+ */
+export function shortcutLabel(shortcut: string): string {
+  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || "");
+  return shortcut
+    .split("+")
+    .map((part) => {
+      const lower = part.trim().toLowerCase();
+      if (lower === "mod") return isMac ? "⌘" : "Ctrl";
+      if (lower === "cmd" || lower === "meta") return "⌘";
+      if (lower === "ctrl" || lower === "control") return isMac ? "⌃" : "Ctrl";
+      if (lower === "shift") return isMac ? "⇧" : "Shift";
+      if (lower === "alt" || lower === "option") return isMac ? "⌥" : "Alt";
+      if (lower === "enter") return "↵";
+      if (lower === "esc" || lower === "escape") return "Esc";
+      if (lower === "space") return "Space";
+      if (lower === "up") return "↑";
+      if (lower === "down") return "↓";
+      if (lower === "left") return "←";
+      if (lower === "right") return "→";
+      return part.toUpperCase();
+    })
+    .join("+");
+}
+
+/**
+ * Helper para parsear um shortcut tipo "mod+k" num Set<EventKey> boolean testável.
+ */
+export function matchesShortcut(
+  event: KeyboardEvent,
+  shortcut: string,
+  isMac: boolean,
+): boolean {
+  const parts = shortcut.split("+").map((p) => p.trim().toLowerCase());
+  const key = parts[parts.length - 1];
+  const wantMod = parts.includes("mod");
+  const wantShift = parts.includes("shift");
+  const wantAlt = parts.includes("alt") || parts.includes("option");
+  const wantCtrl = parts.includes("ctrl") || parts.includes("control");
+
+  const eventKey = event.key.toLowerCase();
+  if (eventKey !== key.toLowerCase()) return false;
+
+  const modPressed = isMac ? event.metaKey : event.ctrlKey;
+  if (wantMod && !modPressed) return false;
+  if (!wantMod && modPressed) return false;
+  if (wantShift !== event.shiftKey) return false;
+  if (wantAlt !== event.altKey) return false;
+  if (wantCtrl) {
+    if (isMac ? !event.ctrlKey : !event.ctrlKey) return false;
+  }
+  return true;
 }
