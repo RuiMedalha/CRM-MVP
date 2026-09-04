@@ -38,6 +38,7 @@ import { FollowUpsPanel } from "@/components/customer360/FollowUpsPanel";
 import { NewsletterBanner } from "@/components/customer360/NewsletterBanner";
 import { MobileTabDrawer, type TabDescriptor } from "@/components/customer360/MobileTabDrawer";
 import { Breadcrumb } from "@/components/customer360/Breadcrumb";
+import { AddNoteInline } from "@/components/customer360/AddNoteInline";
 import { SectionCard } from "@/components/customer360/ui/SectionCard";
 import { EmptyState } from "@/components/customer360/ui/EmptyState";
 import { useCustomer360 } from "@/hooks/useCustomer360";
@@ -120,33 +121,32 @@ export default function Customer360Shell() {
   const commandCenterEvents = useMemo(() => c360 ? buildCommandCenterEvents(c360) : [], [c360]);
   const communications = useMemo(() => c360 ? buildCommunications(c360) : [], [c360]);
 
-  // Inline notes editing
+  // Inline notes editing (legacy: campo contacts.internal_notes — as notas
+  // públicas agora vivem em interactions via AddNoteInline)
   const queryClient = useQueryClient();
-  const [inlineNotes, setInlineNotes] = useState("");
   const [inlineInternalNotes, setInlineInternalNotes] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesSuccess, setNotesSuccess] = useState(false);
   const notesInitialized = useMemo(() => {
     if (c360) {
-      setInlineNotes(c360.organization.notes || "");
       setInlineInternalNotes(c360.organization.internal_notes || "");
     }
     return !!c360;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [c360?.organization?.notes, c360?.organization?.internal_notes]);
+  }, [c360?.organization?.internal_notes]);
 
-  const saveInlineNotes = useCallback(async () => {
+  const saveInternalNotes = useCallback(async () => {
     if (!id || notesSaving) return;
     setNotesSaving(true);
     setNotesSuccess(false);
     try {
-      await patchContact(id, { notes: inlineNotes || null, internal_notes: inlineInternalNotes || null });
+      await patchContact(id, { internal_notes: inlineInternalNotes || null });
       setNotesSuccess(true);
       queryClient.refetchQueries({ queryKey: ["customer360", id] });
       setTimeout(() => setNotesSuccess(false), 3000);
     } catch { /* silent */ }
     setNotesSaving(false);
-  }, [id, inlineNotes, inlineInternalNotes, notesSaving, queryClient]);
+  }, [id, inlineInternalNotes, notesSaving, queryClient]);
 
   // Track recent contacts — moved before early returns (Rules of Hooks)
   useEffect(() => {
@@ -229,19 +229,46 @@ export default function Customer360Shell() {
                     email={org.email}
                   />
                 )}
-                <SectionCard title="Notas">
-                  <div className="space-y-2">
+                <SectionCard
+                  title="Notas"
+                  action={
+                    <button
+                      type="button"
+                      onClick={saveInternalNotes}
+                      disabled={notesSaving}
+                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+                      title="Guardar notas internas (campo antigo contacts.internal_notes)"
+                    >
+                      <Save className="h-3 w-3" /> {notesSaving ? "A guardar..." : "Internas"}
+                    </button>
+                  }
+                >
+                  <div className="space-y-3">
+                    {/* Notas públicas — usa AddNoteInline (auto-grow, tags, grava em interactions) */}
+                    <AddNoteInline
+                      contactId={id}
+                      source="c360"
+                      variant="threec-sixty"
+                      noteQuickTags={["Urgente", "Acompanhamento", "Follow-up"]}
+                      placeholder="Notas visíveis no dossier — escreva à vontade (auto-grow)."
+                    />
+
+                    {/* Notas internas — campo legacy contacts.internal_notes */}
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-0.5">Notas</p>
-                      <textarea rows={2} value={inlineNotes} onChange={(e) => setInlineNotes(e.target.value)} placeholder="Sem notas" className="flex w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm" />
+                      <p className="text-xs font-medium text-muted-foreground mb-0.5">Notas internas (privadas)</p>
+                      <textarea
+                        rows={3}
+                        value={inlineInternalNotes}
+                        onChange={(e) => setInlineInternalNotes(e.target.value)}
+                        placeholder="Sem notas internas"
+                        className="flex w-full rounded-md border border-input bg-amber-50/40 px-2 py-1.5 text-sm"
+                      />
+                      {notesSuccess && (
+                        <p className="text-xs text-green-600 mt-0.5">✓ Guardado</p>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-0.5">Notas internas</p>
-                      <textarea rows={2} value={inlineInternalNotes} onChange={(e) => setInlineInternalNotes(e.target.value)} placeholder="Sem notas internas" className="flex w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={saveInlineNotes} disabled={notesSaving} className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-                        <Save className="h-3 w-3" /> {notesSaving ? "A guardar..." : "Guardar notas"}
+                  </div>
+                </SectionCard>
                       </button>
                       {notesSuccess && <span className="text-xs text-green-600">✓ Guardado</span>}
                     </div>
