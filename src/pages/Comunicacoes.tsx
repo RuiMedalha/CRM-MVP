@@ -99,7 +99,7 @@ function HubInboxView({ hasSelection }: { hasSelection: boolean }) {
 export default function Comunicacoes() {
   useCommunicationNotifications()
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const requestedChannel = getChannelFromSearchParam(searchParams.get("channel"))
   const [activeChannel, setActiveChannel] = useState<ComunicacoesChannelId>(() => requestedChannel ?? "whatsapp")
   const setInboxViewMode = useInboxFilterStore((s) => s.setInboxViewMode)
@@ -107,40 +107,75 @@ export default function Comunicacoes() {
   const setActiveTab = useInboxFilterStore((s) => s.setActiveTab)
   const hasSelection = useConversationStore((s) => Boolean(s.selectedConversationId))
 
-  const handleChannelChange = useCallback((channel: ComunicacoesChannelId) => {
-    setActiveChannel(channel)
+  /**
+   * Aplica o canal à vista actual. Se `syncUrl=true` (caso normal: clique
+   * do utilizador), escreve `?channel=…` na URL — preservando outros params.
+   * Se `syncUrl=false` (synced a partir da URL), não volta a escrever para
+   * evitar loop.
+   */
+  const applyChannel = useCallback(
+    (channel: ComunicacoesChannelId, syncUrl: boolean) => {
+      setActiveChannel((prev) => (prev === channel ? prev : channel))
 
-    if (channel === "telecof") {
-      setInboxViewMode("telecof_calls")
-    } else {
-      setInboxViewMode("conversations")
-      if (channel === "grupos") {
-        setActiveTab("groups")
-        setMessageChannelScope("whatsapp")
+      if (channel === "telecof") {
+        setInboxViewMode("telecof_calls")
       } else {
-        setActiveTab("all")
-        // Phase 2.F1: mapear canais com channel_account_id (instanceFilter)
-        const channelConfig: Partial<Record<ComunicacoesChannelId, { channel: string; instance?: string }>> = {
-          whatsapp: { channel: "whatsapp" },
-          wa918: { channel: "whatsapp", instance: "hotelequip-918" },
-          waha: { channel: "whatsapp", instance: "hotelequip-916" },
-          wa913: { channel: "whatsapp", instance: "hotelequip-913" },
-          askme: { channel: "askme" },
-        }
-        const config = channelConfig[channel]
-        if (config) {
-          setMessageChannelScope(
-            config.channel as import("@/types/communication").CommunicationChannel,
-            config.instance,
-          )
+        setInboxViewMode("conversations")
+        if (channel === "grupos") {
+          setActiveTab("groups")
+          setMessageChannelScope("whatsapp")
+        } else {
+          setActiveTab("all")
+          const channelConfig: Partial<Record<ComunicacoesChannelId, { channel: string; instance?: string }>> = {
+            whatsapp: { channel: "whatsapp" },
+            wa918: { channel: "whatsapp", instance: "hotelequip-918" },
+            waha: { channel: "whatsapp", instance: "hotelequip-916" },
+            wa913: { channel: "whatsapp", instance: "hotelequip-913" },
+            askme: { channel: "askme" },
+          }
+          const config = channelConfig[channel]
+          if (config) {
+            setMessageChannelScope(
+              config.channel as import("@/types/communication").CommunicationChannel,
+              config.instance,
+            )
+          }
         }
       }
-    }
-  }, [setInboxViewMode, setMessageChannelScope, setActiveTab])
 
+      if (syncUrl) {
+        const nextParams = new URLSearchParams(searchParams)
+        if (channel === "whatsapp") {
+          nextParams.delete("channel")
+        } else {
+          nextParams.set("channel", channel)
+        }
+        if (nextParams.toString() !== searchParams.toString()) {
+          setSearchParams(nextParams, { replace: true })
+        }
+      }
+    },
+    [setInboxViewMode, setMessageChannelScope, setActiveTab, searchParams, setSearchParams],
+  )
+
+  /** Handler invocado pela sidebar: muda canal + escreve URL. */
+  const handleChannelChange = useCallback(
+    (channel: ComunicacoesChannelId) => {
+      applyChannel(channel, true)
+    },
+    [applyChannel],
+  )
+
+  /**
+   * Sincroniza URL → estado sempre que o query param `channel` muda
+   * (incluindo para ausente → fallback para "whatsapp"). Sem isto, navegar
+   * de ?channel=telecof para a URL base (?channel= removido) não reagia.
+   */
   useEffect(() => {
-    if (requestedChannel) handleChannelChange(requestedChannel)
-  }, [handleChannelChange, requestedChannel])
+    const nextChannel: ComunicacoesChannelId = requestedChannel ?? "whatsapp"
+    applyChannel(nextChannel, false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedChannel])
 
   return (
     <AppLayout fullHeight>
