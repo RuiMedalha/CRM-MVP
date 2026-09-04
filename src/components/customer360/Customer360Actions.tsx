@@ -11,10 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Phone, Mail, MessageCircle, FileText, Target, StickyNote, CheckSquare, MapPin, Wrench, Loader2 } from "lucide-react";
-import { useCreateFollowUp } from "@/hooks/useFollowUps";
-import { useCreateInteraction } from "@/hooks/useInteractions";
 import { useCompanySettings } from "@/hooks/useSettings";
-import { useCreateDeal, DEAL_STATUSES } from "@/hooks/useDeals";
+import { DEAL_STATUSES } from "@/hooks/useDeals";
+import { useCustomerDossier } from "@/hooks/useCustomerDossier";
+import { useCreateInteraction } from "@/hooks/useInteractions";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +28,9 @@ interface Customer360ActionsProps {
 
 export function Customer360Actions({ contactId, contactName, contactPhone, contactEmail, contactEmailAssistencia }: Customer360ActionsProps) {
   const navigate = useNavigate();
-  const createFollowUp = useCreateFollowUp();
-  const createInteraction = useCreateInteraction();
+  // Hook unificado do dossiê — single read + 4 mutações coerentes com o resto da app.
+  const dossier = useCustomerDossier({ contactId });
+  const createInteraction = useCreateInteraction(); // assistência ainda usa (legacy)
   const { data: settings } = useCompanySettings();
 
   // Dialog states
@@ -86,8 +87,7 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
     });
   }, [contactId, contactName, contactEmail, contactPhone, navigate]);
 
-  // 5. Nova oportunidade (inline)
-  const createDeal = useCreateDeal();
+  // 5. Nova oportunidade (via useCustomerDossier hook)
   const [dealTitle, setDealTitle] = useState("");
   const [dealStatus, setDealStatus] = useState("lead");
   const [dealAmount, setDealAmount] = useState("");
@@ -95,56 +95,69 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
   const handleSaveDeal = useCallback(async () => {
     if (!contactId || !dealTitle.trim()) return;
     try {
-      await createDeal.mutateAsync({
+      const deal = await dossier.createOpportunity({
         title: dealTitle,
-        status: dealStatus as any,
-        total_amount: dealAmount ? Number(dealAmount) : 0,
-        customer_id: contactId,
+        value: dealAmount ? Number(dealAmount) : undefined,
+        stage: dealStatus as any,
       });
-      toast({ title: "Oportunidade criada", description: `"${dealTitle}" adicionada ao pipeline.` });
-      setDealOpen(false);
-      setDealTitle("");
-      setDealStatus("lead");
-      setDealAmount("");
+      if (deal?.id) {
+        toast({ title: "Oportunidade criada", description: `"${dealTitle}" adicionada ao pipeline.` });
+        setDealOpen(false);
+        setDealTitle("");
+        setDealStatus("lead");
+        setDealAmount("");
+      } else {
+        toast({ title: "Não foi possível criar oportunidade", variant: "destructive" });
+      }
     } catch {
       toast({ title: "Erro ao criar oportunidade", variant: "destructive" });
     }
-  }, [contactId, dealTitle, dealStatus, dealAmount, createDeal]);
+  }, [contactId, dealTitle, dealStatus, dealAmount, dossier]);
 
-  // 6. Nova nota
+  // 6. Nova nota (via useCustomerDossier hook)
   const handleSaveNote = useCallback(async () => {
     if (!contactId || !noteText.trim()) return;
     try {
-      await createInteraction.mutateAsync({
-        type: "note", direction: "out", status: "done",
-        contact_id: contactId,
-        display_name: contactName || "",
-        summary: noteText.slice(0, 200),
+      const created = await dossier.addNote(noteText, {
+        source: "crm",
+        direction: "out",
       });
-      toast({ title: "Nota criada" });
-      setNoteOpen(false);
-      setNoteText("");
-    } catch { toast({ title: "Erro", variant: "destructive" }); }
-  }, [contactId, contactName, noteText, createInteraction]);
+      if (created?.id) {
+        toast({ title: "Nota criada" });
+        setNoteOpen(false);
+        setNoteText("");
+      } else {
+        toast({ title: "Não foi possível guardar nota", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro", variant: "destructive" });
+    }
+  }, [contactId, noteText, dossier]);
 
-  // 7. Nova tarefa / 8. Agendar visita
+  // 7. Nova tarefa / 8. Agendar visita (via useCustomerDossier hook)
   const handleSaveTask = useCallback(async () => {
     if (!contactId || !taskTitle.trim()) return;
     try {
-      await createFollowUp.mutateAsync({
-        contact_id: contactId,
-        title: taskTitle,
-        type: taskType as "task" | "call" | "email" | "whatsapp" | "visit",
-        status: "open",
+      const result = await dossier.scheduleFollowUp({
+        // scheduleFollowUp precisa de due_at ISO — colocamos +24h como default
+        due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        type: taskType,
         notes: taskNotes || undefined,
+        title: taskTitle,
       });
-      toast({ title: taskType === "visit" ? "Visita agendada" : "Tarefa criada" });
-      setTaskOpen(false);
-      setTaskTitle("");
-      setTaskType("task");
-      setTaskNotes("");
-    } catch { toast({ title: "Erro", variant: "destructive" }); }
-  }, [contactId, taskTitle, taskType, taskNotes, createFollowUp]);
+      if (result?.id) {
+        toast({ title: taskType === "visit" ? "Visita agendada" : "Tarefa criada" });
+        setTaskOpen(false);
+        setTaskTitle("");
+        setTaskType("task");
+        setTaskNotes("");
+      } else {
+        toast({ title: "Não foi possível criar", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro", variant: "destructive" });
+    }
+  }, [contactId, taskTitle, taskType, taskNotes, dossier]);
 
   // 9. Assistência
   const handleSaveAssist = useCallback(async () => {
