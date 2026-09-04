@@ -112,6 +112,7 @@ export function adaptProposal(record: Record<string, unknown>): Customer360Propo
     status: str(record.status) || "draft",
     totalAmount: numOrUndefined(record.total_amount),
     sentAt: str(record.sent_at) || undefined,
+    notes: record.notes ? String(record.notes) : null,
   };
 }
 

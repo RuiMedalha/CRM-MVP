@@ -120,6 +120,8 @@ export interface Customer360Proposal {
   status: string;
   totalAmount?: number;
   sentAt?: string;
+  /** Notas da proposta — usado para detectar IVA discriminado + Auto-IVA. */
+  notes?: string | null;
 }
 
 export interface Customer360Data {
