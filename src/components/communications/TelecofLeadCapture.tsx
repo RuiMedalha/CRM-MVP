@@ -239,7 +239,7 @@ export function TelecofLeadCapture({ phone = "", callId = "", onContactCreated, 
         },
       }
 
-      const created = await createLead(leadPayload as any)
+      const created = await createLead(leadPayload)
       const leadId = created?.id
 
       // Atualizar nome da chamada
