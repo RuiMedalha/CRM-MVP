@@ -32,6 +32,7 @@ import {
   Loader2,
   Link2,
   Sparkles,
+  UserPlus,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 
@@ -43,7 +44,8 @@ import { useTelecofCallStore } from "@/store/telecofCallStore"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 import { useAuth } from "@/contexts/AuthContext"
 import { directusRequest } from "@/integrations/directus/client"
-import { patchContact, getContactById, listContacts } from "@/integrations/directus/contacts"
+import { patchContact, getContactById, listContacts, createContact } from "@/integrations/directus/contacts"
+import { patchLead, createLead } from "@/integrations/directus/leads"
 import { createFollowUp } from "@/integrations/directus/follow-ups"
 import { useEmployees } from "@/hooks/useEmployees"
 import { ProductSearchTab, matchesShortcut, type ProductSearchTabHandle } from "@/components/contacts/ProductSearchTab"
@@ -205,14 +207,36 @@ export function TelecofCallWorkspace() {
         company_name: String(identity.record.company_name || identity.record.name || ""),
         contact_name: String(identity.record.contact_name || ""),
         email: String(identity.record.email || ""),
+        phone: String(identity.record.phone || identity.record.mobile_phone || selected?.phone || selected?.normalizedPhone || ""),
+        nif: String(identity.record.nif || ""),
+        city: String(identity.record.city || ""),
+        notes: String(identity.record.notes || ""),
+      })
+      setIsEditingContact(false)
+    } else if (identity?.kind === "lead" && identity.record) {
+      setContactEditForm({
+        company_name: String(identity.record.display_name || identity.record.company_name || identity.record.name || selected?.customerName || ""),
+        contact_name: String(identity.record.contact_name || identity.record.contact_person || ""),
+        email: String(identity.record.email || ""),
         phone: String(identity.record.phone || selected?.phone || selected?.normalizedPhone || ""),
         nif: String(identity.record.nif || ""),
         city: String(identity.record.city || ""),
         notes: String(identity.record.notes || ""),
       })
       setIsEditingContact(false)
+    } else {
+      setContactEditForm({
+        company_name: String(selected?.customerName || ""),
+        contact_name: "",
+        email: "",
+        phone: String(selected?.phone || selected?.normalizedPhone || ""),
+        nif: "",
+        city: "",
+        notes: "",
+      })
+      setIsEditingContact(false)
     }
-  }, [identity?.record, identity?.kind, selected?.phone, selected?.normalizedPhone])
+  }, [identity?.record, identity?.kind, selected?.phone, selected?.normalizedPhone, selected?.customerName])
 
   const loadIdentityForPhone = useCallback(async (
     phone: string,
@@ -389,37 +413,129 @@ export function TelecofCallWorkspace() {
   }, [])
 
   const handleSaveContactEdit = async () => {
-    if (!identity?.record?.id) return
     setSavingContact(true)
     try {
-      const contactId = String(identity.record.id)
-      const companyName = contactEditForm.company_name.trim() || contactEditForm.contact_name.trim()
-      const updated = await patchContact(contactId, {
-        company_name: companyName || undefined,
-        name: companyName || undefined,
+      const companyName = contactEditForm.company_name.trim() || contactEditForm.contact_name.trim() || "Cliente"
+      const payload = {
+        company_name: companyName,
+        name: companyName,
         contact_name: contactEditForm.contact_name.trim() || undefined,
         email: contactEditForm.email.trim() || undefined,
         phone: contactEditForm.phone.trim() || undefined,
         nif: contactEditForm.nif.trim() || undefined,
         city: contactEditForm.city.trim() || undefined,
         notes: contactEditForm.notes.trim() || undefined,
-      })
-      setIdentity((prev) => prev ? {
-        ...prev,
-        record: { ...(prev.record ?? {}), ...(updated as any), ...contactEditForm },
-      } : null)
-      if (selected?.id && companyName) {
+      }
+
+      if (identity?.kind === "contact" && identity.record?.id) {
+        const contactId = String(identity.record.id)
+        const updated = await patchContact(contactId, payload)
+        setIdentity((prev) => prev ? {
+          ...prev,
+          record: { ...(prev.record ?? {}), ...(updated as any), ...payload },
+        } : null)
+        if (selected?.id && companyName) {
+          await patchHubCommunicationEvent(selected.id, {
+            customer_name: companyName,
+            contact_id: contactId,
+          }).then((up) => mergeEvent(up)).catch(() => {})
+        }
+        queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
+        queryClient.invalidateQueries({ queryKey: ["contacts-directus"] })
+        toast({ title: "Ficha do Cliente atualizada com sucesso!" })
+      } else if (identity?.kind === "lead" && identity.record?.id) {
+        const leadId = String(identity.record.id)
+        await patchLead(leadId, {
+          display_name: companyName,
+          email: payload.email,
+          phone: payload.phone,
+          nif: payload.nif,
+          notes: payload.notes,
+        })
+        setIdentity((prev) => prev ? {
+          ...prev,
+          record: { ...(prev.record ?? {}), display_name: companyName, ...payload },
+        } : null)
+        if (selected?.id && companyName) {
+          await patchHubCommunicationEvent(selected.id, {
+            customer_name: companyName,
+          }).then((up) => mergeEvent(up)).catch(() => {})
+        }
+        queryClient.invalidateQueries({ queryKey: ["leads-page"] })
+        queryClient.invalidateQueries({ queryKey: ["leads"] })
+        toast({ title: "Dados do Lead atualizados com sucesso!" })
+      } else {
+        const created = await createContact({ ...payload, source: "telecof" })
+        const contactId = String(created?.id ?? (created as any)?.data?.id)
+        if (selected?.id && contactId) {
+          await patchHubCommunicationEvent(selected.id, {
+            customer_name: companyName,
+            contact_id: contactId,
+          }).then((up) => mergeEvent(up)).catch(() => {})
+        }
+        setIdentity({
+          kind: "contact",
+          record: { id: contactId, ...payload },
+          recentInteractions: [],
+          openDealsRecords: [],
+          openDeals: 0,
+          interactionCount: 0,
+          lastActivity: new Date().toISOString(),
+        })
+        queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
+        queryClient.invalidateQueries({ queryKey: ["contacts-directus"] })
+        toast({ title: "Ficha 360 criada com sucesso!", description: `${companyName} registado no CRM.` })
+      }
+      setIsEditingContact(false)
+    } catch (err) {
+      toast({ title: "Erro ao gravar dados", description: String((err as Error)?.message || ""), variant: "destructive" })
+    } finally {
+      setSavingContact(false)
+    }
+  }
+
+  const handlePromoteLeadToContact = async () => {
+    setSavingContact(true)
+    try {
+      const companyName = contactEditForm.company_name.trim() || contactEditForm.contact_name.trim() || "Cliente"
+      const payload = {
+        company_name: companyName,
+        name: companyName,
+        contact_name: contactEditForm.contact_name.trim() || undefined,
+        email: contactEditForm.email.trim() || undefined,
+        phone: contactEditForm.phone.trim() || undefined,
+        nif: contactEditForm.nif.trim() || undefined,
+        city: contactEditForm.city.trim() || undefined,
+        notes: contactEditForm.notes.trim() || undefined,
+        source: "telecof",
+      }
+      const created = await createContact(payload)
+      const contactId = String(created?.id ?? (created as any)?.data?.id)
+      if (selected?.id && contactId) {
         await patchHubCommunicationEvent(selected.id, {
           customer_name: companyName,
           contact_id: contactId,
         }).then((up) => mergeEvent(up)).catch(() => {})
       }
-      setIsEditingContact(false)
+      if (identity?.kind === "lead" && identity.record?.id) {
+        await patchLead(String(identity.record.id), { status: "processed", contact_id: contactId }).catch(() => {})
+      }
+      setIdentity({
+        kind: "contact",
+        record: { id: contactId, ...payload },
+        recentInteractions: [],
+        openDealsRecords: [],
+        openDeals: 0,
+        interactionCount: 0,
+        lastActivity: new Date().toISOString(),
+      })
       queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
       queryClient.invalidateQueries({ queryKey: ["contacts-directus"] })
-      toast({ title: "Dados do cliente atualizados com sucesso" })
+      queryClient.invalidateQueries({ queryKey: ["leads-page"] })
+      toast({ title: "Promovido a Contacto 360 com sucesso!", description: `${companyName} tem agora Ficha 360 ativa.` })
+      setIsEditingContact(false)
     } catch (err) {
-      toast({ title: "Erro ao atualizar contacto", description: String((err as Error)?.message || ""), variant: "destructive" })
+      toast({ title: "Erro ao converter lead", description: String((err as Error)?.message || ""), variant: "destructive" })
     } finally {
       setSavingContact(false)
     }
@@ -681,7 +797,11 @@ export function TelecofCallWorkspace() {
     : null
   const contactUrl = (selected?.contactId || (identity?.kind === "contact" && identity?.record?.id ? String(identity.record.id) : null))
     ? `/customer360-shell/${encodeURIComponent(selected?.contactId || String(identity?.record?.id))}`
-    : null
+    : (identity?.kind === "lead" && identity?.record?.id)
+      ? `/customer360-shell?phone=${encodeURIComponent(selected?.normalizedPhone || selected?.phone || "")}&leadId=${encodeURIComponent(String(identity.record.id))}&name=${encodeURIComponent(String(identity.record.display_name || identity.record.company_name || selected?.customerName || ""))}`
+      : (selected?.normalizedPhone || selected?.phone)
+        ? `/customer360-shell?phone=${encodeURIComponent(selected.normalizedPhone || selected.phone)}`
+        : null
 
   // Call duration
   const callDuration = useMemo(() => {
@@ -1102,62 +1222,82 @@ export function TelecofCallWorkspace() {
           />
         )}
 
-        {!identityLoading && identity?.kind === "lead" && (
-          <CustomerDossierPanel
-            contactId={null}
-            leadId={identity.record?.id ? String(identity.record.id) : null}
-            variant="telecof"
-            defaultSource="telecof"
-            callId={selected.id}
-            noteQuickTags={Array.from(QUICK_TAGS)}
-            allowFollowUp
-          />
-        )}
-
-        {!identityLoading && identity?.kind === "contact" && (
+        {/* Ficha Cadastral e Dossiê (Contacto 360 ou Lead de Prospeção) */}
+        {!identityLoading && (identity?.kind === "contact" || identity?.kind === "lead") && (
           <div className="space-y-3">
-            {/* Dossiê contínuo — vista partilhada (CustomerDossierPanel) */}
-            <CustomerDossierPanel
-              contactId={identity.record?.id ? String(identity.record.id) : null}
-              variant="telecof"
-              defaultSource="telecof"
-              callId={selected.id}
-              noteQuickTags={Array.from(QUICK_TAGS)}
-              allowFollowUp
-            />
-
-            {/* Modo de Edição e Visualização da Ficha Cadastral do Cliente */}
+            {/* Modo de Edição e Visualização da Ficha Cadastral */}
             <div className="space-y-3 rounded-xl border border-border bg-card p-4 text-xs shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
+                  <div
+                    className={cn(
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-bold shadow-xs text-white",
+                      identity.kind === "contact" ? "bg-emerald-600" : "bg-blue-600"
+                    )}
+                  >
+                    <Building2 className="h-4 w-4" />
+                  </div>
                   <div>
-                    <p className="font-bold text-foreground uppercase tracking-wider text-xs">
-                      Ficha Cadastral do Cliente
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-foreground uppercase tracking-wider text-xs">
+                        Ficha Cadastral {identity.kind === "contact" ? "do Cliente" : "do Lead"}
+                      </p>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide",
+                          identity.kind === "contact"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300"
+                        )}
+                      >
+                        {identity.kind === "contact" ? "Cliente 360" : "Lead Prospeção"}
+                      </span>
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Consulte ou corrija os dados cadastrais diretamente nesta chamada
+                      {identity.kind === "contact"
+                        ? "Consulte ou corrija os dados cadastrais diretamente nesta chamada"
+                        : "Lead em prospeção — consulte, atualize ou converta em Ficha 360"}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
+
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setIsEditingContact((v) => !v)}
                     className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
-                    title="Editar dados cadastrais do cliente"
+                    title="Editar dados cadastrais"
                   >
                     <Edit2 className="h-3 w-3" />
                     {isEditingContact ? "Cancelar Edição" : "Editar / Corrigir"}
                   </button>
-                  {identity.record?.id && (
+
+                  {identity.kind === "lead" && (
+                    <button
+                      type="button"
+                      disabled={savingContact}
+                      onClick={() => void handlePromoteLeadToContact()}
+                      className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-xs"
+                      title="Promover este Lead a Contacto com Ficha 360 Completa"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      {savingContact ? "A converter…" : "Converter em Ficha 360"}
+                    </button>
+                  )}
+
+                  {contactUrl && (
                     <Link
-                      to={`/customer360-shell/${encodeURIComponent(String(identity.record.id))}`}
-                      className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
-                      title="Abrir página completa do Cliente 360"
+                      to={contactUrl}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold transition-colors shadow-xs",
+                        identity.kind === "contact"
+                          ? "border-emerald-400/50 bg-emerald-100/80 text-emerald-900 hover:bg-emerald-200 dark:border-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200"
+                          : "border-blue-400/50 bg-blue-100/80 text-blue-900 hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/60 dark:text-blue-200"
+                      )}
+                      title="Abrir página completa no Customer 360"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      Abrir Ficha 360 Completa
+                      Abrir Ficha 360
                     </Link>
                   )}
                 </div>
@@ -1237,65 +1377,122 @@ export function TelecofCallWorkspace() {
                       />
                     </div>
                   </div>
-                  <div className="flex justify-end gap-2 pt-2 border-t border-border">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingContact(false)}
-                      className="rounded px-3 py-1.5 text-xs border border-border text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      disabled={savingContact || !contactEditForm.company_name.trim()}
-                      onClick={() => void handleSaveContactEdit()}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
-                    >
-                      <Save className="h-3.5 w-3.5" />
-                      {savingContact ? "A guardar…" : "Guardar Alterações"}
-                    </button>
+                  <div className="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-border">
+                    {identity.kind === "lead" ? (
+                      <button
+                        type="button"
+                        disabled={savingContact}
+                        onClick={() => void handlePromoteLeadToContact()}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-xs"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        {savingContact ? "A converter…" : "Converter em Contacto 360"}
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingContact(false)}
+                        className="rounded px-3 py-1.5 text-xs border border-border text-muted-foreground hover:bg-muted transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingContact || !contactEditForm.company_name.trim()}
+                        onClick={() => void handleSaveContactEdit()}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        {savingContact ? "A guardar…" : identity.kind === "lead" ? "Guardar Lead" : "Guardar Alterações"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs bg-muted/40 p-3 rounded-lg border border-border">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-foreground truncate">
-                      {String(identity.record?.company_name || identity.record?.name || "Sem nome")}
-                    </span>
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs bg-muted/40 p-3 rounded-lg border border-border">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="font-semibold text-foreground truncate">
+                        {String(identity.record?.company_name || identity.record?.display_name || identity.record?.name || "Sem nome")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-foreground truncate">
+                        {String(identity.record?.contact_name || identity.record?.contact_person || "—")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <a
+                        href={`tel:${identity.record?.phone || identity.record?.mobile_phone || selected?.phone || ""}`}
+                        className="text-primary hover:underline truncate font-medium"
+                      >
+                        {String(identity.record?.phone || identity.record?.mobile_phone || selected?.phone || "—")}
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      {identity.record?.email ? (
+                        <a href={`mailto:${identity.record.email}`} className="text-primary hover:underline truncate">
+                          {String(identity.record.email)}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground truncate">Sem email</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <CreditCard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-foreground truncate">NIF: {String(identity.record?.nif || "—")}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-foreground truncate">{String(identity.record?.city || "—")}</span>
+                    </div>
+                    {identity.record?.notes && (
+                      <div className="col-span-full pt-1 text-[11px] text-muted-foreground border-t border-border/50">
+                        <span className="font-medium text-foreground">Notas:</span> {String(identity.record.notes)}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 truncate">
-                    <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-foreground truncate">
-                      {String(identity.record?.contact_name || "—")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 truncate">
-                    <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-foreground truncate font-medium">
-                      {String(identity.record?.phone || identity.record?.mobile_phone || selected?.phone || "—")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 truncate">
-                    <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-foreground truncate">{String(identity.record?.email || "Sem email")}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 truncate">
-                    <CreditCard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-foreground truncate">NIF: {String(identity.record?.nif || "—")}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 truncate">
-                    <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-foreground truncate">{String(identity.record?.city || "—")}</span>
-                  </div>
-                  {identity.record?.notes && (
-                    <div className="col-span-full pt-1 text-[11px] text-muted-foreground border-t border-border/50">
-                      <span className="font-medium">Notas:</span> {String(identity.record.notes)}
+
+                  {identity.kind === "lead" && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 p-2.5 text-xs text-blue-950 dark:text-blue-200">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-blue-600 shrink-0" />
+                        <span>Este interlocutor é uma <strong>Lead</strong>. Converta-o para aceder à Ficha 360 completa.</span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={savingContact}
+                        onClick={() => void handlePromoteLeadToContact()}
+                        className="inline-flex items-center gap-1 rounded bg-blue-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-xs shrink-0"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        {savingContact ? "A converter…" : "Converter em Contacto 360"}
+                      </button>
                     </div>
                   )}
                 </div>
               )}
             </div>
+
+            {/* Dossiê contínuo — vista partilhada (CustomerDossierPanel) */}
+            <CustomerDossierPanel
+              contactId={identity.kind === "contact" && identity.record?.id ? String(identity.record.id) : null}
+              leadId={identity.kind === "lead" && identity.record?.id ? String(identity.record.id) : null}
+              variant="telecof"
+              defaultSource="telecof"
+              callId={selected.id}
+              noteQuickTags={Array.from(QUICK_TAGS)}
+              hideHeader={true}
+              hideNotes={true}
+              allowFollowUp
+            />
           </div>
         )}
 

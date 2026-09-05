@@ -2,6 +2,7 @@
  * Página de Leads — lista, filtra por source/status, promove a contacto.
  */
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const OVERSCAN = 6;             // quantas linhas extra renderizar acima/abaixo
 
 const SOURCE_LABELS: Record<string, string> = {
   email: "Email",
+  email_inbound: "Email",
   whatsapp: "WhatsApp",
   telecof: "Telecof",
   site: "Site",
@@ -52,11 +54,13 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   incoming: { label: "Novo", color: "bg-blue-100 text-blue-800" },
+  new: { label: "Novo", color: "bg-blue-100 text-blue-800" },
   missed: { label: "Perdido", color: "bg-red-100 text-red-800" },
   ongoing: { label: "Em progresso", color: "bg-amber-100 text-amber-800" },
   rejected: { label: "Rejeitado", color: "bg-gray-100 text-gray-600" },
   spam: { label: "Spam", color: "bg-gray-100 text-gray-400" },
   discarded: { label: "Descartado", color: "bg-gray-100 text-gray-500" },
+  processed: { label: "Processado", color: "bg-emerald-100 text-emerald-800" },
   converted: { label: "Convertido", color: "bg-green-100 text-green-800" },
 };
 
@@ -96,15 +100,25 @@ type ScoreBucket = keyof typeof SCORE_BUCKET_LABELS;
 
 export default function Leads() {
   const qc = useQueryClient();
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const paramSearch = searchParams.get("search") || searchParams.get("q") || searchParams.get("phone") || searchParams.get("id") || searchParams.get("leadId") || "";
+  const [search, setSearch] = useState(paramSearch);
   const [sourceFilter, setSourceFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [showConverted, setShowConverted] = useState(false);
+  const [showConverted, setShowConverted] = useState(Boolean(paramSearch));
   const [promoting, setPromoting] = useState<string | number | null>(null);
   const [timelineLead, setTimelineLead] = useState<LeadRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [scoreFilter, setScoreFilter] = useState<ScoreBucket | "all">("all");
   const [breakdownLead, setBreakdownLead] = useState<LeadRow | null>(null);
+
+  useEffect(() => {
+    const p = searchParams.get("search") || searchParams.get("q") || searchParams.get("phone") || searchParams.get("id") || searchParams.get("leadId");
+    if (p) {
+      setSearch(p);
+      setShowConverted(true);
+    }
+  }, [searchParams]);
 
   const newLeads = useCrossTabBus((s) => s.newLeads);
   const clearNewLeads = useCrossTabBus((s) => s.clearNewLeads);
@@ -122,7 +136,7 @@ export default function Leads() {
   });
 
   const {
-    data: leads = [],
+    data: rawLeads = [],
     isLoading,
     isError,
     error,
@@ -131,67 +145,29 @@ export default function Leads() {
     queryKey: ["leads-page"],
     queryFn: async () => {
       const res = await directusRequest<{ data: LeadRow[] }>(
-        `/items/leads?sort=-score,-date_created&limit=500&fields=id,display_name,phone,email,nif,source,status,contact_id,date_created,last_attempt_at,lead_data,score,score_factors,score_computed_at,score_model_version,notes`
+        `/items/leads?sort=-date_created&limit=500&fields=id,display_name,contact_name,phone,contact_phone,email,nif,source,status,contact_id,date_created,last_attempt_at,lead_data,notes,city,postal_code,website`
       ).catch(() => ({
-        data: [
-          {
-            id: 1,
-            display_name: "Restaurante O Pescador",
-            contact_name: "António Pereira",
-            contact_phone: "+351912345678",
-            phone: "+351912345678",
-            email: "antonio@opescador.pt",
-            nif: "501234567",
-            source: "whatsapp",
-            status: "incoming",
-            score: 85,
-            whatsapp_replies: 3,
-            email_opens: 2,
-            date_created: new Date().toISOString(),
-          },
-          {
-            id: 2,
-            display_name: "Hotel Vista Mar",
-            contact_name: "Carla Santos",
-            contact_phone: "+351918765432",
-            phone: "+351918765432",
-            email: "compras@hotelvistamar.pt",
-            nif: "502345678",
-            source: "email",
-            status: "ongoing",
-            score: 65,
-            whatsapp_replies: 1,
-            email_opens: 1,
-            date_created: new Date().toISOString(),
-          },
-          {
-            id: 3,
-            display_name: "Pastelaria Central",
-            contact_name: "João Silva",
-            contact_phone: "+351963214587",
-            phone: "+351963214587",
-            email: "info@pastelariacentral.pt",
-            source: "site",
-            status: "missed",
-            score: 25,
-            date_created: new Date().toISOString(),
-          },
-        ] as LeadRow[],
+        data: [] as LeadRow[],
       }));
       return res.data ?? [];
     },
     staleTime: 30_000,
   });
 
+  const leads = useMemo(() => {
+    return rawLeads.map((l) => {
+      const score = typeof l.score === "number" ? l.score : breakdownScore(l).total;
+      return { ...l, score };
+    });
+  }, [rawLeads]);
+
   // Contagem real de "por converter" — independente do limite de 500 da lista
-  // acima, para não mostrar um número truncado quando há mais de 500 leads
-  // pendentes (já aconteceu: mostrava sempre "500" mesmo havendo ~1100).
   const { data: pendingCountReal } = useQuery({
     queryKey: ["leads-pending-count"],
     queryFn: async () => {
       const res = await directusRequest<{ data: { count: string }[] }>(
         `/items/leads?aggregate[count]=*&filter[contact_id][_null]=true&filter[status][_nin]=discarded,spam,converted`
-      ).catch(() => ({ data: [{ count: "3" }] }));
+      ).catch(() => ({ data: [{ count: "0" }] }));
       return Number(res.data?.[0]?.count ?? 0);
     },
     staleTime: 30_000,
@@ -199,8 +175,8 @@ export default function Leads() {
 
   const filtered = useMemo(() => {
     let list = leads;
-    // Hide converted by default
-    if (!showConverted) {
+    // Hide converted by default unless searching
+    if (!showConverted && !search.trim()) {
       list = list.filter((l) => l.status !== "converted" && l.status !== "processed" && l.status !== "discarded" && l.status !== "spam" && !l.contact_id);
     }
     if (sourceFilter) {
@@ -214,13 +190,17 @@ export default function Leads() {
       list = list.filter((l) => scoreBucket(l.score ?? 0) === scoreFilter);
     }
     if (search.trim()) {
-      const q = search.toLowerCase();
+      const q = search.toLowerCase().trim();
+      const cleanQ = q.replace(/\D/g, "");
       list = list.filter((l) => {
+        const idMatch = String(l.id) === q || String(l.id) === cleanQ;
         const dName = (l.display_name || (l.lead_data?.company_name as string) || (l.lead_data?.contact_name as string) || l.contact_name || "").toLowerCase();
         const dPhone = (l.phone || l.contact_phone || (l.lead_data?.phone as string) || (l.lead_data?.contact_phone as string) || "").toLowerCase();
+        const cleanPhone = dPhone.replace(/\D/g, "");
+        const phoneMatch = cleanQ.length >= 4 && cleanPhone.includes(cleanQ);
         const dEmail = (l.email || (l.lead_data?.email as string) || "").toLowerCase();
         const dNif = (l.nif || (l.lead_data?.nif as string) || "").toLowerCase();
-        return dName.includes(q) || dPhone.includes(q) || dEmail.includes(q) || dNif.includes(q);
+        return idMatch || dName.includes(q) || dPhone.includes(q) || phoneMatch || dEmail.includes(q) || dNif.includes(q);
       });
     }
     return list;

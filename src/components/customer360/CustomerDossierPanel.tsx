@@ -53,6 +53,8 @@ interface CustomerDossierPanelProps {
   noteQuickTags?: string[];
   /** Esconder header (a shell 360 já tem o próprio). */
   hideHeader?: boolean;
+  /** Esconder bloco de notas duplicado quando o parent já tem editor de notas. */
+  hideNotes?: boolean;
   /** Permitir agendamento inline de follow-up. */
   allowFollowUp?: boolean;
   /** Mostrar botão "Criar Oportunidade" mesmo quando é só Lead? */
@@ -69,6 +71,7 @@ export function CustomerDossierPanel({
   callId,
   noteQuickTags,
   hideHeader = false,
+  hideNotes = false,
   allowFollowUp = true,
   showConversionOnLead = false,
   onActivity,
@@ -182,7 +185,8 @@ export function CustomerDossierPanel({
           <div className="flex items-center gap-2 min-w-0">
             <div
               className={cn(
-                "flex shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold shadow-sm",
+                "flex shrink-0 items-center justify-center rounded-lg font-bold shadow-sm text-white",
+                cId ? "bg-emerald-600" : "bg-blue-600",
                 compact ? "h-7 w-7" : "h-9 w-9",
               )}
             >
@@ -200,11 +204,14 @@ export function CustomerDossierPanel({
                 </h3>
                 <span
                   className={cn(
-                    "shrink-0 inline-flex items-center rounded font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300",
+                    "shrink-0 inline-flex items-center rounded font-semibold",
+                    cId
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300"
+                      : "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
                     compact ? "px-1 py-0 text-[9px]" : "px-1.5 py-0.5 text-[10px]",
                   )}
                 >
-                  Cliente 360
+                  {cId ? "Cliente 360" : "Lead Prospeção"}
                 </span>
               </div>
               {!compact && phone && (
@@ -216,14 +223,29 @@ export function CustomerDossierPanel({
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {cId && (
+            {cId ? (
               <Button asChild variant="outline" size="sm" className="h-7 text-xs border-emerald-400/60 bg-emerald-100/80 text-emerald-900 hover:bg-emerald-200 dark:border-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200 font-semibold shadow-xs">
                 <Link to={`/customer360-shell/${encodeURIComponent(cId)}`} title="Abrir página completa do Cliente 360">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />
                   Abrir 360
                 </Link>
               </Button>
-            )}
+            ) : lId ? (
+              <div className="flex items-center gap-1.5">
+                <Button asChild variant="outline" size="sm" className="h-7 text-xs border-blue-400/60 bg-blue-100/80 text-blue-900 hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/60 dark:text-blue-200 font-semibold shadow-xs">
+                  <Link to={`/leads?search=${encodeURIComponent(phone || lId)}`} title="Abrir lista de Leads filtrada por este lead">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    Ver Lead
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="h-7 text-xs border-emerald-400/60 bg-emerald-100/80 text-emerald-900 hover:bg-emerald-200 dark:border-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200 font-semibold shadow-xs">
+                  <Link to={`/customer360-shell?phone=${encodeURIComponent(phone || "")}&leadId=${encodeURIComponent(lId)}&name=${encodeURIComponent(fullName || "")}`} title="Abrir ou Criar Ficha no Customer 360">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    Ficha 360
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
           </div>
         </header>
       )}
@@ -300,16 +322,18 @@ export function CustomerDossierPanel({
         emptyMessage="Primeira interação — adicione a primeira nota abaixo."
       />
 
-      {/* Adicionar nota */}
-      <AddNoteInline
-        contactId={contactId}
-        leadId={leadId}
-        source={source}
-        callId={callId}
-        quickTags={noteQuickTags}
-        variant={variant}
-        onSaved={() => onActivity?.("note")}
-      />
+      {/* Adicionar nota (opcional, oculto se o parent já tiver o editor) */}
+      {!hideNotes && (
+        <AddNoteInline
+          contactId={contactId}
+          leadId={leadId}
+          source={source}
+          callId={callId}
+          quickTags={noteQuickTags}
+          variant={variant}
+          onSaved={() => onActivity?.("note")}
+        />
+      )}
 
       {/* Agendar follow-up inline (Telecof only — HubChat já tem) */}
       {allowFollowUp && variant === "telecof" && (
