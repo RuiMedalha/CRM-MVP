@@ -79,6 +79,51 @@ export function mapDirectusConversation(row: DirectusConversationRow): Conversat
   }
 }
 
+export function extractRealMessageDate(row: DirectusMessageRow): string {
+  if (row.message_date) return row.message_date
+
+  if (row.raw_payload && typeof row.raw_payload === "object") {
+    const raw = row.raw_payload as Record<string, unknown>
+    const data = raw.data && typeof raw.data === "object" ? (raw.data as Record<string, unknown>) : raw
+    const ts = data.messageTimestamp || raw.messageTimestamp
+    if (ts) {
+      const num = Number(ts)
+      if (!isNaN(num) && num > 0) {
+        const ms = num < 10000000000 ? num * 1000 : num
+        return new Date(ms).toISOString()
+      }
+    }
+    if (raw.date_time && typeof raw.date_time === "string") {
+      return new Date(raw.date_time).toISOString()
+    }
+  }
+
+  if (Array.isArray(row.attachments)) {
+    for (const item of row.attachments) {
+      if (!item || typeof item !== "object") continue
+      const att = item as Record<string, unknown>
+      const hub = (att.hubMeta || (att.__hub_meta__ ? att : null)) as Record<string, unknown> | null
+      const raw = (hub?.rawPayload || att.rawPayload) as Record<string, unknown> | null
+      if (raw && typeof raw === "object") {
+        const data = raw.data && typeof raw.data === "object" ? (raw.data as Record<string, unknown>) : raw
+        const ts = data.messageTimestamp || raw.messageTimestamp
+        if (ts) {
+          const num = Number(ts)
+          if (!isNaN(num) && num > 0) {
+            const ms = num < 10000000000 ? num * 1000 : num
+            return new Date(ms).toISOString()
+          }
+        }
+        if (raw.date_time && typeof raw.date_time === "string") {
+          return new Date(raw.date_time).toISOString()
+        }
+      }
+    }
+  }
+
+  return row.created_at || new Date().toISOString()
+}
+
 export function mapDirectusMessage(row: DirectusMessageRow): Message {
   const base: Message = {
     id: row.id,
@@ -97,7 +142,7 @@ export function mapDirectusMessage(row: DirectusMessageRow): Message {
       row.raw_payload && typeof row.raw_payload === "object"
         ? (row.raw_payload as Record<string, unknown>)
         : undefined,
-    createdAt: row.message_date || row.created_at || "",
+    createdAt: extractRealMessageDate(row),
     quotedMessageId: row.quoted_message_id ?? undefined,
     quotedThumbnailUrl: row.quoted_thumbnail_url ?? undefined,
     quotedPreviewText: row.quoted_preview_text ?? undefined,

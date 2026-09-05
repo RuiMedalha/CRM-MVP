@@ -267,7 +267,9 @@ export async function getMessages(conversationId: string, before?: string): Prom
   )
 
   const rows = json.data ?? []
-  return rows.map((raw) => mapDirectusMessage(normalizeMessageRow(raw))).reverse()
+  return rows
+    .map((raw) => mapDirectusMessage(normalizeMessageRow(raw)))
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 }
 
 export async function fetchMessagesWithFallback(
