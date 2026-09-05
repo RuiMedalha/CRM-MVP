@@ -12,12 +12,15 @@ import {
 import { Button } from "@/components/ui/button"
 import { createFollowUp } from "@/integrations/directus/follow-ups"
 import { useAuth } from "@/contexts/AuthContext"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/hooks/use-toast"
 
 interface Props {
   open: boolean
   onClose: () => void
   contactId?: string | null
+  dealId?: string | null
+  dealTitle?: string | null
   customerName?: string | null
   phone?: string | null
   onDone: () => void
@@ -27,14 +30,17 @@ export function QuickNextStepDialog({
   open,
   onClose,
   contactId,
+  dealId,
+  dealTitle,
   customerName,
   phone,
   onDone,
 }: Props) {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [submitting, setSubmitting] = useState(false)
 
-  const name = customerName?.trim() || phone || "Cliente"
+  const name = dealTitle?.trim() || customerName?.trim() || phone || "Cliente"
 
   async function handleSchedule(hours: number, type: "call" | "task", titlePrefix: string) {
     setSubmitting(true)
@@ -44,12 +50,20 @@ export function QuickNextStepDialog({
 
       await createFollowUp({
         contact_id: contactId || undefined,
+        deal_id: dealId || undefined,
         type,
         status: "open",
         title,
         due_at: dueAt,
         assigned_employee_id: user?.id || undefined,
       })
+
+      queryClient.invalidateQueries({ queryKey: ["follow_ups"] })
+      queryClient.invalidateQueries({ queryKey: ["deals"] })
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] })
+      if (contactId) {
+        queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
+      }
 
       toast({
         title: "Próximo passo agendado na Agenda!",

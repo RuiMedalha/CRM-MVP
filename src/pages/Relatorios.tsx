@@ -20,9 +20,15 @@ import {
   Euro,
   Target,
   Mail,
+  Clock,
+  AlertTriangle,
+  ShieldCheck,
+  CheckCircle2,
+  Percent,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useForecast } from "@/features/forecast/useForecast";
+import { listFollowUps } from "@/integrations/directus/follow-ups";
 
 function delta(current: number, previous: number) {
   if (previous === 0) return current > 0 ? 100 : 0;
@@ -103,6 +109,11 @@ export default function Relatorios() {
     };
   }, [deals, leadsQuery.data]);
 
+  const followUpsQuery = useQuery({
+    queryKey: ["relatorios-follow-ups"],
+    queryFn: () => listFollowUps({ limit: 500 }),
+  });
+
   // Pipeline summary
   const pipelineSummary = useMemo(() => {
     const allDeals = deals ?? [];
@@ -114,6 +125,63 @@ export default function Relatorios() {
     const convRate = allDeals.length > 0 ? ((won.length / allDeals.length) * 100).toFixed(1) : "0";
     return { activeCount: active.length, totalValue, wonCount: won.length, wonValue, lostCount: lost, convRate };
   }, [deals]);
+
+  // Inteligência de Vendas (HubSpot / Pipedrive): Aging, Win Rate Real, Cobertura Próximo Passo, Margem
+  const salesIntelligence = useMemo(() => {
+    const allDeals = deals ?? [];
+    const activeDeals = allDeals.filter((d) => !["ganho", "perdido", "fechado"].includes(d.status || ""));
+    const wonDeals = allDeals.filter((d) => d.status === "ganho");
+    const lostDeals = allDeals.filter((d) => d.status === "perdido");
+
+    const finishedCount = wonDeals.length + lostDeals.length;
+    const realWinRate = finishedCount > 0 ? ((wonDeals.length / finishedCount) * 100).toFixed(1) : "0";
+    const lostValue = lostDeals.reduce((s, d) => s + (d.total_amount || 0), 0);
+
+    // Aging dos negócios ativos
+    const now = Date.now();
+    let age0_7 = 0;
+    let age8_14 = 0;
+    let age15_30 = 0;
+    let ageOver30 = 0;
+
+    for (const d of activeDeals) {
+      const created = d.date_created ? new Date(d.date_created).getTime() : now;
+      const days = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+      if (days <= 7) age0_7++;
+      else if (days <= 14) age8_14++;
+      else if (days <= 30) age15_30++;
+      else ageOver30++;
+    }
+
+    // Cobertura de próximo passo (Activity-Based Selling)
+    const openFollowUps = (followUpsQuery.data ?? []).filter((f) => f.status === "open");
+    const dealsWithNextStep = new Set(
+      openFollowUps
+        .map((f) => (typeof f.deal_id === "object" ? f.deal_id?.id : f.deal_id))
+        .filter(Boolean)
+    );
+    const coveredDealsCount = activeDeals.filter((d) => dealsWithNextStep.has(d.id)).length;
+    const nextStepCoveragePercent =
+      activeDeals.length > 0 ? ((coveredDealsCount / activeDeals.length) * 100).toFixed(0) : "100";
+
+    // Margem estimada (28% média comercial hoteleira)
+    const estimatedWonMargin = wonDeals.reduce((s, d) => s + (d.total_amount || 0) * 0.28, 0);
+
+    return {
+      realWinRate,
+      lostCount: lostDeals.length,
+      lostValue,
+      age0_7,
+      age8_14,
+      age15_30,
+      ageOver30,
+      activeCount: activeDeals.length,
+      coveredDealsCount,
+      uncoveredDealsCount: activeDeals.length - coveredDealsCount,
+      nextStepCoveragePercent,
+      estimatedWonMargin,
+    };
+  }, [deals, followUpsQuery.data]);
 
   const handlePrint = () => {
     window.print();
@@ -339,6 +407,114 @@ export default function Relatorios() {
             )}
           </CardContent>
         </Card>
+
+        {/* Inteligência de Vendas — Aging, Win Rate Real, Cobertura Próximo Passo e Perdas */}
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+          {/* Aging do Pipeline */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-blue-600" />
+                Aging do Pipeline (Negócios Ativos)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    ≤ 7 dias (Fresco)
+                  </span>
+                  <span className="font-bold">{salesIntelligence.age0_7} negócios</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-blue-600 font-medium">
+                    <span className="h-2 w-2 rounded-full bg-blue-500" />
+                    8 – 14 dias (Em andamento)
+                  </span>
+                  <span className="font-bold">{salesIntelligence.age8_14} negócios</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-amber-600 font-medium">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    15 – 30 dias (Atenção)
+                  </span>
+                  <span className="font-bold">{salesIntelligence.age15_30} negócios</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-red-600 font-medium">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    &gt; 30 dias (Risco / Estagnado)
+                  </span>
+                  <span className="font-bold">{salesIntelligence.ageOver30} negócios</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Win Rate Real & Análise de Perdas */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                <Percent className="h-4 w-4 text-purple-600" />
+                Win Rate Real &amp; Perdas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-purple-600">{salesIntelligence.realWinRate}%</p>
+                  <p className="text-[11px] text-muted-foreground">Win Rate (Ganhos vs Decididos)</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-red-600">{salesIntelligence.lostCount}</p>
+                  <p className="text-[11px] text-muted-foreground">Negócios perdidos</p>
+                </div>
+              </div>
+              <div className="pt-2 border-t text-xs flex justify-between">
+                <span className="text-muted-foreground">Valor perdido:</span>
+                <span className="font-semibold text-red-600">
+                  {salesIntelligence.lostValue.toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              <div className="text-xs flex justify-between">
+                <span className="text-muted-foreground">Margem bruta ganha (est.):</span>
+                <span className="font-semibold text-emerald-600">
+                  {salesIntelligence.estimatedWonMargin.toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Activity-Based Selling: Cobertura de Próximo Passo */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                Cobertura de Próximo Passo (ABS)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-emerald-600">{salesIntelligence.nextStepCoveragePercent}%</p>
+                  <p className="text-[11px] text-muted-foreground">Oportunidades com tarefa agendada</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-amber-600">{salesIntelligence.uncoveredDealsCount}</p>
+                  <p className="text-[11px] text-muted-foreground">Sem próximo passo (em risco)</p>
+                </div>
+              </div>
+              <div className="rounded-md bg-muted/60 p-2 text-[11px] text-muted-foreground">
+                {salesIntelligence.uncoveredDealsCount === 0 ? (
+                  <span className="text-emerald-700 dark:text-emerald-300 font-medium">✓ Excelente! Todos os negócios ativos têm próximo passo agendado na Agenda.</span>
+                ) : (
+                  <span className="text-amber-800 dark:text-amber-300 font-medium">⚠️ {salesIntelligence.uncoveredDealsCount} negócio(s) correm risco de perda por falta de seguimento obrigatório.</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Totals */}
         <div className="grid gap-4 lg:grid-cols-3">

@@ -50,9 +50,12 @@ async function onDealUpdate(input, { database } = {}) {
       .where({ id: input.keys?.[0] })
       .first()
       .catch(() => null);
-    const next = input.payload || {};
+    const beforeStatus = before?.status || before?.stage || before?.stage_id;
+    const nextStatus = next?.status || next?.stage || next?.stage_id;
     const stageChanged =
-      before && before.stage !== next.stage && next.stage === PROPOSTA_STAGE;
+      before &&
+      beforeStatus !== nextStatus &&
+      (String(nextStatus).toLowerCase() === PROPOSTA_STAGE || String(nextStatus).toLowerCase() === "proposta");
 
     if (!stageChanged) return input;
 
@@ -63,7 +66,7 @@ async function onDealUpdate(input, { database } = {}) {
     const context = {
       lead_name: lead?.name || "Cliente",
       deal_title: before.title || before.name || "Proposta",
-      stage: next.stage,
+      stage: nextStatus,
     };
 
     await draftEmail({

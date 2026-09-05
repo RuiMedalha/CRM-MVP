@@ -1,7 +1,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Euro, Building2, FileText, Clock } from "lucide-react";
+import { GripVertical, Euro, Building2, FileText, Clock, CalendarCheck, AlertCircle, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export interface DealNextFollowUp {
+  title: string;
+  due_at: string;
+  type?: string;
+  isOverdue?: boolean;
+}
 
 interface DealCardProps {
   deal: {
@@ -12,6 +19,8 @@ interface DealCardProps {
     customer?: { company_name: string } | null;
     quotations?: { id: string; pdf_link: string | null; status: string }[] | null;
   };
+  nextFollowUp?: DealNextFollowUp | null;
+  onAddNextStep?: () => void;
   onClick: () => void;
   isDragging: boolean;
 }
@@ -30,7 +39,7 @@ function getAgeColor(days: number): string {
   return "text-red-600 bg-red-50 dark:bg-red-950/40";
 }
 
-export function DealCard({ deal, onClick, isDragging }: DealCardProps) {
+export function DealCard({ deal, nextFollowUp, onAddNextStep, onClick, isDragging }: DealCardProps) {
   const pdfQuotation = deal.quotations?.find(q => q.pdf_link);
   const daysAge = getDaysAge(deal.date_created);
 
@@ -90,6 +99,42 @@ export function DealCard({ deal, onClick, isDragging }: DealCardProps) {
                   <Clock className="h-2.5 w-2.5" />
                   {daysAge}d
                 </span>
+              )}
+            </div>
+
+            {/* Activity-Based Selling: Próximo Passo */}
+            <div className="mt-2 pt-1.5 border-t border-border/40 flex items-center justify-between text-[11px]">
+              {nextFollowUp ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 font-medium truncate max-w-[190px]",
+                    nextFollowUp.isOverdue
+                      ? "text-red-600 dark:text-red-400 font-semibold"
+                      : "text-emerald-700 dark:text-emerald-400"
+                  )}
+                  title={`${nextFollowUp.title} (${new Date(nextFollowUp.due_at).toLocaleDateString("pt-PT")})`}
+                >
+                  {nextFollowUp.isOverdue ? (
+                    <AlertCircle className="h-3 w-3 shrink-0 text-red-500" />
+                  ) : (
+                    <CalendarCheck className="h-3 w-3 shrink-0 text-emerald-600" />
+                  )}
+                  <span className="truncate">{nextFollowUp.title}</span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddNextStep?.();
+                  }}
+                  className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-800 dark:text-amber-400 font-semibold hover:underline"
+                  title="Agendar próximo passo para evitar estagnação do negócio"
+                >
+                  <AlertCircle className="h-3 w-3 shrink-0 text-amber-500" />
+                  <span>Sem próximo passo</span>
+                  <Plus className="h-2.5 w-2.5 ml-0.5" />
+                </button>
               )}
             </div>
           </div>

@@ -31,6 +31,9 @@ import { getSlaBreachState } from "@/integrations/directus/checklistSla";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast, notifyRealtimeDeal } from "@/hooks/use-toast";
 import { useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { listFollowUps } from "@/integrations/directus/follow-ups";
+import { QuickNextStepDialog } from "@/components/common/QuickNextStepDialog";
 import { SavedFiltersPopover } from "@/components/SavedFiltersPopover";
 import type { PipelineStageRow } from "@/integrations/directus/pipelines";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -66,6 +69,38 @@ export default function Pipeline() {
   const [showFilters, setShowFilters] = useState(false);
   const { data: slaBreaches } = useActiveSlaBreaches();
   const breachedDealIds = useMemo(() => new Set((slaBreaches || []).map((b) => b.deal_id)), [slaBreaches]);
+
+  // Activity-Based Selling: Follow-ups em aberto ligados a deals
+  const { data: openFollowUps } = useQuery({
+    queryKey: ["follow_ups"],
+    queryFn: () => listFollowUps({ status: "open", limit: 500 }),
+  });
+
+  const followUpsByDealId = useMemo(() => {
+    const map = new Map<string, { title: string; due_at: string; type?: string; isOverdue?: boolean }>();
+    if (!openFollowUps) return map;
+    const now = new Date();
+    for (const fu of openFollowUps) {
+      const dealId = typeof fu.deal_id === "object" ? fu.deal_id?.id : fu.deal_id;
+      if (dealId && !map.has(dealId)) {
+        const isOverdue = fu.due_at ? new Date(fu.due_at) < now : false;
+        map.set(dealId, {
+          title: fu.title || "Seguimento",
+          due_at: fu.due_at || "",
+          type: fu.type || undefined,
+          isOverdue,
+        });
+      }
+    }
+    return map;
+  }, [openFollowUps]);
+
+  const [nextStepDeal, setNextStepDeal] = useState<{
+    id: string;
+    title: string;
+    contactId?: string | null;
+    customerName?: string | null;
+  } | null>(null);
 
   // Cross-tab Realtime deals subscription
   const { emit } = useRealtime("deals", {
@@ -195,11 +230,23 @@ export default function Pipeline() {
           "deals",
           { userName: user?.email || "Utilizador", stageName: stageLabel }
         );
+
+        // Activity-Based Selling (Pipedrive/HubSpot): ao mudar de etapa, garantir que o negócio tem próximo passo
+        const isClosedStage = ["ganho", "perdido", "fechado"].includes(stageLabel.toLowerCase());
+        const hasFollowUp = followUpsByDealId.has(deal.id);
+        if (!isClosedStage && !hasFollowUp) {
+          setNextStepDeal({
+            id: deal.id,
+            title: deal.title || "Negócio",
+            contactId: deal.customer_id,
+            customerName: deal.customer?.company_name,
+          });
+        }
       } catch {
         toast({ title: "Erro ao mover negócio", variant: "destructive", duration: 3000 });
       }
     },
-    [deals, stages, activePipelineId, updateDeal, emit, user],
+    [deals, stages, activePipelineId, updateDeal, emit, user, followUpsByDealId],
   );
 
   const activePipeline = pipelines?.find((p) => p.id === activePipelineId);
@@ -454,8 +501,15 @@ export default function Pipeline() {
                                         deal={deal as any}
                                         onClick={() => setSelectedDealId(deal.id)}
                                         isDragging={snapshot.isDragging}
-                                        pendingTasks={0}
-                                        slaBreached={breachedDealIds.has(deal.id)}
+                                        nextFollowUp={followUpsByDealId.get(deal.id) || null}
+                                        onAddNextStep={() =>
+                                          setNextStepDeal({
+                                            id: deal.id,
+                                            title: deal.title || "Negócio",
+                                            contactId: deal.customer_id,
+                                            customerName: deal.customer?.company_name,
+                                          })
+                                        }
                                       />
                                     </div>
                                   )}
@@ -474,6 +528,19 @@ export default function Pipeline() {
           </div>
         </div>
       </div>
+
+      {/* Quick Next Step Dialog (Activity-Based Selling) */}
+      {nextStepDeal && (
+        <QuickNextStepDialog
+          open={!!nextStepDeal}
+          onClose={() => setNextStepDeal(null)}
+          dealId={nextStepDeal.id}
+          dealTitle={nextStepDeal.title}
+          contactId={nextStepDeal.contactId}
+          customerName={nextStepDeal.customerName}
+          onDone={() => setNextStepDeal(null)}
+        />
+      )}
 
       {/* Deal Dialog */}
       <DealDialog
