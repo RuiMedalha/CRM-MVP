@@ -7,13 +7,47 @@ function mergeConversationsByRecency(
   incoming: Conversation[],
   previous: Conversation[],
 ): Conversation[] {
-  const prevById = new Map(previous.map((c) => [c.id, c]))
-  return incoming.map((inc) => {
-    const cur = prevById.get(inc.id)
-    if (!cur) return inc
-    const incTime = new Date(inc.updatedAt).getTime()
-    const curTime = new Date(cur.updatedAt).getTime()
-    return incTime > curTime ? inc : cur
+  const mergedMap = new Map<string, Conversation>()
+
+  for (const prev of previous) {
+    mergedMap.set(prev.id, prev)
+  }
+
+  for (const inc of incoming) {
+    const cur = mergedMap.get(inc.id)
+    if (!cur) {
+      mergedMap.set(inc.id, inc)
+      continue
+    }
+
+    const incTime = Math.max(
+      new Date(inc.lastActivityAt || 0).getTime(),
+      new Date(inc.updatedAt || 0).getTime(),
+      new Date(inc.createdAt || 0).getTime(),
+    )
+    const curTime = Math.max(
+      new Date(cur.lastActivityAt || 0).getTime(),
+      new Date(cur.updatedAt || 0).getTime(),
+      new Date(cur.createdAt || 0).getTime(),
+    )
+
+    if (incTime >= curTime) {
+      mergedMap.set(inc.id, inc)
+    }
+  }
+
+  return Array.from(mergedMap.values()).sort((a, b) => {
+    const ta = Math.max(
+      new Date(a.lastActivityAt || 0).getTime(),
+      new Date(a.updatedAt || 0).getTime(),
+      new Date(a.createdAt || 0).getTime(),
+    )
+    const tb = Math.max(
+      new Date(b.lastActivityAt || 0).getTime(),
+      new Date(b.updatedAt || 0).getTime(),
+      new Date(b.createdAt || 0).getTime(),
+    )
+    return tb - ta
   })
 }
 

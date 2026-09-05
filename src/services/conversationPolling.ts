@@ -34,26 +34,32 @@ export async function fetchConversationsWithFallback(): Promise<ConversationFetc
       // WhatsApp — busca por todos os canais WhatsApp conhecidos com limite generoso
       getConversations({
         "filter[channel][_in]": "whatsapp,whatsapp_meta,whatsapp_group,whatsapp_916,whatsapp_918,whatsapp_913,waha,wa918,wa916,wa913",
-      }, 0, 300).catch(() =>
-        getConversations({ "filter[channel][_starts_with]": "wa" }, 0, 300).catch(() =>
-          getConversations({ "filter[channel][_eq]": "whatsapp" }, 0, 250).catch(() => [] as Conversation[])
+      }, 0, 500).catch(() =>
+        getConversations({ "filter[channel][_starts_with]": "wa" }, 0, 500).catch(() =>
+          getConversations({ "filter[channel][_eq]": "whatsapp" }, 0, 500).catch(() => [] as Conversation[])
         )
       ),
       // Ask Me — só com mensagem real (não visitas vazias)
       getConversations({
         "filter[channel][_eq]": "askme",
         "filter[last_message][_nnull]": "true",
-      }, 0, 50).catch(() => [] as Conversation[]),
+      }, 0, 100).catch(() => [] as Conversation[]),
       // Email
-      getConversations({ "filter[channel][_eq]": "email" }, 0, 50)
+      getConversations({ "filter[channel][_eq]": "email" }, 0, 100)
         .catch(() => [] as Conversation[]),
     ])
 
     const all = [...waResult, ...askmeResult, ...emailResult].sort((a, b) => {
-      // Priorizar lastActivityAt (actividade real de mensagens)
-      // Fallback: createdAt (data original, nao inflada por PATCHes de backfill)
-      const ta = new Date(a.lastActivityAt || a.createdAt || 0).getTime()
-      const tb = new Date(b.lastActivityAt || b.createdAt || 0).getTime()
+      const ta = Math.max(
+        new Date(a.lastActivityAt || 0).getTime(),
+        new Date(a.updatedAt || 0).getTime(),
+        new Date(a.createdAt || 0).getTime(),
+      )
+      const tb = Math.max(
+        new Date(b.lastActivityAt || 0).getTime(),
+        new Date(b.updatedAt || 0).getTime(),
+        new Date(b.createdAt || 0).getTime(),
+      )
       return tb - ta
     })
 
