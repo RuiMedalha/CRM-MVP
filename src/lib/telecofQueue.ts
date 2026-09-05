@@ -24,6 +24,28 @@ export function normalizeTelecofOperationalStatus(status: string): string {
   return s
 }
 
+export function isCallMissed(event: TelecofCallEventRecord): boolean {
+  if (event.callStatus === "missed") return true
+  if (event.rawPayload?.call_qualification === "missed") return true
+  const status = normalizeTelecofOperationalStatus(event.operationalStatus)
+  return status === "missed"
+}
+
+export function isCallAnswered(event: TelecofCallEventRecord): boolean {
+  if (event.callStatus === "answered" || event.callStatus === "completed") return true
+  if (event.rawPayload?.call_qualification === "answered") return true
+  const status = normalizeTelecofOperationalStatus(event.operationalStatus)
+  return status === "in_progress" || status === "resolved"
+}
+
+export function isCallUnqualified(event: TelecofCallEventRecord): boolean {
+  return (
+    !isCallMissed(event) &&
+    !isCallAnswered(event) &&
+    (event.operationalStatus === "new" || event.operationalStatus === "unhandled")
+  )
+}
+
 export function isStaleNewCall(event: TelecofCallEventRecord): boolean {
   if (event.operationalStatus !== "new" || event.claimedAt) return false
   const created = new Date(event.createdAt).getTime()
@@ -34,21 +56,26 @@ export function isStaleNewCall(event: TelecofCallEventRecord): boolean {
 export function isOperationallyUnhandled(event: TelecofCallEventRecord): boolean {
   return (
     normalizeTelecofOperationalStatus(event.operationalStatus) === "unhandled" ||
+    isCallMissed(event) ||
+    isCallUnqualified(event) ||
     isStaleNewCall(event)
   )
 }
 
 export function operationalStatusLabel(event: TelecofCallEventRecord): string {
+  if (isCallMissed(event)) return "Perdida / Não atendida"
+  if (isCallUnqualified(event)) return "Por classificar"
   if (isStaleNewCall(event)) return "Não tratada"
   const status = normalizeTelecofOperationalStatus(event.operationalStatus)
   switch (status) {
     case "new": return "Nova"
     case "unhandled": return "Não tratada"
-    case "in_progress": return "Em tratamento"
+    case "in_progress": return "Atendida / Em curso"
     case "resolved": return "Tratada"
     case "spam": return "Publicidade"
     case "deleted": return "Apagada"
     case "callback": return "Rechamar"
+    case "missed": return "Perdida / Não atendida"
     default: return event.operationalStatus
   }
 }
@@ -60,7 +87,9 @@ export function usesCompactTelecofRow(event: TelecofCallEventRecord): boolean {
 
 export function operationalStatusTone(
   event: TelecofCallEventRecord,
-): "violet" | "amber" | "blue" | "green" | "slate" | "orange" {
+): "violet" | "amber" | "blue" | "green" | "slate" | "orange" | "red" {
+  if (isCallMissed(event)) return "red"
+  if (isCallUnqualified(event)) return "amber"
   if (isOperationallyUnhandled(event)) return "amber"
   const status = normalizeTelecofOperationalStatus(event.operationalStatus)
   switch (status) {

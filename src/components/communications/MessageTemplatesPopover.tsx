@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { FileText, Search, X, Zap, AlertTriangle } from "lucide-react"
 
@@ -32,6 +32,44 @@ function buttonsAsText(buttons: NonNullable<MessageTemplate["buttons"]>): string
   return "\n\n" + lines.join("\n")
 }
 
+const BUILT_IN_SNIPPETS: MessageTemplate[] = [
+  {
+    id: "builtin-recovery",
+    name: "📞 Recuperação de Chamada Não Atendida",
+    content: "Olá! Vimos que nos tentou ligar há pouco para a nossa central, mas infelizmente não conseguimos atender a tempo. Em que podemos ajudar?",
+    channel: "all",
+    enabled: true,
+  },
+  {
+    id: "builtin-iban",
+    name: "💳 IBAN / Dados de Transferência",
+    content: "Dados para Pagamento por Transferência Bancária:\nIBAN: [Inserir IBAN]\nTitular: Profihotel Lda\nPor favor envie o comprovativo por este canal para processarmos o seu pedido.",
+    channel: "all",
+    enabled: true,
+  },
+  {
+    id: "builtin-billing",
+    name: "📄 Pedido de Dados de Faturação",
+    content: "Para podermos emitir a respetiva fatura / cotação, pode indicar-nos por favor:\n• Nome ou Razão Social:\n• NIF / NIPC:\n• Morada completa com Código Postal:\n• Email de faturação:",
+    channel: "all",
+    enabled: true,
+  },
+  {
+    id: "builtin-schedule",
+    name: "📍 Morada & Horário de Atendimento",
+    content: "O nosso horário de funcionamento é de 2ª a 6ª feira, das 09:00 às 13:00 e das 14:00 às 18:00.\nEstamos à sua inteira disposição para qualquer questão adicional!",
+    channel: "all",
+    enabled: true,
+  },
+  {
+    id: "builtin-shipping",
+    name: "📦 Confirmação de Envio com Tracking",
+    content: "A sua encomenda foi preparada e expedida via transportadora. A entrega está prevista dentro de 24h a 48h úteis. Se tiver alguma dúvida, estamos por aqui para ajudar!",
+    channel: "all",
+    enabled: true,
+  },
+]
+
 export function MessageTemplatesPopover({ channel, instanceName, onSelect }: Props) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -63,7 +101,11 @@ export function MessageTemplatesPopover({ channel, instanceName, onSelect }: Pro
     return () => document.removeEventListener("mousedown", onClickOutside)
   }, [open])
 
-  const filtered = allTemplates.filter((t) => {
+  const combinedTemplates = (allTemplates.length > 0 ? allTemplates : []).concat(
+    BUILT_IN_SNIPPETS.filter((b) => !allTemplates.some((t) => t.id === b.id)),
+  )
+
+  const filtered = combinedTemplates.filter((t) => {
     if (!t.enabled) return false
     const matchChannel = !channel || t.channel === "all" || t.channel === channel
     const matchSearch =

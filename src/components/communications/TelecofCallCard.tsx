@@ -29,6 +29,7 @@ const TONE_CLASS: Record<ReturnType<typeof operationalStatusTone>, string> = {
   green: "bg-emerald-500/10 text-emerald-700 ring-emerald-300 dark:text-emerald-400",
   slate: "bg-muted text-foreground ring-border",
   orange: "bg-orange-100 text-orange-900 ring-orange-300",
+  red: "bg-red-100 text-red-900 ring-red-300 dark:bg-red-950/30 dark:text-red-400",
 }
 
 function formatWhen(iso: string): string {
@@ -57,6 +58,7 @@ function isPhoneLike(value?: string | null): boolean {
 }
 
 export function TelecofCallCard({ event, callCount = 1, hasUnhandled, selected, onSelect }: Props) {
+  const mergeEvent = useTelecofCallStore((s) => s.mergeEvent)
   const tone = operationalStatusTone(event)
   const unhandled = hasUnhandled !== undefined ? hasUnhandled : isOperationallyUnhandled(event)
   const DirIcon = event.direction === "outbound" ? ArrowUpRight : ArrowDownLeft
@@ -64,6 +66,27 @@ export function TelecofCallCard({ event, callCount = 1, hasUnhandled, selected, 
   const isNamePhone = !event.customerName || isPhoneLike(event.customerName)
   const resolved = useContactNameForPhone(isNamePhone ? phone : undefined)
   const displayName = (!isNamePhone ? event.customerName?.trim() : null) || resolved.name || event.customerName?.trim() || "Sem nome"
+
+  const isUnqual = !event.callStatus && (event.operationalStatus === "new" || event.operationalStatus === "unhandled")
+
+  async function handleQuickQualify(e: React.MouseEvent, type: "answered" | "missed") {
+    e.stopPropagation()
+    try {
+      const now = new Date().toISOString()
+      const updated = await patchHubCommunicationEvent(event.id, {
+        call_status: type,
+        status: type === "answered" ? "in_progress" : "unhandled",
+        raw_payload: {
+          ...(event.rawPayload ?? {}),
+          call_qualification: type,
+          qualified_at: now,
+        },
+      })
+      mergeEvent(updated)
+    } catch {
+      // non-blocking
+    }
+  }
 
   return (
     <button
@@ -97,18 +120,41 @@ export function TelecofCallCard({ event, callCount = 1, hasUnhandled, selected, 
         </span>
       </span>
 
-      {phone ? (
-        <a
-          href={`tel:${phone}`}
-          className="crm-telecof-phone text-sm font-bold text-primary hover:underline"
-          onClick={(e) => e.stopPropagation()}
-          title={`Ligar ${phone}`}
-        >
-          {phone}
-        </a>
-      ) : (
-        <span className="text-sm text-muted-foreground">sem número</span>
-      )}
+      <div className="flex items-center justify-between gap-1">
+        {phone ? (
+          <a
+            href={`tel:${phone}`}
+            className="crm-telecof-phone text-sm font-bold text-primary hover:underline truncate"
+            onClick={(e) => e.stopPropagation()}
+            title={`Ligar ${phone}`}
+          >
+            {phone}
+          </a>
+        ) : (
+          <span className="text-sm text-muted-foreground">sem número</span>
+        )}
+
+        {isUnqual && (
+          <span className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={(e) => void handleQuickQualify(e, "answered")}
+              className="rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold transition-colors"
+              title="Classificar como Atendida"
+            >
+              ✓ Atendida
+            </button>
+            <button
+              type="button"
+              onClick={(e) => void handleQuickQualify(e, "missed")}
+              className="rounded bg-red-500/10 hover:bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/20 px-1.5 py-0.5 text-[10px] font-bold transition-colors"
+              title="Classificar como Chamada Perdida / Não Atendida"
+            >
+              ✕ Perdida
+            </button>
+          </span>
+        )}
+      </div>
 
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <DirIcon className="h-3.5 w-3.5 shrink-0" />

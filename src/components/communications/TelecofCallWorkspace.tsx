@@ -41,7 +41,7 @@ import { Link } from "react-router-dom"
 
 import { useQueryClient } from "@tanstack/react-query"
 import { createInteraction } from "@/integrations/directus/interactions"
-import { operationalStatusLabel } from "@/lib/telecofQueue"
+import { operationalStatusLabel, isCallMissed, isCallAnswered, isCallUnqualified } from "@/lib/telecofQueue"
 import { getCallsForSameCaller } from "@/lib/telecofGrouping"
 import { crmDashboard360UrlForCall } from "@/lib/crmUrls"
 import { useTelecofCallStore } from "@/store/telecofCallStore"
@@ -56,6 +56,9 @@ import { ProductSearchTab, matchesShortcut, type ProductSearchTabHandle } from "
 import { CustomerDossierPanel } from "@/components/customer360/CustomerDossierPanel"
 import { VoiceDictationButton } from "@/components/common/VoiceDictationButton"
 import { TelecofLeadCapture } from "./TelecofLeadCapture"
+import { TelecofMissedCallRecoveryModal } from "./TelecofMissedCallRecoveryModal"
+import { QuickDealAndQuotationCard } from "@/components/common/QuickDealAndQuotationCard"
+import { QuickNextStepDialog } from "@/components/common/QuickNextStepDialog"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import {
@@ -150,6 +153,50 @@ export function TelecofCallWorkspace() {
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [confirmCallback, setConfirmCallback] = useState(false)
+  const [recoveryModalOpen, setRecoveryModalOpen] = useState(false)
+  const [nextStepDialogOpen, setNextStepDialogOpen] = useState(false)
+
+  async function handleMarkCallAnswered() {
+    if (!selected) return
+    await run(async () => {
+      const now = new Date().toISOString()
+      const updated = await patchHubCommunicationEvent(selected.id, {
+        call_status: "answered",
+        status: "in_progress",
+        claimed_at: selected.claimedAt || now,
+        assigned_to: selected.assignedTo || agentId || agentName,
+        agent_name: selected.agentName || agentName,
+        raw_payload: {
+          ...(selected.rawPayload ?? {}),
+          call_qualification: "answered",
+          qualified_at: now,
+          qualified_by: agentName,
+        },
+      })
+      mergeEvent(updated)
+      showFeedback("Chamada classificada como: Atendida.")
+    })
+  }
+
+  async function handleMarkCallMissed() {
+    if (!selected) return
+    await run(async () => {
+      const now = new Date().toISOString()
+      const updated = await patchHubCommunicationEvent(selected.id, {
+        call_status: "missed",
+        status: "unhandled",
+        raw_payload: {
+          ...(selected.rawPayload ?? {}),
+          call_qualification: "missed",
+          qualified_at: now,
+          qualified_by: agentName,
+        },
+      })
+      mergeEvent(updated)
+      showFeedback("Chamada classificada como: Não Atendida / Perdida.")
+      setRecoveryModalOpen(true)
+    })
+  }
 
   // Secção de pesquisa de produtos: colapsável, default aberto (o operador precisa)
   const [productSearchOpen, setProductSearchOpen] = useState(true)
@@ -998,7 +1045,7 @@ export function TelecofCallWorkspace() {
           <button
             type="button"
             disabled={busy}
-            onClick={() => void handleStatus("resolved", "Tratado")}
+            onClick={() => setNextStepDialogOpen(true)}
             className="crm-telecof-primary shrink-0 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             Tratado
@@ -1014,6 +1061,72 @@ export function TelecofCallWorkspace() {
 
       {/* Corpo scrollável — detalhe + identidade + histórico + resumo. */}
       <div className="crm-telecof-ws-body min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+        {/* Banner de Qualificação da Chamada (A central telefónica enviou o webhook mas não sabe se foi atendida) */}
+        {isCallUnqualified(selected) && (
+          <div className="rounded-xl border-2 border-amber-400/80 bg-amber-50 dark:bg-amber-950/30 p-3.5 shadow-sm space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
+                  <BadgeAlert className="h-4 w-4 text-amber-600 shrink-0" />
+                  Esta chamada foi atendida pela equipa?
+                </p>
+                <p className="text-[11px] text-amber-800 dark:text-amber-400">
+                  A central telefónica registou a entrada da chamada. Confirme se foi atendida ou perdida para manter o histórico fiável e acionar a recuperação por WhatsApp.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleMarkCallAnswered()}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold shadow-xs transition-colors"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Sim, Atendida</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleMarkCallMissed()}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs font-bold shadow-xs transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  <span>Não, Perdida</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chamada Não Atendida / Perdida — Recuperação GoHighLevel */}
+        {isCallMissed(selected) && (
+          <div className="rounded-xl border border-red-200 bg-red-50/70 dark:bg-red-950/20 dark:border-red-800/40 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/15 text-red-600 dark:text-red-400 shrink-0">
+                <PhoneCall className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-xs font-bold text-red-950 dark:text-red-200">
+                  Chamada Não Atendida / Perdida
+                </p>
+                <p className="text-[11px] text-red-700 dark:text-red-400">
+                  Evite que este cliente contacte um concorrente. Envie uma mensagem WhatsApp de recuperação com 1 clique.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setRecoveryModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-xs transition-colors shrink-0"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span>💬 Recuperar por WhatsApp</span>
+            </button>
+          </div>
+        )}
         {/* Secção de Chamadas do Interlocutor (Agrupamento com Datas e Horas) */}
         {callerCalls.length > 0 && (
           <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs">
@@ -1432,6 +1545,16 @@ export function TelecofCallWorkspace() {
           )}
         </div>
 
+        {/* Ponte Comercial — Oportunidade no Funil e Proposta Rápida */}
+        <QuickDealAndQuotationCard
+          contactId={identity?.kind === "contact" && identity.record?.id ? String(identity.record.id) : null}
+          customerName={identity?.record?.company_name || identity?.record?.contact_name || selected.customerName}
+          phone={selected.phone || selected.normalizedPhone}
+          email={identity?.record?.email}
+          notes={summaryNote || selected.subject}
+          currentCallId={selected.id}
+        />
+
         {/* Ficha de Preenchimento Imediato (Contacto Novo / Não Registado) */}
         {identity?.kind === "unknown" && (
           <TelecofLeadCapture
@@ -1739,7 +1862,7 @@ export function TelecofCallWorkspace() {
           <button
             type="button"
             disabled={busy}
-            onClick={() => void handleStatus("resolved", "Tratado")}
+            onClick={() => setNextStepDialogOpen(true)}
             className="min-h-[44px] shrink-0 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
           >
             Tratado
@@ -1817,6 +1940,26 @@ export function TelecofCallWorkspace() {
           </Link>
         )}
       </div>
+
+      {/* Modal de Recuperação de Chamada Não Atendida / Perdida via WhatsApp */}
+      <TelecofMissedCallRecoveryModal
+        open={recoveryModalOpen}
+        onClose={() => setRecoveryModalOpen(false)}
+        phone={selected.phone || selected.normalizedPhone || ""}
+        customerName={identity?.record?.company_name || identity?.record?.contact_name || selected.customerName}
+      />
+
+      {/* Dialog de Atendimento Tratado — Próximo Passo Obrigatório */}
+      <QuickNextStepDialog
+        open={nextStepDialogOpen}
+        onClose={() => setNextStepDialogOpen(false)}
+        contactId={identity?.kind === "contact" && identity.record?.id ? String(identity.record.id) : null}
+        customerName={identity?.record?.company_name || identity?.record?.contact_name || selected.customerName}
+        phone={selected.phone || selected.normalizedPhone}
+        onDone={() => {
+          void handleStatus("resolved", "Tratado")
+        }}
+      />
     </div>
   )
 }

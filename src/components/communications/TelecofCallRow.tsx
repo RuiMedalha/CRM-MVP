@@ -30,6 +30,7 @@ const TONE_CLASS: Record<ReturnType<typeof operationalStatusTone>, string> = {
   green: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   slate: "bg-muted text-muted-foreground",
   orange: "bg-orange-100 text-orange-800",
+  red: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
 }
 
 function formatTime(iso: string): string {

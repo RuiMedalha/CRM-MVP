@@ -97,6 +97,7 @@ export interface CreateCommunicationEventBody {
 
 export type PatchCommunicationEventBody = Partial<{
   status: string
+  call_status: string | null
   assigned_to: string | null
   claimed_at: string | null
   resolved_at: string | null

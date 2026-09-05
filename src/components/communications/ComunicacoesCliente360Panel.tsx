@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { QuickDealAndQuotationCard } from "@/components/common/QuickDealAndQuotationCard";
 import { CustomerTimeline } from "@/components/contacts/CustomerTimeline";
 import { CompactTimeline } from "@/components/customer360/CompactTimeline";
 import { AddNoteInline } from "@/components/customer360/AddNoteInline";
@@ -664,6 +665,17 @@ export function ComunicacoesCliente360Panel({
               <Skeleton className="h-20 w-full" />
             </div>
           )}
+
+          {/* Ponte Comercial — Oportunidade no Funil e Proposta Rápida */}
+          <div className="pt-1">
+            <QuickDealAndQuotationCard
+              contactId={contactId || (contact?.id ? String(contact.id) : null)}
+              customerName={form.company_name || form.contact_name || conversationName}
+              phone={form.phone || conversationPhone}
+              email={form.email}
+              notes={form.notes}
+            />
+          </div>
 
           {/* OPERAÇÕES — botões de acção rápida */}
           {conversation && (
