@@ -139,8 +139,10 @@ const AppContent = () => {
         <Route path="/menu" element={<ProtectedRoute><MenuMobile /></ProtectedRoute>} />
         <Route path="/customer360-shell" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
         <Route path="/customer360-shell/:id" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
-        <Route path="/customer360/:id" element={<ProtectedRoute><Customer360 /></ProtectedRoute>} />
-        <Route path="/customer360" element={<ProtectedRoute><Navigate to="/contactos" replace /></ProtectedRoute>} />
+        <Route path="/customer360/:id" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
+        <Route path="/customer360" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
+        <Route path="/clientes/:id" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
+        <Route path="/clientes" element={<ProtectedRoute><ContactosDirectus /></ProtectedRoute>} />
         <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
         <Route path="/developer-tools" element={<ProtectedRoute><DeveloperTools /></ProtectedRoute>} />
 
