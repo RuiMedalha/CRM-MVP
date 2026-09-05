@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { UserPlus } from "lucide-react"
 
 import { filterTelecofEventsByQueue, usesCompactTelecofRow } from "@/lib/telecofQueue"
+import { groupTelecofCalls } from "@/lib/telecofGrouping"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 import { useInboxFilterStore } from "@/store/inboxFilterStore"
 import { useTelecofCallStore } from "@/store/telecofCallStore"
@@ -21,6 +22,11 @@ export function TelecofCallsList() {
   const filtered = useMemo(
     () => filterTelecofEventsByQueue(events, telecofQueueFilter, searchQuery),
     [events, telecofQueueFilter, searchQuery],
+  )
+
+  const groupedCalls = useMemo(
+    () => groupTelecofCalls(filtered, events),
+    [filtered, events],
   )
 
   const unhandledCount = useMemo(
@@ -52,9 +58,10 @@ export function TelecofCallsList() {
         <div className="flex items-baseline gap-2">
           <h1 className="text-sm font-semibold text-foreground">Fila Telecof</h1>
           <p className="crm-telecof-list-counter text-xs text-muted-foreground">
-            {filtered.length}
+            {groupedCalls.length} {groupedCalls.length === 1 ? "contacto" : "contactos"}
+            {filtered.length !== groupedCalls.length && ` (${filtered.length} chamadas)`}
             {unhandledCount > 0 && (
-              <span className="ml-1 font-semibold text-amber-700">
+              <span className="ml-1 font-semibold text-amber-700 dark:text-amber-400">
                 · {unhandledCount} por tratar
               </span>
             )}
@@ -89,8 +96,8 @@ export function TelecofCallsList() {
 
       <div className="crm-telecof-scroller min-h-0 flex-1 overflow-y-auto p-2">
         <AsyncState
-          loading={loading && filtered.length === 0}
-          empty={!loading && filtered.length === 0}
+          loading={loading && groupedCalls.length === 0}
+          empty={!loading && groupedCalls.length === 0}
           emptyFallback={
             <EmptyState
               className="min-h-40 bg-card px-4 py-6"
@@ -100,21 +107,29 @@ export function TelecofCallsList() {
           }
         >
           <div className="space-y-2">
-            {filtered.map((event) => {
-              const selected = selectedEventId === event.id
-              const onSelect = () => selectEvent(event.id)
+            {groupedCalls.map((group) => {
+              const selected =
+                group.calls.some((c) => c.id === selectedEventId) ||
+                group.primaryEvent.id === selectedEventId
+              const onSelect = () => selectEvent(group.primaryEvent.id)
 
-              return usesCompactTelecofRow(event) ? (
+              const isCompact = group.calls.every(usesCompactTelecofRow)
+
+              return isCompact ? (
                 <TelecofCallRow
-                  key={event.id}
-                  event={event}
+                  key={group.groupKey}
+                  event={group.primaryEvent}
+                  callCount={group.callCount}
+                  hasUnhandled={group.hasUnhandled}
                   selected={selected}
                   onSelect={onSelect}
                 />
               ) : (
                 <TelecofCallCard
-                  key={event.id}
-                  event={event}
+                  key={group.groupKey}
+                  event={group.primaryEvent}
+                  callCount={group.callCount}
+                  hasUnhandled={group.hasUnhandled}
                   selected={selected}
                   onSelect={onSelect}
                 />

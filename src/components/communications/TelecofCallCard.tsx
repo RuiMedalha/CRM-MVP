@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, Clock } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, Clock, PhoneCall } from "lucide-react"
 
 import {
   isOperationallyUnhandled,
@@ -44,6 +44,8 @@ function formatWhen(iso: string): string {
 
 interface Props {
   event: TelecofCallEventRecord
+  callCount?: number
+  hasUnhandled?: boolean
   selected?: boolean
   onSelect?: () => void
 }
@@ -54,9 +56,9 @@ function isPhoneLike(value?: string | null): boolean {
   return /^\d{7,15}$/.test(stripped)
 }
 
-export function TelecofCallCard({ event, selected, onSelect }: Props) {
+export function TelecofCallCard({ event, callCount = 1, hasUnhandled, selected, onSelect }: Props) {
   const tone = operationalStatusTone(event)
-  const unhandled = isOperationallyUnhandled(event)
+  const unhandled = hasUnhandled !== undefined ? hasUnhandled : isOperationallyUnhandled(event)
   const DirIcon = event.direction === "outbound" ? ArrowUpRight : ArrowDownLeft
   const phone = event.phone || event.normalizedPhone
   const isNamePhone = !event.customerName || isPhoneLike(event.customerName)
@@ -79,6 +81,15 @@ export function TelecofCallCard({ event, selected, onSelect }: Props) {
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
           {displayName}
         </span>
+        {callCount > 1 && (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-300 border border-amber-500/30"
+            title={`${callCount} chamadas deste número`}
+          >
+            <PhoneCall className="h-3 w-3" />
+            {callCount}x
+          </span>
+        )}
         <span
           className={`shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${TONE_CLASS[tone]}`}
         >
@@ -103,6 +114,11 @@ export function TelecofCallCard({ event, selected, onSelect }: Props) {
         <DirIcon className="h-3.5 w-3.5 shrink-0" />
         <Clock className="h-3.5 w-3.5 shrink-0" />
         <span className="truncate">{formatWhen(event.startedAt ?? event.createdAt)}</span>
+        {callCount > 1 ? (
+          <span className="truncate font-medium text-amber-700 dark:text-amber-400">
+            · {callCount} chamadas
+          </span>
+        ) : null}
         {event.assignedTo ? <span className="truncate"> · {event.assignedTo}</span> : null}
       </span>
     </button>

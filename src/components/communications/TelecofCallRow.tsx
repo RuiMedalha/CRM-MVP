@@ -1,6 +1,7 @@
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, PhoneCall } from "lucide-react"
 
 import {
+  isOperationallyUnhandled,
   operationalStatusLabel,
   operationalStatusTone,
 } from "@/lib/telecofQueue"
@@ -44,6 +45,8 @@ function formatTime(iso: string): string {
 
 interface Props {
   event: TelecofCallEventRecord
+  callCount?: number
+  hasUnhandled?: boolean
   selected?: boolean
   onSelect?: () => void
 }
@@ -54,7 +57,7 @@ function isPhoneLike(value?: string | null): boolean {
   return /^\d{7,15}$/.test(stripped)
 }
 
-export function TelecofCallRow({ event, selected, onSelect }: Props) {
+export function TelecofCallRow({ event, callCount = 1, hasUnhandled, selected, onSelect }: Props) {
   const tone = operationalStatusTone(event)
   const DirIcon = event.direction === "outbound" ? ArrowUpRight : ArrowDownLeft
   const phone = event.phone || event.normalizedPhone
@@ -77,6 +80,15 @@ export function TelecofCallRow({ event, selected, onSelect }: Props) {
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
           {displayName}
         </span>
+        {callCount > 1 && (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-300"
+            title={`${callCount} chamadas deste número`}
+          >
+            <PhoneCall className="h-2.5 w-2.5" />
+            {callCount}x
+          </span>
+        )}
         <span className="shrink-0 text-xs text-muted-foreground">
           {formatTime(event.startedAt ?? event.createdAt)}
         </span>

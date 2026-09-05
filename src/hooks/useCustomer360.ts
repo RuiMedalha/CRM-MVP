@@ -125,8 +125,8 @@ export function useCustomer360(organizationId: string | undefined): UseCustomer3
       }));
 
       // 6. Fetch Communication Events (Telecof / CTI Calls)
-      let commFilter = `filter[_or][0][contact_int_id][_eq]=${organizationId}`;
-      let cIdx = 1;
+      let commFilter = `filter[_or][0][contact_int_id][_eq]=${organizationId}&filter[_or][1][contact_id][_eq]=${organizationId}`;
+      let cIdx = 2;
       if (phoneTail.length >= 6) {
         commFilter += `&filter[_or][${cIdx++}][phone][_contains]=${phoneTail}`;
         commFilter += `&filter[_or][${cIdx++}][normalized_phone][_contains]=${phoneTail}`;
