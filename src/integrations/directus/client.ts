@@ -71,8 +71,12 @@ const safeEnv = (typeof import.meta !== "undefined" && import.meta.env) || (type
 // Optional fallback token (service-token mode). Prefer user session token.
 const DIRECTUS_FALLBACK_TOKEN: string = safeEnv.VITE_DIRECTUS_TOKEN || "";
 
-/** Token admin directo para operações de comunicações (lido de VITE_DIRECTUS_ADMIN_TOKEN). */
-export const DIRECTUS_ADMIN_TOKEN = ((safeEnv.VITE_DIRECTUS_ADMIN_TOKEN as string) || "").trim();
+/** Token admin directo para operações de comunicações, pedidos e carrinhos (lido de VITE_DIRECTUS_ADMIN_TOKEN ou VITE_DIRECTUS_TOKEN). */
+export const DIRECTUS_ADMIN_TOKEN = (
+  (safeEnv.VITE_DIRECTUS_ADMIN_TOKEN as string) ||
+  (safeEnv.VITE_DIRECTUS_TOKEN as string) ||
+  ""
+).trim();
 
 /** Helper para fetch directo com token admin (bypass session). */
 export async function directusAdminFetch<T>(
@@ -83,8 +87,12 @@ export async function directusAdminFetch<T>(
   const normalizedPath = path.startsWith("/") ? path : `/${path}`
   const url = `${base}${normalizedPath}`
 
+  const token = DIRECTUS_ADMIN_TOKEN || getDirectusTokenForRequest() || DIRECTUS_FALLBACK_TOKEN;
+
   const headers = new Headers(init.headers)
-  headers.set("Authorization", `Bearer ${DIRECTUS_ADMIN_TOKEN}`)
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`)
+  }
   if (init.method && init.method !== "GET") {
     headers.set("Content-Type", headers.get("Content-Type") || "application/json")
   }

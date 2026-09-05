@@ -28,6 +28,7 @@ const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> =
   status_change: { icon: "🔄", color: "text-muted-foreground", bg: "bg-muted" },
   payment: { icon: "💰", color: "text-green-700", bg: "bg-green-50 dark:bg-green-900/30" },
   order: { icon: "📦", color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-900/30" },
+  cart: { icon: "🛒", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/30" },
   assistance: { icon: "🔧", color: "text-red-600", bg: "bg-red-50 dark:bg-red-900/30" },
   ai: { icon: "🤖", color: "text-primary", bg: "bg-primary/10" },
   task: { icon: "✓", color: "text-muted-foreground", bg: "bg-muted" },
@@ -61,6 +62,7 @@ const FILTER_TYPES = [
   { key: "whatsapp", label: "💬 WhatsApp" },
   { key: "phone", label: "📞 Chamadas" },
   { key: "order", label: "📦 Encomendas" },
+  { key: "cart", label: "🛒 Carrinhos" },
   { key: "note", label: "📝 Notas" },
   { key: "proposal", label: "📄 Propostas" },
 ];

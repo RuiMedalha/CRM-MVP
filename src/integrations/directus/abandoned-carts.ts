@@ -90,3 +90,77 @@ export async function sendCartEmail(payload: { to: string; subject: string; mess
   if (!res.ok) throw new Error(j?.detail || j?.error || `Falha ao enviar email (${res.status})`);
   return j;
 }
+
+export async function listAbandonedCartsForCustomer(params: {
+  contactId?: string | number;
+  email?: string;
+  phone?: string;
+  limit?: number;
+}): Promise<AbandonedCart[]> {
+  const { contactId, email, phone, limit = 20 } = params;
+  const queries: Promise<{ data: AbandonedCart[] } | null>[] = [];
+
+  if (contactId !== undefined && contactId !== null && String(contactId).trim() !== "") {
+    queries.push(
+      directusAdminFetch<{ data: AbandonedCart[] }>(
+        `/items/abandoned_carts${qs({
+          "filter[contact_id][_eq]": String(contactId),
+          sort: "-date_abandoned",
+          limit,
+          fields: FIELDS,
+        })}`,
+      ).catch(() => null),
+    );
+  }
+
+  if (email && email.trim()) {
+    queries.push(
+      directusAdminFetch<{ data: AbandonedCart[] }>(
+        `/items/abandoned_carts${qs({
+          "filter[email][_eq]": email.trim(),
+          sort: "-date_abandoned",
+          limit,
+          fields: FIELDS,
+        })}`,
+      ).catch(() => null),
+    );
+  }
+
+  if (phone && phone.trim()) {
+    const rawPhone = phone.trim();
+    const digits = rawPhone.replace(/\D/g, "");
+    queries.push(
+      directusAdminFetch<{ data: AbandonedCart[] }>(
+        `/items/abandoned_carts${qs({
+          "filter[phone][_contains]": digits.length >= 9 ? digits.slice(-9) : rawPhone,
+          sort: "-date_abandoned",
+          limit,
+          fields: FIELDS,
+        })}`,
+      ).catch(() => null),
+    );
+  }
+
+  if (queries.length === 0) return [];
+
+  const results = await Promise.all(queries);
+  const seen = new Set<number | string>();
+  const carts: AbandonedCart[] = [];
+
+  for (const r of results) {
+    for (const c of r?.data || []) {
+      const uid = c.id || c.wp_cart_id;
+      if (!uid || seen.has(uid)) continue;
+      seen.add(uid);
+      carts.push(c);
+    }
+  }
+
+  return carts
+    .sort((a, b) => {
+      const da = a.date_abandoned ? new Date(a.date_abandoned).getTime() : 0;
+      const db = b.date_abandoned ? new Date(b.date_abandoned).getTime() : 0;
+      return db - da;
+    })
+    .slice(0, limit);
+}

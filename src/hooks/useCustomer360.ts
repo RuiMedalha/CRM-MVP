@@ -82,6 +82,36 @@ export function useCustomer360(organizationId: string | undefined): UseCustomer3
         };
       });
 
+      // 4b. Fetch abandoned carts for this customer
+      let cartFilter = `filter[_or][0][contact_id][_eq]=${organizationId}`;
+      let crtIdx = 1;
+      if (cleanEmail) {
+        cartFilter += `&filter[_or][${crtIdx++}][email][_eq]=${encodeURIComponent(cleanEmail)}`;
+      }
+      if (phoneTail.length >= 6) {
+        cartFilter += `&filter[_or][${crtIdx++}][phone][_contains]=${phoneTail}`;
+      }
+
+      const cartsRes = await directusRequest<{ data: Record<string, unknown>[] }>(
+        `/items/abandoned_carts?${cartFilter}&sort=-date_abandoned&limit=10&fields=id,wp_cart_id,status,cart_total,currency,items_count,items,recovery_url,date_abandoned`
+      ).catch(() => ({ data: [] as Record<string, unknown>[] }));
+
+      const cartEvents = (cartsRes.data ?? []).map((c) => {
+        const totalEur = Number(c.cart_total || 0).toLocaleString("pt-PT", { style: "currency", currency: (c.currency as string) || "EUR" });
+        const itemsCount = Number(c.items_count) || (Array.isArray(c.items) ? c.items.length : 0);
+        const statusLabel = c.status === "converted" ? "Convertido em encomenda" : (c.status === "recovered" ? "Recuperado" : "Abandonado");
+        return {
+          id: `cart-${c.id}`,
+          type: "cart",
+          title: `🛒 Carrinho ${statusLabel} — ${totalEur}`,
+          description: `${itemsCount} artigo(s) no carrinho${c.recovery_url ? ` · Link: ${c.recovery_url}` : ""}`,
+          occurred_at: (c.date_abandoned as string) || (c.date_created as string),
+          occurredAt: (c.date_abandoned as string) || (c.date_created as string),
+          actor: "Loja Online (WooCommerce)",
+          _source: "abandoned_carts",
+        };
+      });
+
       // 5. Fetch Activity Ledger (if any)
       const activityRes = await directusRequest<{ data: Record<string, unknown>[] }>(
         `/items/activity?filter[contact_id][_eq]=${organizationId}&sort=-occurred_at,-date_created&limit=30&fields=id,type,channel,direction,status,summary,occurred_at,source_collection,source_id,payload,date_created`
@@ -244,6 +274,7 @@ export function useCustomer360(organizationId: string | undefined): UseCustomer3
         ...emailEvents,
         ...interactionEvents,
         ...orderEvents,
+        ...cartEvents,
       ]) {
         const key = String(ev.id || `${ev.type}-${ev.occurredAt || ev.occurred_at}`);
         if (!seenIds.has(key)) {
