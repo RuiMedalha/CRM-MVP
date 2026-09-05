@@ -36,6 +36,7 @@ import {
   Link2,
   Sparkles,
   UserPlus,
+  X,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 
