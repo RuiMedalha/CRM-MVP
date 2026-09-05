@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { directusRequest } from '@/integrations/directus/client';
 
 export interface MeilisearchSettings {
   meilisearch_host?: string;
@@ -32,11 +33,13 @@ export interface MeilisearchProduct {
 }
 
 const MEILISEARCH_STORAGE_KEY = "hotelequip_meilisearch_settings";
+const DEFAULT_HOST = "https://meilisearch.hotelequip.pt";
+const DEFAULT_INDEX = "products_stage";
 
 // Environment defaults — always prefer env vars over localStorage
 const ENV_HOST = (import.meta.env.VITE_MEILISEARCH_URL || "").trim();
 const ENV_KEY = (import.meta.env.VITE_MEILISEARCH_SEARCH_KEY || "").trim();
-const ENV_INDEX = (import.meta.env.VITE_MEILISEARCH_INDEX || "products_stage").trim();
+const ENV_INDEX = (import.meta.env.VITE_MEILISEARCH_INDEX || DEFAULT_INDEX).trim();
 
 export function getMeilisearchSettings(): MeilisearchSettings {
   // Env vars take priority
@@ -49,7 +52,23 @@ export function getMeilisearchSettings(): MeilisearchSettings {
   }
   // Fallback to localStorage (Definições page)
   const stored = localStorage.getItem(MEILISEARCH_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : { meilisearch_index: "products_stage" };
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      return {
+        meilisearch_host: parsed.meilisearch_host || DEFAULT_HOST,
+        meilisearch_api_key: parsed.meilisearch_api_key || "",
+        meilisearch_index: parsed.meilisearch_index || DEFAULT_INDEX,
+      };
+    } catch {
+      // ignore
+    }
+  }
+  return {
+    meilisearch_host: DEFAULT_HOST,
+    meilisearch_api_key: "",
+    meilisearch_index: DEFAULT_INDEX,
+  };
 }
 
 export function saveMeilisearchSettings(settings: MeilisearchSettings) {
@@ -62,24 +81,21 @@ export function useMeilisearch() {
   const [error, setError] = useState<string | null>(null);
 
   const search = useCallback(async (query: string): Promise<MeilisearchProduct[]> => {
-    if (!query.trim()) {
+    const q = query.trim();
+    if (!q) {
       setResults([]);
       return [];
     }
 
     const settings = getMeilisearchSettings();
-    const host = (settings.meilisearch_host || "").trim();
-
-    if (!host) {
-      setError("Meilisearch não configurado. Defina VITE_MEILISEARCH_URL ou configure nas Definições.");
-      return [];
-    }
+    const host = (settings.meilisearch_host || DEFAULT_HOST).trim().replace(/\/+$/, "");
 
     setIsSearching(true);
     setError(null);
 
+    // 1. Tentar Meilisearch primário
     try {
-      const indexName = settings.meilisearch_index || "products_stage";
+      const indexName = settings.meilisearch_index || DEFAULT_INDEX;
       const url = `${host}/indexes/${indexName}/search`;
 
       const headers: HeadersInit = {
@@ -90,12 +106,16 @@ export function useMeilisearch() {
         headers["Authorization"] = `Bearer ${settings.meilisearch_api_key}`;
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
       const response = await fetch(url, {
         method: "POST",
         headers,
+        signal: controller.signal,
         body: JSON.stringify({
-          q: query,
-          limit: 20,
+          q,
+          limit: 24,
           attributesToRetrieve: [
             "id",
             "name",
@@ -122,24 +142,50 @@ export function useMeilisearch() {
           ],
         }),
       });
+      clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error(`Meilisearch error: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        const products: MeilisearchProduct[] = data.hits || [];
+        if (products.length > 0) {
+          setResults(products);
+          return products;
+        }
       }
-
-      const data = await response.json();
-      const products: MeilisearchProduct[] = data.hits || [];
-
-      setResults(products);
-      return products;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Erro na pesquisa";
-      setError(errorMessage);
-      console.error("Meilisearch search error:", err);
-      return [];
-    } finally {
-      setIsSearching(false);
+    } catch (meiliErr) {
+      console.warn("[Meilisearch] Primário falhou ou sem resposta, a tentar catálogo Directus:", meiliErr);
     }
+
+    // 2. Fallback Directus (products / loja_produtos)
+    try {
+      const encoded = encodeURIComponent(q);
+      const directusRes = await directusRequest<{ data: any[] }>(
+        `/items/products?search=${encoded}&limit=20`
+      ).catch(() => null);
+
+      if (directusRes?.data && Array.isArray(directusRes.data) && directusRes.data.length > 0) {
+        const mappedProducts: MeilisearchProduct[] = directusRes.data.map((item) => ({
+          id: String(item.id),
+          name: item.name || item.title || "Produto",
+          title: item.title || item.name || "Produto",
+          sku: item.sku || item.reference || String(item.id),
+          price: Number(item.price || item.unit_price || 0),
+          cost: Number(item.cost || item.cost_price || 0),
+          description: item.description || item.short_description || "",
+          category: item.category || item.family || "",
+          image_url: item.image_url || item.thumbnail || (item.image ? `/assets/${item.image}` : undefined),
+          link: item.link || item.url || undefined,
+        }));
+        setResults(mappedProducts);
+        return mappedProducts;
+      }
+    } catch {
+      // ignore
+    }
+
+    // Nenhum resultado encontrado
+    setResults([]);
+    return [];
   }, []);
 
   const clearResults = useCallback(() => {

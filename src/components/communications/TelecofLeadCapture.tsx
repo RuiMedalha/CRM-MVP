@@ -4,13 +4,14 @@
  * associar a um cliente existente ou criar um Lead de prospeção.
  */
 import { useState, useEffect, useCallback, useRef } from "react"
-import { UserPlus, UserRoundPlus, Loader2, ExternalLink, Building2, Search, Link2, Check, User } from "lucide-react"
+import { UserPlus, UserRoundPlus, Loader2, ExternalLink, Building2, Search, Link2, Check, User, Mic } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { directusRequest } from "@/integrations/directus/client"
-import { createContact, getContactById } from "@/integrations/directus/contacts"
+import { createContact, getContactById, listContacts } from "@/integrations/directus/contacts"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 import { useTelecofCallStore } from "@/store/telecofCallStore"
+import { VoiceDictationButton } from "@/components/common/VoiceDictationButton"
 import { toast } from "@/hooks/use-toast"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
@@ -97,18 +98,15 @@ export function TelecofLeadCapture({ phone = "", callId = "", onContactCreated, 
     setSearchingContacts(true)
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const encoded = encodeURIComponent(q)
-        const res = await directusRequest<{ data: any[] }>(
-          `/items/contacts?search=${encoded}&limit=6&fields=id,company_name,contact_name,name,phone,email,nif,city`
-        )
-        setContactResults(res?.data || [])
+        const items = await listContacts({ search: q, limit: 8 })
+        setContactResults(items as any || [])
         setShowSearchDropdown(true)
       } catch {
         setContactResults([])
       } finally {
         setSearchingContacts(false)
       }
-    }, 300)
+    }, 250)
 
     return () => {
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
@@ -457,33 +455,48 @@ export function TelecofLeadCapture({ phone = "", callId = "", onContactCreated, 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-              Tipo de Assunto
+        <div>
+          <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+            Tipo de Assunto
+          </label>
+          <select
+            value={requestType}
+            onChange={(e) => setRequestType(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {REQUEST_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Espaço Generoso de Registo / Notas com Ditado por Voz */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Registo em Direto / Notas da Chamada
             </label>
-            <select
-              value={requestType}
-              onChange={(e) => setRequestType(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              {REQUEST_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-              Observações / Notas da Chamada
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ex: Interessado em forno combinado e mesa inox..."
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            <VoiceDictationButton
+              onTranscriptChunk={(chunk) => {
+                if (!chunk.trim()) return;
+                setNotes((prev) => {
+                  const sep = prev && !prev.endsWith(" ") && !prev.endsWith("\n") ? " " : "";
+                  return prev + sep + chunk.trim();
+                });
+              }}
+              onFullTranscript={(full) => {
+                if (full.trim()) setNotes(full);
+              }}
+              size="sm"
             />
           </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={4}
+            placeholder="Registe aqui o resumo da conversa em direto ou utilize o Ditado por Voz (ex: cliente pretende cotação para forno industrial e entrega no Porto)..."
+            className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 min-h-[120px] leading-relaxed resize-y"
+          />
         </div>
 
         {/* Acções Diretas: Criar Contacto ou Criar Lead */}

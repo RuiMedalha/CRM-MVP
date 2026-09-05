@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, StickyNote, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { VoiceDictationButton } from "@/components/common/VoiceDictationButton";
 import { useCustomerDossier } from "@/hooks/useCustomerDossier";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -51,7 +52,7 @@ export function AddNoteInline({
   direction = "out",
   variant = "telecof",
   disabled = false,
-  placeholder = "Escreve à vontade — esta nota fica guardada no dossier do cliente.",
+  placeholder = "Escreva à vontade — esta nota ou transcrição fica guardada no dossier do cliente...",
   onSaved,
 }: AddNoteInlineProps) {
   const dossier = useCustomerDossier({ contactId, leadId });
@@ -64,11 +65,11 @@ export function AddNoteInline({
 
   /**
    * Auto-grow da textarea: ajusta a altura ao conteúdo com cap a MAX_HEIGHT.
-   * - MIN_HEIGHT garante ~6 linhas visíveis no arranque (variant telecof/threec-sixty).
+   * - MIN_HEIGHT garante ~8 linhas visíveis no arranque (variant telecof/threec-sixty).
    * - MAX_HEIGHT impede que a textarea ocupe a página inteira.
    */
-  const MIN_HEIGHT = variant === "hubchat" ? 48 : 120;
-  const MAX_HEIGHT = 400;
+  const MIN_HEIGHT = variant === "hubchat" ? 64 : 160;
+  const MAX_HEIGHT = 500;
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -89,6 +90,19 @@ export function AddNoteInline({
   function toggleTag(tag: string) {
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
   }
+
+  const handleVoiceChunk = (chunk: string) => {
+    if (!chunk.trim()) return;
+    setText((prev) => {
+      const sep = prev && !prev.endsWith(" ") && !prev.endsWith("\n") ? " " : "";
+      return prev + sep + chunk.trim();
+    });
+  };
+
+  const handleVoiceFull = (full: string) => {
+    if (!full.trim()) return;
+    setText(full);
+  };
 
   async function handleSave() {
     const trimmed = text.trim();
@@ -151,14 +165,23 @@ export function AddNoteInline({
           )}
         >
           <StickyNote className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} />
-          {compact ? "Nova nota" : "Adicionar nota ao dossiê"}
+          {compact ? "Nova nota" : "Registo & Notas do Cliente"}
         </h3>
-        {!dossier.canAddNote && (
-          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-            <Lock className="h-3 w-3" />
-            inativo
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <VoiceDictationButton
+            onTranscriptChunk={handleVoiceChunk}
+            onFullTranscript={handleVoiceFull}
+            size="sm"
+            disabled={disabled || saving || !dossier.canAddNote}
+            showLabel={!compact}
+          />
+          {!dossier.canAddNote && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Lock className="h-3 w-3" />
+              inativo
+            </span>
+          )}
+        </div>
       </div>
 
       <textarea

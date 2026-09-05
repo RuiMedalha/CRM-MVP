@@ -27,6 +27,11 @@ import {
   ChevronUp,
   Search,
   Package,
+  StickyNote,
+  Copy,
+  Loader2,
+  Link2,
+  Sparkles,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 
@@ -38,13 +43,15 @@ import { useTelecofCallStore } from "@/store/telecofCallStore"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 import { useAuth } from "@/contexts/AuthContext"
 import { directusRequest } from "@/integrations/directus/client"
-import { patchContact, getContactById } from "@/integrations/directus/contacts"
+import { patchContact, getContactById, listContacts } from "@/integrations/directus/contacts"
 import { createFollowUp } from "@/integrations/directus/follow-ups"
 import { useEmployees } from "@/hooks/useEmployees"
 import { ProductSearchTab, matchesShortcut, type ProductSearchTabHandle } from "@/components/contacts/ProductSearchTab"
 import { CustomerDossierPanel } from "@/components/customer360/CustomerDossierPanel"
+import { VoiceDictationButton } from "@/components/common/VoiceDictationButton"
 import { TelecofLeadCapture } from "./TelecofLeadCapture"
 import { toast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -147,6 +154,36 @@ export function TelecofCallWorkspace() {
   }>(() => ({ kind: "unknown" }))
   const [identityLoading, setIdentityLoading] = useState(false)
   const lastLoadedKeyRef = useRef<string>("")
+
+  // Quick Customer Link Search (pesquisar cliente para vincular)
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("")
+  const [customerSearchResults, setCustomerSearchResults] = useState<any[]>([])
+  const [searchingCustomer, setSearchingCustomer] = useState(false)
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false)
+  const customerSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (customerSearchTimeoutRef.current) clearTimeout(customerSearchTimeoutRef.current)
+    const q = customerSearchQuery.trim()
+    if (!q || q.length < 2) {
+      setCustomerSearchResults([])
+      return
+    }
+    setSearchingCustomer(true)
+    customerSearchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const items = await listContacts({ search: q, limit: 8 })
+        setCustomerSearchResults(items || [])
+      } catch {
+        setCustomerSearchResults([])
+      } finally {
+        setSearchingCustomer(false)
+      }
+    }, 250)
+    return () => {
+      if (customerSearchTimeoutRef.current) clearTimeout(customerSearchTimeoutRef.current)
+    }
+  }, [customerSearchQuery])
 
   // In-place contact editor state
   const [isEditingContact, setIsEditingContact] = useState(false)
@@ -377,6 +414,29 @@ export function TelecofCallWorkspace() {
       toast({ title: "Erro ao atualizar contacto", description: String((err as Error)?.message || ""), variant: "destructive" })
     } finally {
       setSavingContact(false)
+    }
+  }
+
+  const handleLinkCustomer = async (contact: any) => {
+    if (!selected) return
+    try {
+      const cId = String(contact.id)
+      const companyName = String(contact.company_name || contact.name || contact.contact_name || "").trim()
+      const updated = await patchHubCommunicationEvent(selected.id, {
+        contact_id: cId,
+        customer_name: companyName || undefined,
+      })
+      mergeEvent(updated)
+      setCustomerSearchQuery("")
+      setShowCustomerSearch(false)
+      lastLoadedKeyRef.current = ""
+      await loadIdentityForPhone(selected.phone || selected.normalizedPhone || "", cId, selected.id, companyName)
+      toast({
+        title: "Cliente associado à chamada",
+        description: `Chamada vinculada a ${companyName || `#${cId}`}.`,
+      })
+    } catch {
+      toast({ title: "Erro ao associar cliente", variant: "destructive" })
     }
   }
 
@@ -769,16 +829,74 @@ export function TelecofCallWorkspace() {
               </select>
             </dd>
           </div>
-          <div className="flex justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <dt className="text-muted-foreground">Contacto</dt>
-            <dd className="font-medium text-foreground">
+            <dd className="font-medium text-foreground flex items-center gap-2">
               {contactUrl ? (
                 <Link to={contactUrl} className="text-primary hover:underline">
                   {selected.customerName || selected.contactId?.slice(-6) || "Ver ficha"}
                 </Link>
-              ) : "—"}
+              ) : (
+                <span className="text-muted-foreground">Não associado</span>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowCustomerSearch((v) => !v)}
+                className="inline-flex items-center gap-1 rounded bg-secondary px-2 py-0.5 text-xs text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                title="Pesquisar e associar outro cliente a esta chamada"
+              >
+                <Search className="h-3 w-3" />
+                {showCustomerSearch ? "Fechar" : "Vincular"}
+              </button>
             </dd>
           </div>
+
+          {/* Barra de Pesquisa Rápida para Vincular Cliente */}
+          {showCustomerSearch && (
+            <div className="col-span-full pt-2 border-t border-border space-y-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={customerSearchQuery}
+                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                  placeholder="Pesquisar cliente por nome, telefone, NIF ou email para associar..."
+                  className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
+                  autoFocus
+                />
+                {searchingCustomer && (
+                  <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-primary" />
+                )}
+              </div>
+
+              {customerSearchResults.length > 0 && (
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-sm space-y-0.5">
+                  {customerSearchResults.map((c) => {
+                    const cName = c.company_name || c.name || c.contact_name || `Contacto #${c.id}`
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => void handleLinkCustomer(c)}
+                        className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs text-foreground hover:bg-muted transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold truncate">{cName}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {c.phone ? `Tel: ${c.phone}` : ""} {c.nif ? `· NIF: ${c.nif}` : ""} {c.city ? `· ${c.city}` : ""}
+                          </p>
+                        </div>
+                        <span className="ml-2 inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary shrink-0">
+                          <Link2 className="h-3 w-3" /> Associar
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {selected.claimedAt && (
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Assumida em</dt>
@@ -786,6 +904,122 @@ export function TelecofCallWorkspace() {
             </div>
           )}
         </dl>
+
+        {/* REGISTO EM DIRETO & NOTAS DA CHAMADA (COM DITADO POR VOZ) */}
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <StickyNote className="h-4 w-4" />
+              </span>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Registo em Direto & Notas da Chamada
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Escreva ou dite por voz em tempo real — fica gravado na chamada e na ficha 360 do cliente
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <VoiceDictationButton
+                onTranscriptChunk={(chunk) => {
+                  if (!chunk.trim()) return
+                  setSummaryNote((prev) => {
+                    const sep = prev && !prev.endsWith(" ") && !prev.endsWith("\n") ? " " : ""
+                    return prev + sep + chunk.trim()
+                  })
+                }}
+                onFullTranscript={(full) => {
+                  if (full.trim()) setSummaryNote(full)
+                }}
+                size="sm"
+                showLabel
+              />
+
+              {summaryNote.trim() && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(summaryNote)
+                      toast({ title: "Texto copiado!" })
+                    }}
+                    className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    title="Copiar texto"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("Limpar notas desta chamada?")) {
+                        setSummaryNote("")
+                        if (draftKey) sessionStorage.removeItem(draftKey)
+                      }
+                    }}
+                    className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-destructive hover:bg-muted text-xs"
+                    title="Limpar notas"
+                  >
+                    Limpar
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <textarea
+            value={summaryNote}
+            onChange={(e) => setSummaryNote(e.target.value)}
+            rows={5}
+            placeholder="Registe aqui as notas da conversa, necessidades do cliente ou utilize o Ditado por Voz..."
+            className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none transition focus:ring-2 focus:ring-primary/30 focus:border-primary leading-relaxed resize-y min-h-[140px]"
+          />
+
+          {/* Quick tags e botão de guardar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-[11px] text-muted-foreground mr-1 font-medium">Tags:</span>
+              {QUICK_TAGS.map((tag) => {
+                const active = activeTags.includes(tag)
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => void handleAddQuickTag(tag)}
+                    className={cn(
+                      "rounded-full px-2.5 py-0.5 text-[11px] font-medium transition border",
+                      active
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {tag}
+                  </button>
+                )
+              })}
+            </div>
+
+            <Button
+              type="button"
+              disabled={savingSummary || !summaryNote.trim()}
+              onClick={() => void handleSaveSummary()}
+              size="sm"
+              className="font-semibold shadow-sm"
+            >
+              {savingSummary ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> A guardar…
+                </>
+              ) : (
+                <>
+                  <Save className="mr-1.5 h-3.5 w-3.5" /> Guardar no Dossiê
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
 
         {/* PESQUISA RÁPIDA DE PRODUTOS — sempre visível na chamada.
             Atalho Ctrl+K (Cmd+K em Mac) foca o input via productSearchRef. */}

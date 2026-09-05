@@ -583,23 +583,10 @@ export async function listContacts(params?: {
   const search = (params?.search || "").trim();
   const entityStatus = params?.entityStatus;
 
-  const nameKey = DIRECTUS_CONTACT_FIELD_MAP.company_name || "company_name";
-  const nifKey = DIRECTUS_CONTACT_FIELD_MAP.nif || "nif";
-  const phoneKey = DIRECTUS_CONTACT_FIELD_MAP.phone || "phone";
-  const emailKey = DIRECTUS_CONTACT_FIELD_MAP.email || "email";
-
   const q: Record<string, string | number | undefined | null> = {
     limit,
     page,
-    // Avoid system fields permission issues; sort by id (works for int/uuid).
     sort: "-id",
-    /**
-     * IMPORTANT:
-     * Use fields="*" to keep the URL short.
-     * Some setups (e.g. Cloudflare/WAF) can block very long query strings when we enumerate many fields.
-     *
-     * If your policies restrict fields, adjust Directus permissions to allow the required fields.
-     */
     fields: "*",
   };
 
@@ -609,10 +596,24 @@ export async function listContacts(params?: {
   }
 
   if (search) {
-    q[`filter[_or][0][${nameKey}][_icontains]`] = search;
-    q[`filter[_or][1][${nifKey}][_icontains]`] = search;
-    q[`filter[_or][2][${phoneKey}][_icontains]`] = search;
-    q[`filter[_or][3][${emailKey}][_icontains]`] = search;
+    const searchFields = [
+      "company_name",
+      "contact_name",
+      "name",
+      "contact_person",
+      "nif",
+      "phone",
+      "mobile_phone",
+      "contact_phone",
+      "whatsapp_number",
+      "email",
+      "contact_email",
+      "city",
+    ];
+
+    searchFields.forEach((f, idx) => {
+      q[`filter[_or][${idx}][${f}][_icontains]`] = search;
+    });
   }
 
   const res = await directusRequest<{ data: any[] }>(`/items/${DIRECTUS_CONTACTS_COLLECTION}${qs(q)}`);
