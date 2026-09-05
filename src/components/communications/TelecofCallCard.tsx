@@ -7,6 +7,8 @@ import {
 } from "@/lib/telecofQueue"
 
 import { useContactNameForPhone } from "@/services/contactIdentification"
+import { useTelecofCallStore } from "@/store/telecofCallStore"
+import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 
 import type { TelecofCallEventRecord } from "@/types/telecof"
 
