@@ -13,6 +13,8 @@ interface TimelineEntry {
 
 interface TimelinePanelProps {
   events: TimelineEntry[];
+  title?: string;
+  initialFilter?: string;
 }
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
@@ -30,6 +32,12 @@ const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> =
   ai: { icon: "🤖", color: "text-primary", bg: "bg-primary/10" },
   task: { icon: "✓", color: "text-muted-foreground", bg: "bg-muted" },
   system: { icon: "⚙️", color: "text-gray-500", bg: "bg-muted" },
+  // Aliases for resilience
+  telecof: { icon: "📞", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/30" },
+  call: { icon: "📞", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/30" },
+  call_event: { icon: "📞", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/30" },
+  askme: { icon: "💬", color: "text-green-600", bg: "bg-green-50 dark:bg-green-900/30" },
+  chat: { icon: "💬", color: "text-green-600", bg: "bg-green-50 dark:bg-green-900/30" },
 };
 
 function formatDate(iso: string): string {
@@ -52,19 +60,20 @@ const FILTER_TYPES = [
   { key: "email", label: "📧 Email" },
   { key: "whatsapp", label: "💬 WhatsApp" },
   { key: "phone", label: "📞 Chamadas" },
+  { key: "order", label: "📦 Encomendas" },
   { key: "note", label: "📝 Notas" },
   { key: "proposal", label: "📄 Propostas" },
 ];
 
-export function TimelinePanel({ events }: TimelinePanelProps) {
-  const [typeFilter, setTypeFilter] = useState("");
+export function TimelinePanel({ events, title = "Timeline", initialFilter = "" }: TimelinePanelProps) {
+  const [typeFilter, setTypeFilter] = useState(initialFilter);
 
   const filtered = typeFilter
     ? events.filter((ev) => ev.type.includes(typeFilter))
     : events;
 
   return (
-    <SectionCard title="Timeline" className="h-full">
+    <SectionCard title={title} className="h-full">
       {/* Type filters */}
       <div className="flex gap-1 flex-wrap mb-3">
         {FILTER_TYPES.map((f) => (

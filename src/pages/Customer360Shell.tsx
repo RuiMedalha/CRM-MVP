@@ -89,7 +89,22 @@ function buildCommandCenterEvents(data: Customer360Data): CommandCenterEvent[] {
 }
 
 function buildCommunications(data: Customer360Data): CommunicationEntry[] {
-  return data.timeline.slice(0, 8).map((ev) => ({ id: ev.id, channel: (ev.type === "whatsapp" || ev.type === "email" || ev.type === "phone") ? ev.type : "phone", title: ev.title, date: formatShortDate(ev.occurredAt) }));
+  return data.timeline
+    .filter((ev) => ["whatsapp", "email", "phone", "telecof", "askme", "chat", "call"].some((t) => ev.type.includes(t)))
+    .slice(0, 10)
+    .map((ev) => {
+      let channel: "email" | "whatsapp" | "phone" = "phone";
+      if (ev.type.includes("email")) channel = "email";
+      else if (["whatsapp", "askme", "chat"].some((t) => ev.type.includes(t))) channel = "whatsapp";
+      else channel = "phone";
+      return {
+        id: ev.id,
+        channel,
+        title: ev.title,
+        date: formatShortDate(ev.occurredAt),
+        actor: ev.actor,
+      };
+    });
 }
 
 function formatShortDate(iso: string): string {
@@ -229,8 +244,22 @@ export default function Customer360Shell() {
       case "editar":
         return <div className="p-4 max-w-3xl mx-auto"><EditGeneralTab organizationId={id} organization={c360.organization} /></div>;
       case "comunicacoes":
+        return (
+          <div className="p-4 max-w-4xl mx-auto space-y-4">
+            <TimelinePanel
+              title="Histórico de Comunicações"
+              events={c360.timeline.filter((e) =>
+                ["phone", "whatsapp", "email", "telecof", "askme", "chat", "call"].some((t) => e.type.includes(t))
+              )}
+            />
+          </div>
+        );
       case "historico":
-        return <div className="p-4 max-w-4xl mx-auto"><TimelinePanel events={c360.timeline} /></div>;
+        return (
+          <div className="p-4 max-w-4xl mx-auto">
+            <TimelinePanel title="Histórico Completo (360°)" events={c360.timeline} />
+          </div>
+        );
       case "propostas":
         return <div className="p-4 max-w-3xl mx-auto"><ProposalPanel proposals={c360.proposals} contactId={id} contactName={org.name} /></div>;
       case "pedidos":

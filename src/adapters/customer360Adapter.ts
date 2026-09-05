@@ -87,6 +87,7 @@ export function adaptContact(record: Record<string, unknown>): Customer360Contac
 export function adaptTimelineEvent(record: Record<string, unknown>): Customer360TimelineEvent {
   const payload = record.payload && typeof record.payload === "object" ? (record.payload as Record<string, unknown>) : undefined;
   const actor =
+    str(record.actor) ||
     str(record.actor_name) ||
     str(record.agent_name) ||
     str(payload?.agent_name) ||
@@ -96,14 +97,23 @@ export function adaptTimelineEvent(record: Record<string, unknown>): Customer360
     str(payload?.from) ||
     undefined;
 
-  const rawDate = str(record.occurred_at) || str(record.date_created) || str(record.created_at) || "";
+  const rawDate = str(record.occurred_at) || str(record.occurredAt) || str(record.date_created) || str(record.created_at) || "";
   const isValidDate = Boolean(rawDate && !Number.isNaN(new Date(rawDate).getTime()));
   const occurredAt = isValidDate ? rawDate : new Date().toISOString();
 
+  let eventType = str(record.type) || str(record.channel) || "note";
+  if (eventType === "telecof" || eventType === "call") eventType = "phone";
+  if (eventType === "askme" || eventType === "chat") eventType = "whatsapp";
+
+  const defaultTitle =
+    eventType === "phone" ? "Chamada telefónica" :
+    eventType === "whatsapp" ? "Mensagem WhatsApp" :
+    eventType === "email" ? "Email" : "Registo";
+
   return {
     id: str(record.id),
-    type: str(record.type) || str(record.channel) || "note",
-    title: str(record.title) || str(record.summary) || str(record.subject) || str(record.content)?.slice(0, 60) || "Evento",
+    type: eventType,
+    title: str(record.title) || str(record.summary) || str(record.subject) || str(record.content)?.slice(0, 80) || defaultTitle,
     description: str(record.description) || str(record.content) || (payload?.text ? String(payload.text) : undefined),
     occurredAt,
     actor,
