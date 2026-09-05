@@ -664,6 +664,8 @@ export function TelecofCallWorkspace() {
     ? (selected!.rawPayload!.hub_tags as string[])
     : []
 
+  const wa = (selected?.normalizedPhone || selected?.phone || "").replace(/\D/g, "")
+
   const crmUrl = selected
     ? (selected.contactId || (identity?.kind === "contact" && identity?.record?.id ? String(identity.record.id) : null))
       ? `/customer360-shell/${encodeURIComponent(selected.contactId || String(identity?.record?.id))}`
