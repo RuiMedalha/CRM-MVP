@@ -1,10 +1,8 @@
-export const CRM_APP_URL = "https://crm.hotelequip.pt"
-
 export function crmDashboard360Url(contactId?: string): string {
   if (contactId?.trim()) {
-    return `${CRM_APP_URL}/customer360-shell/${encodeURIComponent(contactId.trim())}`
+    return `/customer360-shell/${encodeURIComponent(contactId.trim())}`
   }
-  return `${CRM_APP_URL}/customer360-shell`
+  return `/customer360-shell`
 }
 
 export function crmDashboard360UrlForCall(options: {
@@ -15,15 +13,15 @@ export function crmDashboard360UrlForCall(options: {
   const phone = options.phone?.trim()
   if (phone) {
     const params = new URLSearchParams({ phone })
-    return `${CRM_APP_URL}/customer360-shell?${params.toString()}`
+    return `/customer360-shell?${params.toString()}`
   }
-  return `${CRM_APP_URL}/customer360-shell`
+  return `/customer360-shell`
 }
 
 export function crmQuoteUrl(contactId?: string): string {
   if (contactId?.trim()) {
-    const params = new URLSearchParams({ contact_id: contactId.trim() })
-    return `${CRM_APP_URL}/orcamentos?${params.toString()}`
+    const params = new URLSearchParams({ contactId: contactId.trim() })
+    return `/propostas/nova?${params.toString()}`
   }
-  return `${CRM_APP_URL}/orcamentos`
+  return `/propostas/nova`
 }

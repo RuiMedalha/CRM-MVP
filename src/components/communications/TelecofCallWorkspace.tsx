@@ -664,12 +664,13 @@ export function TelecofCallWorkspace() {
     ? (selected!.rawPayload!.hub_tags as string[])
     : []
 
-  const wa = (selected?.normalizedPhone || selected?.phone || "").replace(/\D/g, "")
   const crmUrl = selected
-    ? crmDashboard360UrlForCall({ phone: selected.normalizedPhone || selected.phone })
+    ? (selected.contactId || (identity?.kind === "contact" && identity?.record?.id ? String(identity.record.id) : null))
+      ? `/customer360-shell/${encodeURIComponent(selected.contactId || String(identity?.record?.id))}`
+      : crmDashboard360UrlForCall({ phone: selected.normalizedPhone || selected.phone })
     : null
-  const contactUrl = selected?.contactId
-    ? `/customer360-shell/${encodeURIComponent(selected.contactId)}`
+  const contactUrl = (selected?.contactId || (identity?.kind === "contact" && identity?.record?.id ? String(identity.record.id) : null))
+    ? `/customer360-shell/${encodeURIComponent(selected?.contactId || String(identity?.record?.id))}`
     : null
 
   // Call duration
@@ -1330,15 +1331,14 @@ export function TelecofCallWorkspace() {
           Apagar
         </button>
         {crmUrl && (
-          <a
-            href={crmUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted"
+          <Link
+            to={crmUrl}
+            className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
+            title="Abrir Ficha 360 do Cliente"
           >
             <ExternalLink className="h-4 w-4" />
-            CRM
-          </a>
+            Ficha 360
+          </Link>
         )}
       </div>
     </div>

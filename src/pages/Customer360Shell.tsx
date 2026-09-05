@@ -15,7 +15,8 @@
  */
 
 import { useMemo, useState, useCallback, useEffect } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
+import { identifyByPhoneOrEmail } from "@/services/contactIdentification";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Customer360Layout } from "@/components/customer360/Customer360Layout";
 import { OrganizationHeader } from "@/components/customer360/OrganizationHeader";
@@ -105,12 +106,33 @@ function formatShortDate(iso: string): string {
 export default function Customer360Shell() {
   const { id } = useParams<{ id?: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [resolvingSearch, setResolvingSearch] = useState(false);
   const { data, isLoading, error } = useCustomer360(id === "novo" ? undefined : id);
   const [activeTab, setActiveTab] = useState<TabId>("geral");
 
-  const isCreateMode = id === "novo" || (!id && (searchParams.has("phone") || searchParams.has("email") || searchParams.has("name") || searchParams.has("leadId")));
-  const isHubMode = !id && !isCreateMode;
+  const phoneParam = searchParams.get("phone");
+  const emailParam = searchParams.get("email");
+
+  useEffect(() => {
+    if (!id && (phoneParam || emailParam)) {
+      setResolvingSearch(true);
+      identifyByPhoneOrEmail({ phone: phoneParam || undefined, email: emailParam || undefined })
+        .then((res) => {
+          if (res.kind === "contact" && res.record?.id) {
+            navigate(`/customer360-shell/${res.record.id}`, { replace: true });
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          setResolvingSearch(false);
+        });
+    }
+  }, [id, phoneParam, emailParam, navigate]);
+
+  const isCreateMode = id === "novo" || (!id && !resolvingSearch && (searchParams.has("phone") || searchParams.has("email") || searchParams.has("name") || searchParams.has("leadId")));
+  const isHubMode = !id && !isCreateMode && !resolvingSearch;
 
   const c360 = data;
 
@@ -126,6 +148,17 @@ export default function Customer360Shell() {
       addRecentContact({ id, name: c360.organization.name, detail: [c360.organization.phone, c360.organization.email].filter(Boolean).join(" · ") });
     }
   }, [id, c360?.organization?.name, c360?.organization?.phone, c360?.organization?.email]);
+
+  if (resolvingSearch) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center min-h-[500px] gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">A localizar ficha 360 do cliente…</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (isHubMode) return <AppLayout><Customer360Hub /></AppLayout>;
 

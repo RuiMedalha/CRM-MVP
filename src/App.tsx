@@ -98,9 +98,9 @@ const AppContent = () => {
         <Route path="/contactos" element={<ProtectedRoute><ContactosDirectus /></ProtectedRoute>} />
         {/* Novo contacto - redireciona para Customer360 create mode */}
         <Route path="/contactos/novo" element={<ProtectedRoute><Navigate to="/customer360-shell/novo" replace /></ProtectedRoute>} />
-        {/* Dashboard360 deprecated — redirect to Customer360Shell */}
-        <Route path="/dashboard360/:id" element={<ProtectedRoute><Navigate to="/customer360-shell" replace /></ProtectedRoute>} />
-        <Route path="/dashboard360" element={<ProtectedRoute><Navigate to="/customer360-shell" replace /></ProtectedRoute>} />
+        {/* Dashboard360 alias — mapped to Customer360Shell */}
+        <Route path="/dashboard360/:id" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
+        <Route path="/dashboard360" element={<ProtectedRoute><Customer360Shell /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
         <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
         <Route path="/pipelines" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />

@@ -124,9 +124,11 @@ export async function identifyByPhoneOrEmail(
       { whatsapp_number: { _ends_with: phoneTail } },
     ];
     for (const v of variations) {
-      if (v !== phoneTail && v.length >= 7) {
+      if (v !== phoneTail && v.length >= 6) {
         contactOrFilters.push({ phone: { _icontains: v } });
         contactOrFilters.push({ mobile_phone: { _icontains: v } });
+        contactOrFilters.push({ contact_phone: { _icontains: v } });
+        contactOrFilters.push({ whatsapp_number: { _icontains: v } });
       }
     }
 
@@ -189,8 +191,10 @@ export async function identifyByPhoneOrEmail(
       { whatsapp_number: { _ends_with: phoneTail } },
     ];
     for (const v of variations) {
-      if (v !== phoneTail && v.length >= 7) {
+      if (v !== phoneTail && v.length >= 6) {
         leadOrFilters.push({ phone: { _icontains: v } });
+        leadOrFilters.push({ contact_phone: { _icontains: v } });
+        leadOrFilters.push({ whatsapp_number: { _icontains: v } });
       }
     }
 
