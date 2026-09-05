@@ -33,6 +33,8 @@ const DEFAULT_COLLECTIONS = [
   "quotations",
   "follow_ups",
   "email_threads",
+  "communication_events",
+  "interactions",
 ];
 
 function wsUrlFromDirectus(): string {

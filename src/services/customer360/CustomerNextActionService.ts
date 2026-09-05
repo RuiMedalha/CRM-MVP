@@ -12,18 +12,19 @@ export function determineNextAction(data: Customer360Data): NextActionData | nul
   const pendingProposal = data.proposals.find((p) => p.status === "sent" || p.status === "viewed");
   if (pendingProposal) {
     const sentDate = pendingProposal.sentAt;
+    const isOverdue = sentDate ? (Date.now() - new Date(sentDate).getTime()) > 3 * 86400000 : false;
     return {
       title: `Seguimento proposta ${pendingProposal.number}`,
-      dueAt: sentDate ? `3 dias após envio (${sentDate})` : "em breve",
+      dueAt: sentDate ? `3 dias após envio (${new Date(sentDate).toLocaleDateString("pt-PT")})` : "em breve",
       assignedTo: data.organization.assignedTo,
       type: "proposal_followup",
-      overdue: pendingProposal.status === "sent", // sent without view = potentially overdue
+      overdue: isOverdue,
     };
   }
 
   // Rule 2: Active opportunity without proposal — create proposal
   const oppWithoutProposal = data.opportunities.find(
-    (o) => o.stage === "qualification" || o.stage === "prospecting"
+    (o) => o.stage === "qualification" || o.stage === "prospecting" || o.stage === "qualificacao" || o.stage === "lead" || o.stage === "proposta"
   );
   if (oppWithoutProposal) {
     return {

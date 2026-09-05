@@ -197,18 +197,76 @@ export async function fetchRecentLeads(limit = 200): Promise<LeadItem[]> {
   return res?.data || [];
 }
 
-export async function createLead(payload: Partial<LeadItem>): Promise<LeadItem> {
+const VALID_LEAD_KEYS = new Set([
+  "id",
+  "status",
+  "source",
+  "source_event_id",
+  "lead_data",
+  "phone",
+  "email",
+  "display_name",
+  "nif",
+  "dedupe_key",
+  "attempt_count",
+  "attempt_log",
+  "first_attempt_at",
+  "last_attempt_at",
+  "contact_id",
+  "notes",
+  "claimed_by",
+  "claimed_at",
+  "discarded_at",
+  "score",
+  "score_factors",
+  "score_computed_at",
+  "score_model_version",
+]);
+
+export function sanitizeLeadPayload(input: Record<string, unknown>): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+  const extraLeadData: Record<string, unknown> = {
+    ...(typeof input.lead_data === "object" && input.lead_data !== null ? (input.lead_data as Record<string, unknown>) : {}),
+  };
+
+  for (const [k, v] of Object.entries(input)) {
+    if (v === undefined || v === null || v === "") continue;
+    if (VALID_LEAD_KEYS.has(k)) {
+      if (k !== "lead_data") {
+        safe[k] = v;
+      }
+    } else {
+      extraLeadData[k] = v;
+    }
+  }
+
+  // Dedupe key fallback
+  if (!safe.dedupe_key && (safe.phone || safe.email)) {
+    const dk = computeDedupeKey({ phone: safe.phone as string, email: safe.email as string });
+    if (dk) safe.dedupe_key = dk;
+  }
+
+  if (Object.keys(extraLeadData).length > 0) {
+    safe.lead_data = extraLeadData;
+  }
+
+  return safe;
+}
+
+export async function createLead(payload: Partial<LeadItem> & Record<string, unknown>): Promise<LeadItem> {
+  const safePayload = sanitizeLeadPayload(payload as Record<string, unknown>);
   const res = await directusRequest<{ data: LeadItem }>(`/items/${DIRECTUS_LEADS_COLLECTION}`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(safePayload),
   });
   return res.data;
 }
 
-export async function patchLead(id: string, patch: Partial<LeadItem>): Promise<LeadItem> {
+export async function patchLead(id: string, patch: Partial<LeadItem> & Record<string, unknown>): Promise<LeadItem> {
+  const safePatch = sanitizeLeadPayload(patch as Record<string, unknown>);
   const res = await directusRequest<{ data: LeadItem }>(`/items/${DIRECTUS_LEADS_COLLECTION}/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    body: JSON.stringify(patch),
+    body: JSON.stringify(safePatch),
   });
   return res.data;
 }

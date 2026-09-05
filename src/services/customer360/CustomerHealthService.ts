@@ -45,7 +45,8 @@ export function calculateHealthScore(data: Customer360Data): HealthScoreResult {
   }
 
   // Factor 3: Active opportunities (max 15 points)
-  const activeOpps = data.opportunities.filter((o) => !o.stage.startsWith("closed"));
+  const CLOSED_STAGES = new Set(["ganho", "perdido", "closed", "closed_won", "closed_lost", "rejected", "rejeitado", "cancelado"]);
+  const activeOpps = data.opportunities.filter((o) => !CLOSED_STAGES.has((o.stage || "").toLowerCase()));
   if (activeOpps.length > 0) {
     score += 15;
     factors.push({ label: `${activeOpps.length} oportunidade(s) activa(s)`, impact: 15, status: "good" });

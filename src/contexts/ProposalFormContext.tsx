@@ -222,9 +222,35 @@ export function ProposalFormProvider({ children, editingId, prefillData, existin
   // Load existing data when editing a quotation
   useEffect(() => {
     if (existingData && editingId) {
-      dispatch({ type: "LOAD_DRAFT", state: { ...initialState, ...existingData, editingId, isDirty: false } });
+      const merged = { ...initialState, ...existingData, editingId, isDirty: false };
+      if (prefillData) {
+        if (!merged.customer_id && prefillData.contactId) merged.customer_id = prefillData.contactId;
+        if (!merged.customer_name && prefillData.contactName) merged.customer_name = prefillData.contactName;
+        if (!merged.customer_company && prefillData.company) merged.customer_company = prefillData.company;
+        if (!merged.customer_email && prefillData.email) merged.customer_email = prefillData.email;
+        if (!merged.customer_phone && prefillData.phone) {
+          merged.customer_phone = prefillData.phone;
+          merged.sent_to_phone = prefillData.phone;
+        }
+        if (!merged.notes && prefillData.notes) merged.notes = prefillData.notes;
+        if (prefillData.contactId || prefillData.email || prefillData.phone) {
+          merged.isExistingCustomer = true;
+        }
+        if ((!merged.items || merged.items.length === 0) && prefillData.products && prefillData.products.length > 0) {
+          merged.items = prefillData.products.map((p) => ({
+            item_type: "product",
+            product_name: p.name,
+            sku: (p as any).sku || "",
+            quantity: p.quantity || 1,
+            unit_price: p.price || 0,
+            iva_percent: 23,
+            line_total: (p.price || 0) * (p.quantity || 1),
+          }));
+        }
+      }
+      dispatch({ type: "LOAD_DRAFT", state: merged });
     }
-  }, [existingData, editingId]);
+  }, [existingData, editingId, prefillData]);
 
   // Load draft from localStorage on mount — restore if exists, never auto-delete
   useEffect(() => {

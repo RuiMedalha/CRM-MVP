@@ -40,7 +40,7 @@ export function useCustomer360(organizationId: string | undefined): UseCustomer3
 
       // 3. Fetch quotations (proposals) for this organization
       const proposalsRes = await directusRequest<{ data: Record<string, unknown>[] }>(
-        `/items/quotations?filter[customer_id][_eq]=${organizationId}&sort=-date_created&limit=20&fields=id,quotation_number,status,total_amount,sent_at,date_created`
+        `/items/quotations?filter[customer_id][_eq]=${organizationId}&sort=-date_created&limit=20&fields=id,quotation_number,status,total_amount,sent_at,viewed_at,approved_at,notes,date_created`
       ).catch(() => ({ data: [] }));
 
       // 4. Fetch site orders for this customer (eCommerce orders)

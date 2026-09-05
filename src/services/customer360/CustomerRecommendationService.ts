@@ -45,8 +45,9 @@ export function generateRecommendations(data: Customer360Data): AISuggestion[] {
   }
 
   // Rule 4: High pipeline value
+  const CLOSED_STAGES = new Set(["ganho", "perdido", "closed", "closed_won", "closed_lost", "rejected", "rejeitado", "cancelado"]);
   const activePipelineValue = data.opportunities
-    .filter((o) => !o.stage.startsWith("closed"))
+    .filter((o) => !CLOSED_STAGES.has((o.stage || "").toLowerCase()))
     .reduce((sum, o) => sum + (o.value ?? 0), 0);
   if (activePipelineValue > 30000) {
     suggestions.push({
@@ -56,12 +57,14 @@ export function generateRecommendations(data: Customer360Data): AISuggestion[] {
     });
   }
 
-  // Rule 5: No follow-up defined (always relevant)
-  suggestions.push({
-    id: `rec-${nextId++}`,
-    text: "Não existe follow-up agendado para este cliente.",
-    type: "warning",
-  });
+  // Rule 5: No follow-up defined (only when no recent proposals or activity)
+  if (data.proposals.length === 0 && suggestions.length === 0) {
+    suggestions.push({
+      id: `rec-${nextId++}`,
+      text: "Não existe follow-up agendado para este cliente. Considere registar uma tarefa.",
+      type: "warning",
+    });
+  }
 
   return suggestions.slice(0, 4); // max 4 suggestions
 }

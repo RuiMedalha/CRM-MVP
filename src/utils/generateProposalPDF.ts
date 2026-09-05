@@ -58,10 +58,21 @@ async function buildHtml(html: string, quotation: any, company: CompanyData): Pr
     ? new Date(quotation.valid_until).toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" })
     : "—";
 
-  const subtotal = parseFloat(String(quotation.subtotal || quotation.total_amount || 0));
-  const total = parseFloat(String(quotation.total_amount || 0));
-  const ivaAmt = total - subtotal;
-  const ivaPct = subtotal > 0 ? Math.round((ivaAmt / subtotal) * 100) : 23;
+  const rawSubtotal = parseFloat(String(quotation.subtotal || quotation.total_amount || 0));
+  const rawTotal = parseFloat(String(quotation.total_amount || 0));
+  let subtotal = rawSubtotal;
+  let total = rawTotal;
+  let ivaAmt = total - subtotal;
+  let ivaPct = 23;
+
+  if (ivaAmt <= 0 && subtotal > 0) {
+    ivaAmt = Math.round(subtotal * 0.23 * 100) / 100;
+    total = Math.round((subtotal + ivaAmt) * 100) / 100;
+    ivaPct = 23;
+  } else if (subtotal > 0) {
+    ivaPct = Math.round((ivaAmt / subtotal) * 100);
+  }
+
   const depositPct = parseFloat(String(quotation.deposit_percent || 0));
   const depositAmt = depositPct > 0 ? (total * depositPct) / 100 : 0;
   const remaining = total - depositAmt;
@@ -156,7 +167,8 @@ async function buildHtml(html: string, quotation: any, company: CompanyData): Pr
   }
 
   // QR codes
-  const proposalUrl = `https://proposta.hotelequip.pt/p/${quotation.public_token || ""}`;
+  const baseProposalUrl = (import.meta.env?.VITE_PROPOSALS_BASE_URL as string) || "https://proposta.hotelequip.pt";
+  const proposalUrl = `${baseProposalUrl.replace(/\/+$/, "")}/p/${quotation.public_token || ""}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(proposalUrl)}`;
   html = html.replaceAll("{{QR_APPROVAL_URL}}", qrUrl);
   html = html.replaceAll("{{PROPOSAL_URL}}", proposalUrl);

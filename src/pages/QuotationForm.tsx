@@ -36,23 +36,6 @@ function FormContent() {
   const [draftSaving, setDraftSaving] = useState(false);
   const didCreateDraft = useRef(false);
 
-  // Point 1: create draft ID immediately for new proposals
-  useEffect(() => {
-    if (state.editingId || didCreateDraft.current) return;
-    didCreateDraft.current = true;
-    createQuotation({
-      status: "draft",
-      document_type: "proposal",
-      quotation_number: generateQuotationNumber("proposal"),
-    } as any).then((created) => {
-      if (created?.id) {
-        updateField("editingId", created.id);
-        navigate(`/propostas/${created.id}`, { replace: true });
-      }
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   /** Coerce empty/whitespace/"null" strings to null — Directus rejects "" on constrained text fields. */
   const s = (v: unknown): string | null => {
     if (v === null || v === undefined) return null;
@@ -117,6 +100,41 @@ function FormContent() {
       show_terms: state.show_terms ?? false,
     });
   }, [state]);
+
+  // Point 1: create draft ID immediately for new proposals
+  useEffect(() => {
+    if (state.editingId || didCreateDraft.current) return;
+    didCreateDraft.current = true;
+    const initialPayload = buildDraftPayload();
+    createQuotation({
+      ...initialPayload,
+      status: "draft",
+      document_type: "proposal",
+      quotation_number: generateQuotationNumber("proposal"),
+    } as any).then(async (created) => {
+      if (created?.id) {
+        updateField("editingId", created.id);
+        if (state.items.length > 0) {
+          const itemsPayload = [...state.items, ...state.additional_items].map((item, idx) => ({
+            quotation_id: created.id,
+            item_type: item.item_type || "product",
+            product_id: item.product_id || null,
+            product_name: item.product_name,
+            sku: item.sku || null,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            discount_percent: item.discount_percent || 0,
+            iva_percent: (item as any).iva_percent ?? 23,
+            line_total: item.line_total,
+            sort_order: idx,
+          }));
+          await createQuotationItems(itemsPayload).catch(() => {});
+        }
+        navigate(`/propostas/${created.id}`, { replace: true });
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Save draft (manual button only) — creates new or patches existing
   const handleSaveDraft = async () => {

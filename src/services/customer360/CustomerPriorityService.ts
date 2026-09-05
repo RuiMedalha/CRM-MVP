@@ -13,12 +13,15 @@ export function calculatePriorities(data: Customer360Data): PriorityItem[] {
   // P1: Proposals sent without response (>2 days)
   for (const p of data.proposals) {
     if (p.status === "sent") {
-      items.push({
-        id: `pri-prop-${p.id}`,
-        title: `Proposta ${p.number} enviada sem resposta`,
-        type: "proposal_no_response",
-        priority: "P1",
-      });
+      const age = p.sentAt ? Date.now() - new Date(p.sentAt).getTime() : 0;
+      if (age > 2 * 86400000) {
+        items.push({
+          id: `pri-prop-${p.id}`,
+          title: `Proposta ${p.number} enviada sem resposta há >48h`,
+          type: "proposal_no_response",
+          priority: "P1",
+        });
+      }
     }
   }
 
@@ -46,7 +49,8 @@ export function calculatePriorities(data: Customer360Data): PriorityItem[] {
 
   // P2: Opportunity stalled (>7 days without activity in negotiation)
   for (const opp of data.opportunities) {
-    if (opp.stage === "negotiation" || opp.stage === "proposal") {
+    const stage = (opp.stage || "").toLowerCase();
+    if (stage === "negotiation" || stage === "proposal" || stage === "negociacao" || stage === "proposta") {
       items.push({
         id: `pri-opp-${opp.id}`,
         title: `Oportunidade "${opp.title}" parada`,

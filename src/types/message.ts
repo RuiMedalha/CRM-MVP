@@ -30,6 +30,7 @@ export type MessageDeliveryStatus =
   | "pending"
   | "sent"
   | "delivered"
+  | "read"
   | "failed"
   | "skipped"
   | "internal"

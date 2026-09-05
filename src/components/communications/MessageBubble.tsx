@@ -28,6 +28,7 @@ function DeliveryStatusIcon({ status, inverted }: { status?: Message["deliverySt
     case "pending": return <Clock className={`h-3.5 w-3.5 ${className}`} aria-label="A enviar" />
     case "sent": return <Check className={`h-3.5 w-3.5 ${className}`} aria-label="Enviada" />
     case "delivered": return <CheckCheck className={`h-3.5 w-3.5 ${className}`} aria-label="Entregue" />
+    case "read": return <CheckCheck className="h-3.5 w-3.5 text-sky-300" aria-label="Lida" />
     case "failed": return <AlertCircle className="h-3.5 w-3.5 text-red-400" aria-label="Falhou" />
     default: return null
   }

@@ -215,6 +215,16 @@ export async function recordView(quotationId: number | string, viewCount: number
         ...(shouldUpdateStatus ? { status: "viewed" } : {}),
       }),
     });
+
+    // Best-effort: log view event in quotation_views_log for analytics
+    await directusAdminFetch(`/items/quotation_views_log`, {
+      method: "POST",
+      body: JSON.stringify({
+        quotation_id: numericId,
+        viewed_at: now,
+        device: typeof navigator !== "undefined" ? (/mobile/i.test(navigator.userAgent) ? "mobile" : "desktop") : "web",
+      }),
+    }).catch(() => {});
   } catch {
     // Silently ignore — never block the public page
   }
@@ -245,4 +255,12 @@ export async function respondToQuotation(
     method: "PATCH",
     body: JSON.stringify(patch),
   });
+
+  // Cancel any scheduled followups for this proposal
+  try {
+    const { cancelFollowUps } = await import("@/integrations/n8n/quotationWebhooks");
+    await cancelFollowUps(numericId);
+  } catch {
+    // Silently ignore webhook failure
+  }
 }

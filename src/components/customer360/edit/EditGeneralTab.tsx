@@ -374,16 +374,37 @@ export function EditGeneralTab({ organizationId, organization }: EditGeneralTabP
       <EntitySection title="Tags">
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1.5">
-            {((form as Record<string, unknown>).tags as string[] || []).map?.((tag, i) => (
-              <span key={i} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                {tag}
-                <button type="button" onClick={() => {
-                  const current = Array.isArray((form as Record<string, unknown>).tags) ? [...(form as Record<string, unknown>).tags as string[]] : [];
-                  current.splice(i, 1);
-                  handleChange("tags" as keyof typeof form, JSON.stringify(current));
-                }} className="ml-0.5 text-primary/60 hover:text-primary">×</button>
-              </span>
-            )) || null}
+            {(() => {
+              const rawTags = (form as Record<string, unknown>).tags;
+              const list: string[] = Array.isArray(rawTags)
+                ? (rawTags as string[]).map(String)
+                : typeof rawTags === "string" && rawTags.trim().length > 0
+                  ? (() => {
+                      try {
+                        const parsed = JSON.parse(rawTags);
+                        return Array.isArray(parsed) ? parsed.map(String) : [rawTags];
+                      } catch {
+                        return rawTags.split(",").map((s) => s.trim()).filter(Boolean);
+                      }
+                    })()
+                  : [];
+
+              return list.map((tag, i) => (
+                <span key={i} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = list.filter((_, idx) => idx !== i);
+                      handleChange("tags" as keyof typeof form, JSON.stringify(next));
+                    }}
+                    className="ml-0.5 text-primary/60 hover:text-primary"
+                  >
+                    ×
+                  </button>
+                </span>
+              ));
+            })()}
           </div>
           <div className="flex gap-2">
             <Input
@@ -395,7 +416,18 @@ export function EditGeneralTab({ organizationId, organization }: EditGeneralTabP
                   const input = e.currentTarget;
                   const val = input.value.trim();
                   if (!val) return;
-                  const current = Array.isArray((form as Record<string, unknown>).tags) ? [...(form as Record<string, unknown>).tags as string[]] : [];
+                  const rawTags = (form as Record<string, unknown>).tags;
+                  let current: string[] = [];
+                  if (Array.isArray(rawTags)) {
+                    current = (rawTags as string[]).map(String);
+                  } else if (typeof rawTags === "string" && rawTags.trim().length > 0) {
+                    try {
+                      const parsed = JSON.parse(rawTags);
+                      current = Array.isArray(parsed) ? parsed.map(String) : [rawTags];
+                    } catch {
+                      current = rawTags.split(",").map((s) => s.trim()).filter(Boolean);
+                    }
+                  }
                   if (!current.includes(val)) {
                     current.push(val);
                     handleChange("tags" as keyof typeof form, JSON.stringify(current));

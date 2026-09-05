@@ -21,6 +21,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { directusRequest } from "@/integrations/directus/client";
 import { createContact, listContacts } from "@/integrations/directus/contacts";
+import { convertLeadToContact } from "@/integrations/directus/leads";
 import { CreateContactForm } from "@/components/customer360/edit/CreateContactForm";
 import { Search, UserPlus, ArrowRight, Phone, Mail, History, Plus, RefreshCw, AlertCircle, Zap, Flame, Thermometer, Snowflake } from "lucide-react";
 import { LeadTimelineModal } from "@/components/contacts/LeadTimelineModal";
@@ -130,7 +131,7 @@ export default function Leads() {
     queryKey: ["leads-page"],
     queryFn: async () => {
       const res = await directusRequest<{ data: LeadRow[] }>(
-        `/items/leads?sort=-score,-date_created&limit=500&fields=id,display_name,contact_name,contact_phone,phone,email,nif,source,status,contact_id,date_created,last_attempt_at,city,postal_code,website,lead_data,score,score_factors,score_computed_at,score_model_version`
+        `/items/leads?sort=-score,-date_created&limit=500&fields=id,display_name,phone,email,nif,source,status,contact_id,date_created,last_attempt_at,lead_data,score,score_factors,score_computed_at,score_model_version,notes`
       ).catch(() => ({
         data: [
           {
@@ -200,7 +201,7 @@ export default function Leads() {
     let list = leads;
     // Hide converted by default
     if (!showConverted) {
-      list = list.filter((l) => l.status !== "converted" && l.status !== "discarded" && l.status !== "spam");
+      list = list.filter((l) => l.status !== "converted" && l.status !== "processed" && l.status !== "discarded" && l.status !== "spam" && !l.contact_id);
     }
     if (sourceFilter) {
       list = list.filter((l) => l.source === sourceFilter);
@@ -214,63 +215,28 @@ export default function Leads() {
     }
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter((l) =>
-        (l.display_name || "").toLowerCase().includes(q) ||
-        (l.contact_name || "").toLowerCase().includes(q) ||
-        (l.contact_phone || "").includes(q) ||
-        (l.email || "").toLowerCase().includes(q)
-      );
+      list = list.filter((l) => {
+        const dName = (l.display_name || (l.lead_data?.company_name as string) || (l.lead_data?.contact_name as string) || l.contact_name || "").toLowerCase();
+        const dPhone = (l.phone || l.contact_phone || (l.lead_data?.phone as string) || (l.lead_data?.contact_phone as string) || "").toLowerCase();
+        const dEmail = (l.email || (l.lead_data?.email as string) || "").toLowerCase();
+        const dNif = (l.nif || (l.lead_data?.nif as string) || "").toLowerCase();
+        return dName.includes(q) || dPhone.includes(q) || dEmail.includes(q) || dNif.includes(q);
+      });
     }
     return list;
   }, [leads, sourceFilter, statusFilter, search, showConverted, scoreFilter]);
 
-  const pendingCount = pendingCountReal ?? leads.filter((l) => !l.contact_id && l.status !== "discarded" && l.status !== "spam" && l.status !== "converted").length;
+  const pendingCount = pendingCountReal ?? leads.filter((l) => !l.contact_id && l.status !== "discarded" && l.status !== "spam" && l.status !== "converted" && l.status !== "processed").length;
 
   const handlePromote = useCallback(async (lead: LeadRow) => {
     setPromoting(lead.id);
     try {
-      // 1. Check for existing contact by phone (dedup)
-      const phoneTail = (lead.contact_phone || "").replace(/\D/g, "").slice(-9);
-      let existingContactId: string | number | null = null;
-
-      if (phoneTail.length >= 9) {
-        // Verificar phone, mobile_phone, whatsapp_number (mesmo padrão do identifyByPhoneOrEmail)
-        for (const field of ["phone", "mobile_phone", "whatsapp_number"]) {
-          const existing = await directusRequest<{ data: { id: number }[] }>(
-            `/items/contacts?filter[${field}][_ends_with]=${phoneTail}&limit=1&fields=id`
-          ).catch(() => ({ data: [] }));
-          if (existing.data?.length) {
-            existingContactId = existing.data[0].id;
-            break;
-          }
-        }
-      }
-
-      if (!existingContactId) {
-        // 2. Create new contact
-        const newContact = await createContact({
-          company_name: lead.display_name || lead.contact_name || lead.contact_phone || "Lead",
-          contact_name: lead.contact_name || undefined,
-          phone: lead.contact_phone || undefined,
-          email: lead.email || undefined,
-          city: lead.city || undefined,
-          postal_code: lead.postal_code || undefined,
-          source: lead.source || "outro",
-        } as any);
-        existingContactId = newContact?.id ?? (newContact as any)?.data?.id;
-      }
-
-      if (!existingContactId) throw new Error("Falha ao criar/encontrar contacto");
-
-      // 3. Mark lead as converted + link to contact
-      await directusRequest(`/items/leads/${lead.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ contact_id: existingContactId, status: "converted" }),
-      });
-
-      toast({ title: "Lead convertido!", description: `Contacto #${existingContactId} associado.` });
+      const { contactId } = await convertLeadToContact(lead as any);
+      toast({ title: "Lead convertido!", description: `Contacto #${contactId} associado.` });
       qc.invalidateQueries({ queryKey: ["leads-page"] });
       qc.invalidateQueries({ queryKey: ["contacts-directus"] });
+      qc.invalidateQueries({ queryKey: ["leads-pending-count"] });
+      qc.invalidateQueries({ queryKey: ["customer360"] });
     } catch (err) {
       toast({ title: "Erro ao converter", description: String((err as Error)?.message || ""), variant: "destructive" });
     } finally {
@@ -596,32 +562,41 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, newLeadIds 
               >
                 <CardContent className="p-3 flex items-center gap-3 crm-lead-card md:p-4 md:gap-4">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm truncate">
-                        {lead.display_name || lead.contact_name || lead.contact_phone || "Lead"}
-                      </p>
-                      {isRealtimeNew && (
-                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-1.5 py-0 flex items-center gap-0.5 animate-pulse">
-                          <Zap className="h-2.5 w-2.5" />
-                          NOVO
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusConf.color}`}>
-                        {statusConf.label}
-                      </Badge>
-                      {lead.source && (
-                        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-                          {SOURCE_LABELS[lead.source] || lead.source}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      {lead.contact_phone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" /> {lead.contact_phone}</span>}
-                      {lead.email && <span className="flex min-w-0 max-w-full items-center gap-0.5 truncate"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{lead.email}</span></span>}
-                      {lead.date_created && (
-                        <span>{format(new Date(lead.date_created), "d MMM HH:mm", { locale: pt })}</span>
-                      )}
-                    </div>
+                    {(() => {
+                      const displayPhone = lead.phone || lead.contact_phone || (lead.lead_data?.phone as string) || (lead.lead_data?.contact_phone as string) || (lead.lead_data?.mobile_phone as string);
+                      const displayName = lead.display_name || (lead.lead_data?.company_name as string) || (lead.lead_data?.contact_name as string) || lead.contact_name || displayPhone || "Lead";
+                      const displayEmail = lead.email || (lead.lead_data?.email as string);
+                      return (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm truncate">
+                              {displayName}
+                            </p>
+                            {isRealtimeNew && (
+                              <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-1.5 py-0 flex items-center gap-0.5 animate-pulse">
+                                <Zap className="h-2.5 w-2.5" />
+                                NOVO
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusConf.color}`}>
+                              {statusConf.label}
+                            </Badge>
+                            {lead.source && (
+                              <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                                {SOURCE_LABELS[lead.source] || lead.source}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            {displayPhone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" /> {displayPhone}</span>}
+                            {displayEmail && <span className="flex min-w-0 max-w-full items-center gap-0.5 truncate"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{displayEmail}</span></span>}
+                            {lead.date_created && (
+                              <span>{format(new Date(lead.date_created), "d MMM HH:mm", { locale: pt })}</span>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                   {/* Badge de Score (Card 7) — mobile-first, click para ver breakdown */}
                   <ScoreBadge

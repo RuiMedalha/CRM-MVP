@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { directusRequest } from "@/integrations/directus/client"
 import { createContact, getContactById, listContacts } from "@/integrations/directus/contacts"
+import { createLead } from "@/integrations/directus/leads"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 import { useTelecofCallStore } from "@/store/telecofCallStore"
 import { VoiceDictationButton } from "@/components/common/VoiceDictationButton"
@@ -219,29 +220,27 @@ export function TelecofLeadCapture({ phone = "", callId = "", onContactCreated, 
       const displayName = name.trim() || (phoneInput.trim() ? `Chamada ${phoneInput.trim()}` : "Novo Lead")
       const leadPayload = {
         display_name: displayName,
-        contact_name: contactPerson.trim() || displayName,
         phone: phoneInput.trim() || undefined,
-        contact_phone: phoneInput.trim() || undefined,
         email: email.trim() || undefined,
+        nif: nif.trim() || undefined,
         source: "telecof",
         status: "incoming",
-        type: "call",
         notes: [
           requestType ? `Assunto: ${REQUEST_TYPES.find(r => r.value === requestType)?.label || requestType}` : null,
+          contactPerson.trim() ? `Contacto: ${contactPerson.trim()}` : null,
+          city.trim() ? `Localidade: ${city.trim()}` : null,
           notes.trim() || null,
         ].filter(Boolean).join("\n\n") || undefined,
         lead_data: {
+          contact_name: contactPerson.trim() || undefined,
           request_type: requestType || undefined,
           call_id: callId || undefined,
           city: city.trim() || undefined,
         },
       }
-      const res = await directusRequest<{ data: { id: string | number } }>("/items/leads", {
-        method: "POST",
-        body: JSON.stringify(leadPayload),
-      })
 
-      const leadId = res?.data?.id
+      const created = await createLead(leadPayload as any)
+      const leadId = created?.id
 
       // Atualizar nome da chamada
       if (callId) {
@@ -271,7 +270,7 @@ export function TelecofLeadCapture({ phone = "", callId = "", onContactCreated, 
     } finally {
       setSaving(false)
     }
-  }, [name, contactPerson, phone, email, requestType, notes, callId, city, draftKey, mergeEvent, queryClient, onLeadCreated])
+  }, [name, contactPerson, phoneInput, email, nif, requestType, notes, callId, city, draftKey, mergeEvent, queryClient, onLeadCreated])
 
   if (savedType === "contact") {
     return (

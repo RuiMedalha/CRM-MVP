@@ -97,7 +97,7 @@ export function calculateProposalTotals(input: ProposalTotalsInput): ProposalTot
     const unit = num(item.unit_price);
     const qty = num(item.quantity) || 1;
     const lineDiscountPct = num(item.discount_percent);
-    const lineIvaPct = num(item.iva_percent);
+    const lineIvaPct = item.iva_percent !== undefined && item.iva_percent !== null && item.iva_percent !== "" ? num(item.iva_percent) : DEFAULT_IVA_PCT;
 
     const lineBase = unit * qty;
     const lineDiscount = lineBase * (lineDiscountPct / 100);
