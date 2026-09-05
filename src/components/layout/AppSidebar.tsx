@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom"
 import { useEffect, useState } from "react"
 import {
   Building2,
+  CalendarCheck2,
   ChevronLeft,
   ChevronRight,
   ChevronsRight,
@@ -39,7 +40,8 @@ const navSections: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "Operação",
     items: [
-      { icon: LayoutDashboard, label: "Painel", path: "/dashboard" },
+      { icon: CalendarCheck2, label: "Hoje", path: "/" },
+      { icon: LayoutDashboard, label: "Indicadores", path: "/painel" },
       { icon: Inbox, label: "Inbox", path: "/inbox" },
       { icon: MessagesSquare, label: "Comunicações", path: "/comunicacoes" },
       { icon: MessagesSquare, label: "Telecof", path: "/comunicacoes?channel=telecof" },

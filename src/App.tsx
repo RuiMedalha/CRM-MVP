@@ -17,6 +17,7 @@ import { Loader2 } from "lucide-react";
 
 // Lazy-loaded pages (code splitting)
 const Auth = lazy(() => import("./pages/Auth"));
+const Today = lazy(() => import("./pages/Today"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ContactosDirectus = lazy(() => import("./pages/ContactosDirectus"));
 const Leads = lazy(() => import("./pages/Leads"));
@@ -90,7 +91,9 @@ const AppContent = () => {
       <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/auth" element={<Auth />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<ProtectedRoute><Today /></ProtectedRoute>} />
+        <Route path="/hoje" element={<ProtectedRoute><Today /></ProtectedRoute>} />
+        <Route path="/painel" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/contactos" element={<ProtectedRoute><ContactosDirectus /></ProtectedRoute>} />
         {/* Novo contacto - redireciona para Customer360 create mode */}

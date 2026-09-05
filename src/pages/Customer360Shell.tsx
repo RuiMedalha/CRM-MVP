@@ -42,8 +42,10 @@ import { CustomerOrdersTab } from "@/components/customer360/CustomerOrdersTab";
 import { MobileTabDrawer, type TabDescriptor } from "@/components/customer360/MobileTabDrawer";
 import { Breadcrumb } from "@/components/customer360/Breadcrumb";
 import { AddNoteInline } from "@/components/customer360/AddNoteInline";
+import { ContactNotesEditor } from "@/components/customer360/ContactNotesEditor";
 import { SectionCard } from "@/components/customer360/ui/SectionCard";
 import { useCustomer360 } from "@/hooks/useCustomer360";
+import { useAuth } from "@/contexts/AuthContext";
 import { calculateHealthScore } from "@/services/customer360/CustomerHealthService";
 import { determineNextAction } from "@/services/customer360/CustomerNextActionService";
 import { calculatePriorities } from "@/services/customer360/CustomerPriorityService";
@@ -102,6 +104,7 @@ function formatShortDate(iso: string): string {
 
 export default function Customer360Shell() {
   const { id } = useParams<{ id?: string }>();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const { data, isLoading, error } = useCustomer360(id === "novo" ? undefined : id);
   const [activeTab, setActiveTab] = useState<TabId>("geral");
@@ -117,30 +120,6 @@ export default function Customer360Shell() {
   const recommendations = useMemo(() => c360 ? generateRecommendations(c360) : [], [c360]);
   const commandCenterEvents = useMemo(() => c360 ? buildCommandCenterEvents(c360) : [], [c360]);
   const communications = useMemo(() => c360 ? buildCommunications(c360) : [], [c360]);
-
-  const queryClient = useQueryClient();
-  const [inlineInternalNotes, setInlineInternalNotes] = useState("");
-  const [notesSaving, setNotesSaving] = useState(false);
-  const [notesSuccess, setNotesSuccess] = useState(false);
-
-  useEffect(() => {
-    if (c360) {
-      setInlineInternalNotes(c360.organization.internal_notes || "");
-    }
-  }, [c360?.organization?.internal_notes]);
-
-  const saveInternalNotes = useCallback(async () => {
-    if (!id || notesSaving) return;
-    setNotesSaving(true);
-    setNotesSuccess(false);
-    try {
-      await patchContact(id, { internal_notes: inlineInternalNotes || null });
-      setNotesSuccess(true);
-      queryClient.refetchQueries({ queryKey: ["customer360", id] });
-      setTimeout(() => setNotesSuccess(false), 3000);
-    } catch { /* silent */ }
-    setNotesSaving(false);
-  }, [id, inlineInternalNotes, notesSaving, queryClient]);
 
   useEffect(() => {
     if (id && id !== "novo" && c360?.organization?.name) {
@@ -188,27 +167,25 @@ export default function Customer360Shell() {
                 />
                 <ContactListPanel contacts={c360.contacts} organizationName={org.name} />
                 <KpiPanel annualValue={org.annualValue} potential={org.potential} totalProposals={c360.proposals.length} successRate={c360.proposals.length > 0 ? Math.round(c360.proposals.filter((p) => p.status === "approved").length / c360.proposals.length * 100) : undefined} />
-                <SectionCard
-                  title="Notas"
-                  action={
-                    <button type="button" onClick={saveInternalNotes} disabled={notesSaving} className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50">
-                      <Save className="h-3 w-3" /> {notesSaving ? "A guardar..." : "Internas"}
-                    </button>
-                  }
-                >
-                  <div className="space-y-3">
-                    <AddNoteInline
-                      contactId={id!}
-                      source="c360"
-                      variant="threec-sixty"
-                      noteQuickTags={["Urgente", "Acompanhamento", "Follow-up", "Reclamação"]}
-                      placeholder="Notas visíveis no dossier — escreva à vontade (auto-grow)."
+                <SectionCard title="Notas da Ficha">
+                  {id && (
+                    <ContactNotesEditor
+                      key={(user?.id || "anon") + ":" + id}
+                      contactId={id}
+                      userId={user?.id || "current-user"}
+                      notes={org.notes || ""}
+                      internalNotes={org.internal_notes || ""}
                     />
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-0.5">Notas internas (privadas)</p>
-                      <textarea rows={3} value={inlineInternalNotes} onChange={(e) => setInlineInternalNotes(e.target.value)} className="flex w-full rounded-md border border-input bg-amber-50/40 px-2 py-1.5 text-sm" />
-                    </div>
-                  </div>
+                  )}
+                </SectionCard>
+                <SectionCard title="Registar Interação / Voz">
+                  <AddNoteInline
+                    contactId={id!}
+                    source="c360"
+                    variant="threec-sixty"
+                    noteQuickTags={["Urgente", "Acompanhamento", "Follow-up", "Reclamação"]}
+                    placeholder="Registar nota rápida ou gravação de voz no histórico..."
+                  />
                 </SectionCard>
               </>
             }

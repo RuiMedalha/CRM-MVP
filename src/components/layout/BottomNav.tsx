@@ -1,29 +1,30 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
-  MessagesSquare,
-  Users,
-  LayoutDashboard,
-  Settings as SettingsIcon,
+  CalendarCheck2,
+  Headset,
+  Kanban,
+  UsersRound,
+  Menu,
   type LucideIcon,
 } from "lucide-react";
 import { useNotificationStore } from "@/store/notificationStore";
+import { mobileSection } from "@/lib/workspace/navigation";
 
 interface BottomNavItem {
+  id: string;
   icon: LucideIcon;
   label: string;
   path: string;
   badgeKey?: "unread" | "new";
 }
 
-// 4 tabs mobile-first per card-10: Conversas / Leads / Hoje / Definições.
-// Hidden on desktop (>768px) via lg:hidden; uses env(safe-area-inset-bottom)
-// for iOS notch devices. Unread badge comes from notificationStore (omnichannel).
 const navItems: BottomNavItem[] = [
-  { icon: MessagesSquare, label: "Conversas", path: "/inbox", badgeKey: "unread" },
-  { icon: Users, label: "Leads", path: "/leads" },
-  { icon: LayoutDashboard, label: "Hoje", path: "/dashboard" },
-  { icon: SettingsIcon, label: "Definições", path: "/definicoes" },
+  { id: "today", icon: CalendarCheck2, label: "Hoje", path: "/" },
+  { id: "attend", icon: Headset, label: "Atender", path: "/comunicacoes?channel=telecof", badgeKey: "unread" },
+  { id: "business", icon: Kanban, label: "Negócios", path: "/pipeline" },
+  { id: "contacts", icon: UsersRound, label: "Contactos", path: "/customer360-shell" },
+  { id: "more", icon: Menu, label: "Mais", path: "/menu" },
 ];
 
 export interface BottomNavProps {
@@ -33,6 +34,7 @@ export interface BottomNavProps {
 
 export function BottomNav({ items = navItems }: BottomNavProps) {
   const location = useLocation();
+  const currentSection = mobileSection(location.pathname);
   const unread = useNotificationStore((s) => s.badgeCounts.unreadCount);
   const fresh = useNotificationStore((s) => s.badgeCounts.newCount);
 
@@ -43,38 +45,38 @@ export function BottomNav({ items = navItems }: BottomNavProps) {
 
   return (
     <nav
-      aria-label="Navegação inferior"
-      className="crm-bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_3px_rgba(0,0,0,0.1)] dark:shadow-[0_-1px_3px_rgba(0,0,0,0.4)] lg:hidden"
+      aria-label="Navegação principal"
+      className="crm-bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.04)] lg:hidden"
     >
-      <div className="crm-bottom-nav-items flex items-end justify-around h-16 px-2">
+      <div className="crm-bottom-nav-items grid h-[4.5rem] grid-cols-5 items-stretch px-1">
         {items.map((item) => {
-          const isActive = location.pathname.startsWith(item.path);
+          const isSelected = item.id ? currentSection === item.id : location.pathname.startsWith(item.path);
           const Icon = item.icon;
           const count = badgeValue(item.badgeKey);
           return (
             <Link
-              key={item.path}
+              key={item.id || item.path}
               to={item.path}
               className={cn(
-                "crm-bottom-nav-link relative flex min-h-[44px] flex-1 flex-col items-center justify-center py-2 transition-colors",
-                isActive
-                  ? "text-primary"
-                  : "text-foreground/60 dark:text-foreground/70 hover:text-foreground",
+                "crm-bottom-nav-link relative flex min-h-[44px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isSelected
+                  ? "text-primary font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
               )}
-              aria-current={isActive ? "page" : undefined}
+              aria-current={isSelected ? "page" : undefined}
             >
-              <div className="relative">
-                <Icon className="h-5 w-5" />
+              <div className={cn("relative flex h-7 w-12 items-center justify-center rounded-full transition-colors", isSelected && "bg-primary/10")}>
+                <Icon className="h-5 w-5" aria-hidden="true" />
                 {count > 0 && (
                   <span
                     aria-label={`${count} não lidas`}
-                    className="absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground"
+                    className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground"
                   >
                     {count > 99 ? "99+" : count}
                   </span>
                 )}
               </div>
-              <span className="mt-1 text-[11px] font-medium">{item.label}</span>
+              <span className="text-[11px] truncate max-w-full">{item.label}</span>
             </Link>
           );
         })}
