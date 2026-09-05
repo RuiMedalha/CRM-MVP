@@ -10,6 +10,7 @@ import { NotificationToastStack } from "@/components/communications/Notification
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
 import { useActivityFeedMonitor } from "@/hooks/useActivityFeedMonitor";
 import { useCommunicationNotifications } from "@/hooks/useCommunicationNotifications";
+import { useConversationPolling } from "@/hooks/useConversationPolling";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -26,6 +27,8 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
   useActivityFeedMonitor();
   // Phase 2.F5: Notificações omnicanal montadas globalmente (não só em Comunicações)
   useCommunicationNotifications();
+  // Polling de conversas e grupos ativo globalmente para sincronização de mensagens
+  useConversationPolling();
   if (embed) {
     return (
       <div ref={ref} className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-background">

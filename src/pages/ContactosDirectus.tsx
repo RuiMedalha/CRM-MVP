@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DuplicatePanel } from "@/components/contacts/DuplicatePanel";
 import { SavedFiltersPopover } from "@/components/SavedFiltersPopover";
+import { useRealCrmMetrics } from "@/hooks/useRealCrmMetrics";
 
 type IaScoreFilter = "all" | "hot" | "warm" | "cold"
 
@@ -70,6 +71,7 @@ export default function ContactosDirectus() {
   const [sourceFilter, setSourceFilter] = useState<string>("");
   const [showArchived, setShowArchived] = useState(false);
   const [page, setPage] = useState(1);
+  const { data: realMetrics } = useRealCrmMetrics();
 
   // Selection state (persists across page changes)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -395,7 +397,7 @@ export default function ContactosDirectus() {
           </div>
           <div className="flex flex-wrap gap-2 items-center sm:gap-3">
             <Badge variant="outline" className="text-base px-3 py-1 text-xs sm:text-base">
-              {count} nesta página
+              {realMetrics?.contactsTotal ? `${realMetrics.contactsTotal.toLocaleString("pt-PT")} total · ` : ""}{count} nesta página
             </Badge>
             <Badge variant="secondary" className="px-3 py-1 text-xs sm:text-base">
               Pág. {page}

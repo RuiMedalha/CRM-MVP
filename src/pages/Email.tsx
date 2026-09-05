@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { directusRequest } from "@/integrations/directus/client";
 import { useEmailThreads, useEmailUnassignedCount, useAssignThread, useCloseThread } from "@/hooks/useEmailThreads";
@@ -7,6 +8,7 @@ import { useCurrentEmployee } from "@/hooks/useCurrentEmployee";
 import { EmailThreadCard } from "@/components/email/EmailThreadCard";
 import { EmailThreadDetail } from "@/components/email/EmailThreadDetail";
 import { useAllThreadsLite } from "@/hooks/useAllThreadsLite";
+import { useRealCrmMetrics } from "@/hooks/useRealCrmMetrics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Search, Inbox, Loader2 } from "lucide-react";
@@ -28,9 +30,9 @@ const EMAIL_CATEGORIES = [
 ] as const;
 
 const MAILBOXES = [
-  { key: "", label: "Todas", color: "" },
-  { key: "apoio.cliente@hotelequip.pt", label: "Apoio", color: "text-blue-600" },
-  { key: "geral@hotelequip.pt", label: "Geral", color: "text-green-600" },
+  { key: "", label: "Todas as caixas", color: "" },
+  { key: "geral@hotelequip.pt", label: "Geral", color: "text-green-600 dark:text-green-400" },
+  { key: "apoio.cliente@hotelequip.pt", label: "Apoio ao Cliente", color: "text-blue-600 dark:text-blue-400" },
 ] as const;
 
 const STATUSES = [
@@ -46,12 +48,29 @@ const URGENT_TOAST_KEY = "email_urgent_seen";
 export default function Email() {
   const { toast } = useToast();
   const { employee } = useCurrentEmployee();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [search, setSearch] = useState("");
-  const [activeMailbox, setActiveMailbox] = useState("");
+  const [activeMailbox, setActiveMailbox] = useState(() => searchParams.get("mailbox") || "");
   const [activeStatus, setActiveStatus] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
+
+  // Keep state in sync with URL search param changes
+  useEffect(() => {
+    setActiveMailbox(searchParams.get("mailbox") || "");
+  }, [searchParams]);
+
+  const handleSelectMailbox = (mailboxKey: string) => {
+    setActiveMailbox(mailboxKey);
+    const next = new URLSearchParams(searchParams);
+    if (mailboxKey) {
+      next.set("mailbox", mailboxKey);
+    } else {
+      next.delete("mailbox");
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   const filters: EmailFilters = {
     mailbox: activeMailbox,
@@ -63,6 +82,7 @@ export default function Email() {
   const { data: threads, isLoading } = useEmailThreads(filters);
   const { data: allThreadsLite } = useAllThreadsLite();
   const { data: unassignedCount } = useEmailUnassignedCount();
+  const { data: realMetrics } = useRealCrmMetrics();
   const assignMutation = useAssignThread();
   const closeMutation = useCloseThread();
 
@@ -166,19 +186,40 @@ export default function Email() {
       {/* Caixas */}
       <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Caixas</p>
       <div className="space-y-0.5 mb-3">
-        {MAILBOXES.map((m) => (
-          <button
-            key={m.key}
-            type="button"
-            onClick={() => setActiveMailbox(m.key)}
-            className={cn(
-              "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
-              activeMailbox === m.key ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50"
-            )}
-          >
-            <span className={m.color}>{m.label}</span>
-          </button>
-        ))}
+        {MAILBOXES.map((m) => {
+          const count =
+            !m.key
+              ? realMetrics?.emailsTotal
+              : m.key === "geral@hotelequip.pt"
+              ? realMetrics?.emailsGeral
+              : m.key === "apoio.cliente@hotelequip.pt"
+              ? realMetrics?.emailsApoio
+              : null;
+          const isSelected = activeMailbox === m.key;
+          return (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => handleSelectMailbox(m.key)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                isSelected ? "bg-accent text-accent-foreground font-semibold" : "text-muted-foreground hover:bg-accent/50"
+              )}
+            >
+              <span className={m.color}>{m.label}</span>
+              {count !== undefined && count !== null && (
+                <span
+                  className={cn(
+                    "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                    isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {count > 999 ? `${(count / 1000).toFixed(1)}k` : count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mb-3 h-px bg-border" />

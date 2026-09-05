@@ -31,6 +31,7 @@ function HubThreadFallback() {
 }
 
 import { useCommunicationNotifications } from "@/hooks/useCommunicationNotifications"
+import { useConversationPolling } from "@/hooks/useConversationPolling"
 
 import { useInboxFilterStore } from "@/store/inboxFilterStore"
 import { useConversationStore } from "@/store/conversationStore"
@@ -98,6 +99,7 @@ function HubInboxView({ hasSelection }: { hasSelection: boolean }) {
 
 export default function Comunicacoes() {
   useCommunicationNotifications()
+  useConversationPolling()
 
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedChannel = getChannelFromSearchParam(searchParams.get("channel"))

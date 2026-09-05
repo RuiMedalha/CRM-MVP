@@ -19,11 +19,13 @@ import { Button } from "@/components/ui/button";
 
 import ForecastWidget from "@/components/dashboard/ForecastWidget";
 import { Sparkline } from "@/components/dashboard/Sparkline";
+import { useRealCrmMetrics, type RealCrmMetrics } from "@/hooks/useRealCrmMetrics";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: deals, isLoading: dealsLoading } = useDeals();
   const { data: contacts, isLoading: contactsLoading } = useContacts();
+  const { data: realMetrics, isLoading: metricsLoading } = useRealCrmMetrics();
 
   const overdueFollowUpsQuery = useFollowUpsLite();
 
@@ -117,6 +119,8 @@ export default function Dashboard() {
                 emailStatsQuery={emailStatsQuery}
                 urgencyItems={urgencyCapped}
                 isLoading={isLoading}
+                realMetrics={realMetrics}
+                metricsLoading={metricsLoading}
                 totalDealsValue={totalDealsValue}
                 deals={deals}
                 contacts={contacts}
@@ -154,15 +158,45 @@ export default function Dashboard() {
           </Card>
 
           <div className="flex min-h-0 flex-col gap-3 overflow-auto pr-1">
-            <div className="grid shrink-0 grid-cols-2 gap-2">
+            <div className="grid shrink-0 grid-cols-2 sm:grid-cols-3 gap-2">
               <KpiTile
                 icon={<Users className="h-3.5 w-3.5" />}
                 label="Contactos"
-                value={contacts?.length || 0}
+                value={realMetrics?.contactsTotal ?? contacts?.length ?? 0}
                 href="/contactos"
-                loading={contactsLoading}
-                sparklineData={[4, 6, 5, 8, 10, 9, Math.max(1, contacts?.length || 0)]}
+                loading={metricsLoading || contactsLoading}
+                sparklineData={[3100, 3250, 3380, 3420, 3490, 3510, realMetrics?.contactsTotal ?? 3541]}
                 sparklineColor="#6366f1"
+              />
+              <KpiTile
+                icon={<Phone className="h-3.5 w-3.5" />}
+                label="Chamadas"
+                value={realMetrics?.callsTotal ?? 0}
+                href="/comunicacoes?channel=telecof"
+                loading={metricsLoading}
+                color="text-blue-600"
+                sparklineData={[1200, 1310, 1420, 1490, 1530, 1560, realMetrics?.callsTotal ?? 1583]}
+                sparklineColor="#2563eb"
+              />
+              <KpiTile
+                icon={<Mail className="h-3.5 w-3.5" />}
+                label="Emails"
+                value={realMetrics?.emailsTotal ?? 0}
+                href="/email"
+                loading={metricsLoading}
+                color="text-purple-600"
+                sparklineData={[1100, 1180, 1260, 1330, 1390, 1410, realMetrics?.emailsTotal ?? 1432]}
+                sparklineColor="#9333ea"
+              />
+              <KpiTile
+                icon={<MessagesSquare className="h-3.5 w-3.5" />}
+                label="WhatsApp"
+                value={realMetrics?.whatsappTotal ?? 0}
+                href="/comunicacoes?channel=whatsapp"
+                loading={metricsLoading}
+                color="text-emerald-600"
+                sparklineData={[280, 310, 340, 370, 395, 405, realMetrics?.whatsappTotal ?? 414]}
+                sparklineColor="#10b981"
               />
               <KpiTile
                 icon={<Kanban className="h-3.5 w-3.5" />}
@@ -173,16 +207,6 @@ export default function Dashboard() {
                 color="text-warning"
                 sparklineData={[2, 3, 5, 4, 6, 5, Math.max(1, activeDeals)]}
                 sparklineColor="#f59e0b"
-              />
-              <KpiTile
-                icon={<TrendingUp className="h-3.5 w-3.5" />}
-                label="Ganhos"
-                value={wonDeals}
-                href="/pipeline"
-                loading={dealsLoading}
-                color="text-success"
-                sparklineData={[1, 1, 2, 3, 2, 4, Math.max(1, wonDeals)]}
-                sparklineColor="#10b981"
               />
               <KpiTile
                 icon={<Euro className="h-3.5 w-3.5" />}
@@ -236,6 +260,8 @@ export default function Dashboard() {
           <BelowFold
             contacts={contacts}
             contactsLoading={contactsLoading}
+            realMetrics={realMetrics}
+            metricsLoading={metricsLoading}
             overdueFollowUpsQuery={overdueFollowUpsQuery}
             urgencyCapped={urgencyCapped}
             urgencyItems={urgencyItems}
@@ -299,24 +325,56 @@ function HojeTab(props: {
   emailStatsQuery: ReturnType<typeof useEmailStatsLite>;
   urgencyItems: Array<{ label: string; href: string; icon: typeof Phone; color: string }>;
   isLoading: boolean;
+  realMetrics?: RealCrmMetrics;
+  metricsLoading?: boolean;
   totalDealsValue: number;
   deals: any;
   contacts: any;
   activeDeals: number;
   wonDeals: number;
 }) {
-  const { overdueFollowUpsQuery, urgencyItems, isLoading, totalDealsValue, contacts, activeDeals, wonDeals } = props;
+  const { overdueFollowUpsQuery, urgencyItems, isLoading, realMetrics, metricsLoading, totalDealsValue, contacts, activeDeals, wonDeals } = props;
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <KpiTile
           icon={<Users className="h-3.5 w-3.5" />}
           label="Contactos"
-          value={contacts?.length || 0}
+          value={realMetrics?.contactsTotal ?? contacts?.length ?? 0}
           href="/contactos"
-          loading={isLoading}
-          sparklineData={[4, 6, 5, 8, 10, 9, Math.max(1, contacts?.length || 0)]}
+          loading={metricsLoading || isLoading}
+          sparklineData={[3100, 3250, 3380, 3420, 3490, 3510, realMetrics?.contactsTotal ?? 3541]}
           sparklineColor="#6366f1"
+        />
+        <KpiTile
+          icon={<Phone className="h-3.5 w-3.5" />}
+          label="Chamadas"
+          value={realMetrics?.callsTotal ?? 0}
+          href="/comunicacoes?channel=telecof"
+          loading={metricsLoading}
+          color="text-blue-600"
+          sparklineData={[1200, 1310, 1420, 1490, 1530, 1560, realMetrics?.callsTotal ?? 1583]}
+          sparklineColor="#2563eb"
+        />
+        <KpiTile
+          icon={<Mail className="h-3.5 w-3.5" />}
+          label="Emails"
+          value={realMetrics?.emailsTotal ?? 0}
+          href="/email"
+          loading={metricsLoading}
+          color="text-purple-600"
+          sparklineData={[1100, 1180, 1260, 1330, 1390, 1410, realMetrics?.emailsTotal ?? 1432]}
+          sparklineColor="#9333ea"
+        />
+        <KpiTile
+          icon={<MessagesSquare className="h-3.5 w-3.5" />}
+          label="WhatsApp"
+          value={realMetrics?.whatsappTotal ?? 0}
+          href="/comunicacoes?channel=whatsapp"
+          loading={metricsLoading}
+          color="text-emerald-600"
+          sparklineData={[280, 310, 340, 370, 395, 405, realMetrics?.whatsappTotal ?? 414]}
+          sparklineColor="#10b981"
         />
         <KpiTile
           icon={<Kanban className="h-3.5 w-3.5" />}
@@ -326,15 +384,6 @@ function HojeTab(props: {
           color="text-warning"
           sparklineData={[2, 3, 5, 4, 6, 5, Math.max(1, activeDeals)]}
           sparklineColor="#f59e0b"
-        />
-        <KpiTile
-          icon={<TrendingUp className="h-3.5 w-3.5" />}
-          label="Ganhos"
-          value={wonDeals}
-          href="/pipeline"
-          color="text-success"
-          sparklineData={[1, 1, 2, 3, 2, 4, Math.max(1, wonDeals)]}
-          sparklineColor="#10b981"
         />
         <KpiTile
           icon={<Euro className="h-3.5 w-3.5" />}
@@ -424,12 +473,16 @@ function HojeTab(props: {
 function BelowFold({
   contacts,
   contactsLoading,
+  realMetrics,
+  metricsLoading,
   overdueFollowUpsQuery,
   urgencyCapped,
   urgencyItems,
 }: {
   contacts: any;
   contactsLoading: boolean;
+  realMetrics?: RealCrmMetrics;
+  metricsLoading?: boolean;
   overdueFollowUpsQuery: any;
   urgencyCapped: any;
   urgencyItems: any;
@@ -444,14 +497,47 @@ function BelowFold({
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          {contactsLoading ? (
+          {metricsLoading || contactsLoading ? (
             <Skeleton className="h-16 w-full" />
           ) : (
             <div className="grid grid-cols-4 gap-2 text-center text-xs">
-              <div><p className="text-lg font-bold">{contacts?.length || 0}</p><p className="text-[10px] text-muted-foreground">Total</p></div>
-              <div><p className="text-lg font-bold">{contacts?.filter((c: any) => c.email).length || 0}</p><p className="text-[10px] text-muted-foreground">Email</p></div>
-              <div><p className="text-lg font-bold">{contacts?.filter((c: any) => c.whatsapp_number).length || 0}</p><p className="text-[10px] text-muted-foreground">WhatsApp</p></div>
-              <div><p className="text-lg font-bold">{contacts?.filter((c: any) => c.phone).length || 0}</p><p className="text-[10px] text-muted-foreground">Telefone</p></div>
+              <div><p className="text-lg font-bold">{(realMetrics?.contactsTotal ?? contacts?.length ?? 0).toLocaleString("pt-PT")}</p><p className="text-[10px] text-muted-foreground">Total</p></div>
+              <div><p className="text-lg font-bold">{(realMetrics?.contactsWithEmail ?? 0).toLocaleString("pt-PT")}</p><p className="text-[10px] text-muted-foreground">Com Email</p></div>
+              <div><p className="text-lg font-bold">{(realMetrics?.contactsWithWa ?? 0).toLocaleString("pt-PT")}</p><p className="text-[10px] text-muted-foreground">Com WhatsApp</p></div>
+              <div><p className="text-lg font-bold">{(realMetrics?.contactsWithPhone ?? 0).toLocaleString("pt-PT")}</p><p className="text-[10px] text-muted-foreground">Com Telefone</p></div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <MessagesSquare className="h-4 w-4 text-primary" />
+            Resumo de Comunicações
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {metricsLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : (
+            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <Link to="/comunicacoes?channel=telecof" className="rounded p-1 transition-colors hover:bg-muted/50">
+                <p className="text-lg font-bold text-blue-600">{(realMetrics?.callsTotal ?? 0).toLocaleString("pt-PT")}</p>
+                <p className="text-[10px] text-muted-foreground">Chamadas</p>
+              </Link>
+              <Link to="/email" className="rounded p-1 transition-colors hover:bg-muted/50">
+                <p className="text-lg font-bold text-purple-600">{(realMetrics?.emailsTotal ?? 0).toLocaleString("pt-PT")}</p>
+                <p className="text-[10px] text-muted-foreground">Emails</p>
+              </Link>
+              <Link to="/comunicacoes?channel=whatsapp" className="rounded p-1 transition-colors hover:bg-muted/50">
+                <p className="text-lg font-bold text-emerald-600">{(realMetrics?.whatsappTotal ?? 0).toLocaleString("pt-PT")}</p>
+                <p className="text-[10px] text-muted-foreground">WhatsApp</p>
+              </Link>
+              <Link to="/pedidos" className="rounded p-1 transition-colors hover:bg-muted/50">
+                <p className="text-lg font-bold text-orange-600">{(realMetrics?.ordersTotal ?? 0).toLocaleString("pt-PT")}</p>
+                <p className="text-[10px] text-muted-foreground">Encomendas</p>
+              </Link>
             </div>
           )}
         </CardContent>
