@@ -393,8 +393,10 @@ export function TelecofCallWorkspace() {
     setSavingContact(true)
     try {
       const contactId = String(identity.record.id)
+      const companyName = contactEditForm.company_name.trim() || contactEditForm.contact_name.trim()
       const updated = await patchContact(contactId, {
-        company_name: contactEditForm.company_name.trim() || undefined,
+        company_name: companyName || undefined,
+        name: companyName || undefined,
         contact_name: contactEditForm.contact_name.trim() || undefined,
         email: contactEditForm.email.trim() || undefined,
         phone: contactEditForm.phone.trim() || undefined,
@@ -404,8 +406,14 @@ export function TelecofCallWorkspace() {
       })
       setIdentity((prev) => prev ? {
         ...prev,
-        record: { ...(prev.record ?? {}), ...(updated as any) },
+        record: { ...(prev.record ?? {}), ...(updated as any), ...contactEditForm },
       } : null)
+      if (selected?.id && companyName) {
+        await patchHubCommunicationEvent(selected.id, {
+          customer_name: companyName,
+          contact_id: contactId,
+        }).then((up) => mergeEvent(up)).catch(() => {})
+      }
       setIsEditingContact(false)
       queryClient.invalidateQueries({ queryKey: ["customer360", contactId] })
       queryClient.invalidateQueries({ queryKey: ["contacts-directus"] })
@@ -748,9 +756,20 @@ export function TelecofCallWorkspace() {
           {initials}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-tight text-foreground">
-            {selected.customerName?.trim() || selected.phone || selected.normalizedPhone}
-          </p>
+          {contactUrl ? (
+            <Link
+              to={contactUrl}
+              className="inline-flex items-center gap-1 truncate text-sm font-bold leading-tight text-foreground hover:text-primary hover:underline transition-colors"
+              title="Clique para abrir a Ficha 360 do Cliente"
+            >
+              {selected.customerName?.trim() || selected.phone || selected.normalizedPhone}
+              <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+            </Link>
+          ) : (
+            <p className="truncate text-sm font-semibold leading-tight text-foreground">
+              {selected.customerName?.trim() || selected.phone || selected.normalizedPhone}
+            </p>
+          )}
           <p className="truncate text-xs leading-tight text-muted-foreground">
             <a
               href={selected.phone || selected.normalizedPhone ? `tel:${selected.phone || selected.normalizedPhone}` : undefined}
@@ -765,6 +784,19 @@ export function TelecofCallWorkspace() {
             {selected.direction === "outbound" ? "Saída" : "Entrada"}
           </p>
         </div>
+
+        {/* Botão de Abertura Direta da Ficha 360 */}
+        {contactUrl && (
+          <Link
+            to={contactUrl}
+            className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-colors shadow-sm"
+            title="Abrir Ficha 360 Completa do Cliente"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Abrir Ficha 360</span>
+          </Link>
+        )}
+
         {/* Acção primária única no header: Assumir (se aplicável) senão Tratado. */}
         {canAssume ? (
           <button
@@ -1094,92 +1126,122 @@ export function TelecofCallWorkspace() {
               allowFollowUp
             />
 
-            {/* Modo de Edição Rápida — específico Telecof (não está no painel partilhado) */}
-            <div className="space-y-2.5 rounded-xl border border-border bg-card p-3 text-xs">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-foreground uppercase tracking-wider text-[11px]">
-                  Dados do cliente — edição rápida
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingContact((v) => !v)}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                  title="Editar dados cadastrais do cliente"
-                >
-                  <Edit2 className="h-3 w-3" />
-                  {isEditingContact ? "Fechar" : "Editar"}
-                </button>
+            {/* Modo de Edição e Visualização da Ficha Cadastral do Cliente */}
+            <div className="space-y-3 rounded-xl border border-border bg-card p-4 text-xs shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="font-bold text-foreground uppercase tracking-wider text-xs">
+                      Ficha Cadastral do Cliente
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Consulte ou corrija os dados cadastrais diretamente nesta chamada
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingContact((v) => !v)}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+                    title="Editar dados cadastrais do cliente"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                    {isEditingContact ? "Cancelar Edição" : "Editar / Corrigir"}
+                  </button>
+                  {identity.record?.id && (
+                    <Link
+                      to={`/customer360-shell/${encodeURIComponent(String(identity.record.id))}`}
+                      className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
+                      title="Abrir página completa do Cliente 360"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Abrir Ficha 360 Completa
+                    </Link>
+                  )}
+                </div>
               </div>
 
               {isEditingContact ? (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
-                      <label className="text-muted-foreground font-medium block mb-0.5">Empresa *</label>
+                      <label className="text-muted-foreground font-semibold block mb-1">Empresa / Razão Social *</label>
                       <input
                         type="text"
                         value={contactEditForm.company_name}
                         onChange={(e) => setContactEditForm({ ...contactEditForm, company_name: e.target.value })}
                         placeholder="Nome da empresa"
-                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground font-medium block mb-0.5">Pessoa de Contacto</label>
+                      <label className="text-muted-foreground font-semibold block mb-1">Pessoa de Contacto</label>
                       <input
                         type="text"
                         value={contactEditForm.contact_name}
                         onChange={(e) => setContactEditForm({ ...contactEditForm, contact_name: e.target.value })}
                         placeholder="Nome do interlocutor"
-                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground font-medium block mb-0.5">Email</label>
+                      <label className="text-muted-foreground font-semibold block mb-1">Email</label>
                       <input
                         type="email"
                         value={contactEditForm.email}
                         onChange={(e) => setContactEditForm({ ...contactEditForm, email: e.target.value })}
                         placeholder="email@empresa.com"
-                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground font-medium block mb-0.5">NIF / Contribuinte</label>
+                      <label className="text-muted-foreground font-semibold block mb-1">NIF / Contribuinte</label>
                       <input
                         type="text"
                         value={contactEditForm.nif}
                         onChange={(e) => setContactEditForm({ ...contactEditForm, nif: e.target.value })}
                         placeholder="Ex: 501234567"
-                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground font-medium block mb-0.5">Cidade / Localidade</label>
+                      <label className="text-muted-foreground font-semibold block mb-1">Cidade / Localidade</label>
                       <input
                         type="text"
                         value={contactEditForm.city}
                         onChange={(e) => setContactEditForm({ ...contactEditForm, city: e.target.value })}
                         placeholder="Ex: Lisboa, Porto"
-                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground font-medium block mb-0.5">Telefone</label>
+                      <label className="text-muted-foreground font-semibold block mb-1">Telefone</label>
                       <input
                         type="text"
                         value={contactEditForm.phone}
                         onChange={(e) => setContactEditForm({ ...contactEditForm, phone: e.target.value })}
                         placeholder="Telefone"
-                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-muted-foreground font-semibold block mb-1">Notas / Observações do Cliente</label>
+                      <textarea
+                        rows={2}
+                        value={contactEditForm.notes}
+                        onChange={(e) => setContactEditForm({ ...contactEditForm, notes: e.target.value })}
+                        placeholder="Observações permanentes da ficha..."
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                   </div>
-                  <div className="flex justify-end gap-2 pt-1 border-t border-border mt-2">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-border">
                     <button
                       type="button"
                       onClick={() => setIsEditingContact(false)}
-                      className="rounded px-2.5 py-1 text-xs border border-border text-muted-foreground hover:bg-muted"
+                      className="rounded px-3 py-1.5 text-xs border border-border text-muted-foreground hover:bg-muted transition-colors"
                     >
                       Cancelar
                     </button>
@@ -1187,33 +1249,50 @@ export function TelecofCallWorkspace() {
                       type="button"
                       disabled={savingContact || !contactEditForm.company_name.trim()}
                       onClick={() => void handleSaveContactEdit()}
-                      className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
                     >
-                      <Save className="h-3 w-3" />
-                      {savingContact ? "A guardar…" : "Guardar Dados"}
+                      <Save className="h-3.5 w-3.5" />
+                      {savingContact ? "A guardar…" : "Guardar Alterações"}
                     </button>
                   </div>
-                </>
+                </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 text-xs bg-card/70 p-2.5 rounded-lg border border-border">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs bg-muted/40 p-3 rounded-lg border border-border">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="font-semibold text-foreground truncate">
+                      {String(identity.record?.company_name || identity.record?.name || "Sem nome")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-foreground truncate">
+                      {String(identity.record?.contact_name || "—")}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5 truncate">
                     <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground truncate">
+                    <span className="text-foreground truncate font-medium">
                       {String(identity.record?.phone || identity.record?.mobile_phone || selected?.phone || "—")}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 truncate">
                     <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground truncate">{String(identity.record?.email || "Sem email")}</span>
+                    <span className="text-foreground truncate">{String(identity.record?.email || "Sem email")}</span>
                   </div>
                   <div className="flex items-center gap-1.5 truncate">
                     <CreditCard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground truncate">NIF: {String(identity.record?.nif || "—")}</span>
+                    <span className="text-foreground truncate">NIF: {String(identity.record?.nif || "—")}</span>
                   </div>
                   <div className="flex items-center gap-1.5 truncate">
                     <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground truncate">{String(identity.record?.city || "—")}</span>
+                    <span className="text-foreground truncate">{String(identity.record?.city || "—")}</span>
                   </div>
+                  {identity.record?.notes && (
+                    <div className="col-span-full pt-1 text-[11px] text-muted-foreground border-t border-border/50">
+                      <span className="font-medium">Notas:</span> {String(identity.record.notes)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

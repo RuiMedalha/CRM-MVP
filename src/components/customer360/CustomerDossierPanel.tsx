@@ -217,10 +217,10 @@ export function CustomerDossierPanel({
 
           <div className="flex shrink-0 items-center gap-1.5">
             {cId && (
-              <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+              <Button asChild variant="outline" size="sm" className="h-7 text-xs border-emerald-400/60 bg-emerald-100/80 text-emerald-900 hover:bg-emerald-200 dark:border-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200 font-semibold shadow-xs">
                 <Link to={`/customer360-shell/${encodeURIComponent(cId)}`} title="Abrir página completa do Cliente 360">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  {!compact && <span className="ml-1">Abrir 360</span>}
+                  <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                  Abrir 360
                 </Link>
               </Button>
             )}
