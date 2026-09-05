@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import {
   Building2,
   CalendarCheck2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsRight,
@@ -12,7 +13,9 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  MessageCircle,
   MessagesSquare,
+  Phone,
   Search,
   SendHorizontal,
   UserCog,
@@ -43,9 +46,15 @@ const navSections: Array<{ label: string; items: NavItem[] }> = [
       { icon: CalendarCheck2, label: "Hoje", path: "/" },
       { icon: LayoutDashboard, label: "Indicadores", path: "/painel" },
       { icon: Inbox, label: "Inbox", path: "/inbox" },
-      { icon: MessagesSquare, label: "Comunicações", path: "/comunicacoes" },
-      { icon: MessagesSquare, label: "Telecof", path: "/comunicacoes?channel=telecof" },
-      { icon: Mail, label: "Email", path: "/email" },
+    ],
+  },
+  {
+    label: "Comunicações",
+    items: [
+      { icon: MessageCircle, label: "WhatsApp", path: "/comunicacoes?channel=whatsapp" },
+      { icon: Phone, label: "Telecof", path: "/comunicacoes?channel=telecof" },
+      { icon: MessagesSquare, label: "Chat", path: "/comunicacoes?channel=askme" },
+      { icon: Mail, label: "Emails", path: "/email" },
     ],
   },
   {
@@ -72,12 +81,27 @@ const navSections: Array<{ label: string; items: NavItem[] }> = [
 ]
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar:v2:collapsed"
+const SIDEBAR_SECTIONS_STATE_KEY = "sidebar:v2:sections"
 
 export function AppSidebar() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1",
   )
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_SECTIONS_STATE_KEY)
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return {
+      "Operação": true,
+      "Comunicações": true,
+      "Vendas": true,
+      "Base": true,
+      "Definições": true,
+    }
+  })
+
   const [moreOpen, setMoreOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { signOut } = useAuth()
@@ -88,6 +112,16 @@ export function AppSidebar() {
   const inboxTotal = (emailUnassignedCount ?? 0) + unreadCount
   const logoUrl = (settings as any)?.logo_url || "https://files.hotelequip.pt/public/logo.png"
   const companyName = (settings as any)?.name || "CRM Hotelequip"
+
+  const toggleSection = (label: string) => {
+    setOpenSections((prev) => {
+      const next = { ...prev, [label]: prev[label] === false ? true : false }
+      try {
+        localStorage.setItem(SIDEBAR_SECTIONS_STATE_KEY, JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }
 
   useEffect(() => {
     const toggle = () => setMobileOpen((open) => !open)
@@ -112,12 +146,36 @@ export function AppSidebar() {
   }, [])
 
   const currentPath = `${location.pathname}${location.search}`
-  const isActive = (path: string) =>
-    currentPath === path || (path !== "/dashboard" && !path.includes("?") && location.pathname.startsWith(path))
+  const isActive = (path: string) => {
+    if (currentPath === path) return true
+    if (path === "/" && (location.pathname === "/" || location.pathname === "/hoje")) return true
+    if (path === "/customer360-shell" && (location.pathname.startsWith("/customer360") || location.pathname.startsWith("/clientes"))) return true
+    if (path === "/comunicacoes?channel=whatsapp" && location.pathname === "/comunicacoes" && !location.search) return true
+    if (path === "/comunicacoes?channel=telecof" && location.pathname === "/telecof") return true
+    if (!path.includes("?") && path !== "/" && location.pathname.startsWith(path)) return true
+    return false
+  }
+
+  // Auto-expand section if active path is inside it
+  useEffect(() => {
+    for (const section of navSections) {
+      if (section.items.some((it) => isActive(it.path))) {
+        setOpenSections((prev) => {
+          if (prev[section.label] !== false) return prev
+          const next = { ...prev, [section.label]: true }
+          try {
+            localStorage.setItem(SIDEBAR_SECTIONS_STATE_KEY, JSON.stringify(next))
+          } catch {}
+          return next
+        })
+        break
+      }
+    }
+  }, [location.pathname, location.search])
 
   const badgeFor = (path: string) => {
     if (path === "/inbox" && inboxTotal > 0) return inboxTotal
-    if (path === "/comunicacoes" && unreadCount > 0) return unreadCount
+    if ((path.includes("whatsapp") || path === "/comunicacoes") && unreadCount > 0) return unreadCount
     if (path === "/email" && (emailUnassignedCount ?? 0) > 0) return emailUnassignedCount
     return 0
   }
@@ -153,36 +211,82 @@ export function AppSidebar() {
         </div>
 
         <nav className="flex-1 overflow-x-hidden overflow-y-auto px-1.5 py-2 scrollbar-thin">
-          {navSections.map((section, sectionIndex) => (
-            <div key={section.label} className={cn(sectionIndex > 0 && "mt-2 border-t border-sidebar-border/60 pt-2")}>
-              {!collapsed && <p className="sidebar-group-label px-2.5 pb-1.5 pt-1">{section.label}</p>}
-              <ul className="space-y-0.5">
-                {section.items.map((item) => {
-                  const Icon = item.icon
-                  const badge = badgeFor(item.path)
-                  const active = isActive(item.path)
-                  const link = (
-                    <Link
-                      to={item.path}
-                      onClick={() => setMobileOpen(false)}
-                      className={cn(
-                        "relative flex items-center rounded-lg transition-colors",
-                        collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 gap-2.5 px-2.5 text-sm",
-                        active ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
-                      {Boolean(badge) && <span className={cn("flex items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground", collapsed ? "absolute right-0.5 top-0.5 h-3 min-w-3" : "h-5 min-w-5")}>{badge! > 99 ? "99+" : badge}</span>}
-                    </Link>
-                  )
-                  return <li key={item.path}>{collapsed ? <Tooltip delayDuration={0}><TooltipTrigger asChild>{link}</TooltipTrigger><TooltipContent side="right">{item.label}</TooltipContent></Tooltip> : link}</li>
-                })}
-              </ul>
-            </div>
-          ))}
+          {navSections.map((section, sectionIndex) => {
+            const isOpen = openSections[section.label] !== false
+            return (
+              <div key={section.label} className={cn(sectionIndex > 0 && "mt-2 border-t border-sidebar-border/60 pt-2")}>
+                {!collapsed ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.label)}
+                    className="sidebar-group-label group flex w-full items-center justify-between px-2.5 pb-1.5 pt-1 text-left transition-colors hover:text-sidebar-foreground cursor-pointer select-none"
+                  >
+                    <span>{section.label}</span>
+                    <span className="text-muted-foreground/50 transition-colors group-hover:text-sidebar-foreground">
+                      {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                    </span>
+                  </button>
+                ) : null}
+
+                {(collapsed || isOpen) && (
+                  <ul className="space-y-0.5">
+                    {section.items.map((item) => {
+                      const Icon = item.icon
+                      const badge = badgeFor(item.path)
+                      const active = isActive(item.path)
+                      const link = (
+                        <Link
+                          to={item.path}
+                          onClick={() => setMobileOpen(false)}
+                          className={cn(
+                            "relative flex items-center rounded-lg transition-colors",
+                            collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 gap-2.5 px-2.5 text-sm",
+                            active
+                              ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+                          {Boolean(badge) && (
+                            <span
+                              className={cn(
+                                "flex items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground",
+                                collapsed ? "absolute right-0.5 top-0.5 h-3 min-w-3" : "h-5 min-w-5",
+                              )}
+                            >
+                              {badge! > 99 ? "99+" : badge}
+                            </span>
+                          )}
+                        </Link>
+                      )
+                      return (
+                        <li key={item.path}>
+                          {collapsed ? (
+                            <Tooltip delayDuration={0}>
+                              <TooltipTrigger asChild>{link}</TooltipTrigger>
+                              <TooltipContent side="right">{item.label}</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            link
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            )
+          })}
           <div className="mt-2 border-t border-sidebar-border/60 pt-2">
-            <button type="button" onClick={() => setMoreOpen(true)} className={cn("flex items-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground", collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm")}>
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              className={cn(
+                "flex items-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm",
+              )}
+            >
               <ChevronsRight className="h-4 w-4 shrink-0" />
               {!collapsed && <span>Mais módulos</span>}
             </button>
@@ -190,16 +294,37 @@ export function AppSidebar() {
         </nav>
 
         <div className="shrink-0 space-y-0.5 border-t border-sidebar-border px-1.5 py-2">
-          <button type="button" onClick={openSearch} className={cn("flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground", collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm")}>
+          <button
+            type="button"
+            onClick={openSearch}
+            className={cn(
+              "flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm",
+            )}
+          >
             <Search className="h-4 w-4" />
             {!collapsed && <span>Pesquisar</span>}
           </button>
           <ThemeToggle collapsed={collapsed} />
-          <button type="button" onClick={() => signOut()} className={cn("flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-destructive", collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm")}>
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className={cn(
+              "flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-destructive",
+              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm",
+            )}
+          >
             <LogOut className="h-4 w-4" />
             {!collapsed && <span>Sair</span>}
           </button>
-          <button type="button" onClick={() => setCollapsed((value) => !value)} className={cn("hidden items-center rounded-lg text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:flex", collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm")}>
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            className={cn(
+              "hidden items-center rounded-lg text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:flex",
+              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm",
+            )}
+          >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <><ChevronLeft className="h-4 w-4" /><span>Colapsar menu</span></>}
           </button>
         </div>
