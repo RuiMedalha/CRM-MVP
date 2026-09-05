@@ -6,7 +6,8 @@
  *
  * Usado em:
  *   • CustomerDossierPanel (vista base)
- *   • Pode ser consumido diretamente em outras superfícies se desejado.
+ *   • Customer360Shell (tab Geral)
+ *   • Telecof e superfícies omnichannel
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +27,7 @@ interface AddNoteInlineProps {
   callId?: string;
   /** Tags rápidas (chips abaixo da textarea). */
   quickTags?: string[];
+  noteQuickTags?: string[];
   /** Direção da interação (default "out" — registo interno). */
   direction?: "in" | "out";
   /** Variante visual: telecof (default), hubchat, threec-sixty. */
@@ -37,14 +39,15 @@ interface AddNoteInlineProps {
   onSaved?: (noteId: string) => void;
 }
 
-const DEFAULT_QUICK_TAGS = ["Reclamar", "Orçamento", "Técnico", "Urgente", "Follow-up"];
+const DEFAULT_QUICK_TAGS = ["Urgente", "Acompanhamento", "Follow-up", "Reclamação", "Orçamento", "Técnico"];
 
 export function AddNoteInline({
   contactId,
   leadId,
-  source = "telecof",
+  source = "c360",
   callId,
-  quickTags = DEFAULT_QUICK_TAGS,
+  quickTags,
+  noteQuickTags,
   direction = "out",
   variant = "telecof",
   disabled = false,
@@ -57,13 +60,14 @@ export function AddNoteInline({
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const availableTags = quickTags || noteQuickTags || DEFAULT_QUICK_TAGS;
+
   /**
    * Auto-grow da textarea: ajusta a altura ao conteúdo com cap a MAX_HEIGHT.
-   * - MIN_HEIGHT garante ~6 linhas visíveis no arranque (variant telecof).
+   * - MIN_HEIGHT garante ~6 linhas visíveis no arranque (variant telecof/threec-sixty).
    * - MAX_HEIGHT impede que a textarea ocupe a página inteira.
-   * - onInput + onChange mantêm-se no componente controlado.
    */
-  const MIN_HEIGHT = variant === "hubchat" ? 48 : 144; // ~3 vs ~6 linhas
+  const MIN_HEIGHT = variant === "hubchat" ? 48 : 120;
   const MAX_HEIGHT = 400;
 
   useEffect(() => {
@@ -72,11 +76,9 @@ export function AddNoteInline({
     el.style.height = "auto";
     const next = Math.min(Math.max(el.scrollHeight, MIN_HEIGHT), MAX_HEIGHT);
     el.style.height = `${next}px`;
-    // Indica visualmente que há mais conteúdo abaixo do cap
     el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
   }, [text, variant, MIN_HEIGHT]);
 
-  /** Reset explícito do tamanho após gravar (auto-grow recalcula) */
   useEffect(() => {
     const el = textareaRef.current;
     if (!el || text) return;
@@ -138,7 +140,7 @@ export function AddNoteInline({
     <section
       className={cn(
         "space-y-2",
-        compact ? "" : "rounded-xl border border-border bg-card p-3",
+        compact ? "" : variant === "threec-sixty" ? "" : "rounded-xl border border-border bg-card p-3",
       )}
     >
       <div className="flex items-center justify-between">
@@ -164,7 +166,7 @@ export function AddNoteInline({
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
-        rows={variant === "hubchat" ? 2 : 6}
+        rows={variant === "hubchat" ? 2 : 5}
         disabled={disabled || saving || !dossier.canAddNote}
         style={{ minHeight: MIN_HEIGHT }}
         className={cn(
@@ -174,9 +176,9 @@ export function AddNoteInline({
         )}
       />
 
-      {quickTags.length > 0 && (
+      {availableTags.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {quickTags.map((tag) => {
+          {availableTags.map((tag) => {
             const active = tags.includes(tag);
             return (
               <button
