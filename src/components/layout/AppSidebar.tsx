@@ -427,22 +427,22 @@ export function AppSidebar() {
         className={cn(
           "fixed inset-y-0 left-0 z-[60] hidden h-[100dvh] shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:flex lg:h-screen lg:shadow-none",
           mobileOpen && "flex crm-sidebar-mobile-open",
-          collapsed ? "w-[56px] lg:w-[56px]" : "w-[min(20rem,86vw)] lg:w-[224px]",
+          collapsed ? "w-[60px] lg:w-[60px]" : "w-[min(20rem,86vw)] lg:w-[260px]",
         )}
       >
-        <div className={cn("flex h-14 shrink-0 items-center border-b border-sidebar-border", collapsed ? "justify-center px-0" : "justify-between px-3")}>
+        <div className={cn("flex h-14 shrink-0 items-center border-b border-sidebar-border", collapsed ? "justify-center px-0" : "justify-between px-4")}>
           <Link to="/dashboard" className="flex min-w-0 items-center gap-2" onClick={() => setMobileOpen(false)}>
             {collapsed ? (
               <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary">
                 {logoUrl ? <img src={logoUrl} alt={companyName} className="h-5 w-5 object-contain" /> : <Settings className="h-4 w-4 text-sidebar-primary-foreground" />}
               </span>
             ) : (
-              <img src={logoUrl} alt={companyName} className="h-7 w-auto max-w-[160px] object-contain" />
+              <img src={logoUrl} alt={companyName} className="h-7 w-auto max-w-[170px] object-contain" />
             )}
           </Link>
         </div>
 
-        <nav className="flex-1 overflow-x-hidden overflow-y-auto px-1.5 py-2 scrollbar-thin">
+        <nav className="flex-1 overflow-x-hidden overflow-y-auto px-2 py-2.5 scrollbar-thin">
           {navSections.map((section, sectionIndex) => {
             const visibleItems = section.items.filter((it) => !it.superAdminOnly || isSuperAdmin)
             if (visibleItems.length === 0) return null
@@ -457,7 +457,7 @@ export function AppSidebar() {
             return (
               <div
                 key={section.label}
-                className={cn(sectionIndex > 0 && "mt-1.5 border-t border-sidebar-border/40 pt-1.5")}
+                className={cn(sectionIndex > 0 && "mt-2 border-t border-sidebar-border/40 pt-2")}
                 onMouseLeave={handleSectionMouseLeave}
               >
                 {!collapsed ? (
@@ -466,49 +466,49 @@ export function AppSidebar() {
                     onClick={() => handleSectionClick(section.label)}
                     onMouseEnter={() => handleSectionMouseEnter(section.label)}
                     className={cn(
-                      "group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left transition-all duration-150 cursor-pointer select-none",
+                      "group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition-all duration-150 cursor-pointer select-none",
                       isOpen
                         ? cn("bg-sidebar-accent text-sidebar-foreground shadow-xs border-l-[3px]", section.color.activeBorder, section.color.activeBg)
                         : sectionHasActive
-                        ? "text-sidebar-foreground/95 bg-sidebar-accent/30 hover:bg-sidebar-accent/50"
-                        : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/35",
+                        ? "text-sidebar-foreground/95 bg-sidebar-accent/35 hover:bg-sidebar-accent/55"
+                        : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/40",
                     )}
                   >
-                    <span className="flex items-center gap-2 min-w-0">
+                    <span className="flex items-center gap-2.5 min-w-0">
                       <span
                         className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[11px] transition-transform duration-150 group-hover:scale-105",
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs transition-transform duration-150 group-hover:scale-105",
                           section.color.badgeBg,
                           section.color.badgeText,
                           section.color.badgeBorder,
                         )}
                       >
-                        <SectionIcon className="h-3.5 w-3.5" />
+                        <SectionIcon className="h-4 w-4" />
                       </span>
-                      <span className="truncate text-xs font-semibold tracking-wide">
+                      <span className="truncate text-sm font-semibold tracking-normal">
                         {section.label}
                       </span>
                     </span>
                     <span className="flex items-center gap-1.5 shrink-0">
                       {Boolean(sectionBadgeTotal > 0) && (
-                        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground animate-pulse">
+                        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground animate-pulse">
                           {sectionBadgeTotal > 99 ? "99+" : sectionBadgeTotal}
                         </span>
                       )}
                       {sectionHasActive && !isOpen && !sectionBadgeTotal && (
-                        <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", section.color.dot)} />
+                        <span className={cn("h-2 w-2 rounded-full animate-pulse", section.color.dot)} />
                       )}
                       <ChevronDown
                         className={cn(
-                          "h-3.5 w-3.5 text-muted-foreground/60 transition-transform duration-200 group-hover:text-sidebar-foreground",
+                          "h-4 w-4 text-muted-foreground/60 transition-transform duration-200 group-hover:text-sidebar-foreground",
                           !isOpen && "-rotate-90",
                         )}
                       />
                     </span>
                   </button>
                 ) : (
-                  <div className="flex justify-center py-1">
-                    <span className={cn("h-1 w-4 rounded-full opacity-60", section.color.dot)} />
+                  <div className="flex justify-center py-1.5">
+                    <span className={cn("h-1 w-5 rounded-full opacity-60", section.color.dot)} />
                   </div>
                 )}
 
@@ -516,13 +516,13 @@ export function AppSidebar() {
                   <div
                     className={cn(
                       !collapsed && cn(
-                        "mt-1 ml-3.5 pl-2 py-0.5 border-l-2 space-y-0.5 animate-in fade-in-50 duration-150 rounded-r-md",
+                        "mt-1.5 ml-3 pl-2.5 py-1 border-l-2 space-y-1 animate-in fade-in-50 duration-150 rounded-r-lg",
                         section.color.interiorBorder,
                         section.color.interiorBg,
                       ),
                     )}
                   >
-                    <ul className="space-y-0.5">
+                    <ul className="space-y-1">
                       {visibleItems.map((item) => {
                         const Icon = item.icon
                         const badge = badgeFor(item.badgeKey, item.path)
@@ -540,24 +540,24 @@ export function AppSidebar() {
                                     to={item.path}
                                     onClick={() => setMobileOpen(false)}
                                     className={cn(
-                                      "relative mx-auto flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+                                      "relative mx-auto flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
                                       active
                                         ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-xs"
-                                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                                        : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                                     )}
                                   >
-                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <Icon className="h-4.5 w-4.5 shrink-0" />
                                     {Boolean(badge) && (
-                                      <span className="absolute right-0 top-0 flex h-3 min-w-3 items-center justify-center rounded-full bg-destructive px-0.5 text-[9px] font-bold text-destructive-foreground">
+                                      <span className="absolute right-0 top-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive px-0.5 text-[9px] font-bold text-destructive-foreground">
                                         {badge! > 99 ? "99+" : badge}
                                       </span>
                                     )}
                                   </Link>
                                 </TooltipTrigger>
-                                <TooltipContent side="right" className="flex items-center gap-1.5">
+                                <TooltipContent side="right" className="flex items-center gap-1.5 text-xs">
                                   <span className={cn("h-1.5 w-1.5 rounded-full", section.color.dot)} />
-                                  <span className="font-medium">{item.label}</span>
-                                  <span className="text-[10px] text-muted-foreground">({section.label})</span>
+                                  <span className="font-semibold">{item.label}</span>
+                                  <span className="text-[11px] text-muted-foreground">({section.label})</span>
                                 </TooltipContent>
                               </Tooltip>
                             </li>
@@ -576,18 +576,18 @@ export function AppSidebar() {
                                   }
                                 }}
                                 className={cn(
-                                  "relative flex h-8.5 flex-1 items-center gap-2.5 rounded-lg px-2 text-sm transition-colors",
+                                  "relative flex h-9.5 flex-1 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors",
                                   active && !hasActiveChild
-                                    ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-xs"
+                                    ? "bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-xs"
                                     : active
-                                    ? "text-sidebar-foreground font-medium hover:bg-sidebar-accent"
-                                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                                    ? "text-sidebar-foreground font-semibold hover:bg-sidebar-accent"
+                                    : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground font-medium",
                                 )}
                               >
-                                <Icon className="h-4 w-4 shrink-0" />
-                                <span className="min-w-0 flex-1 truncate text-xs">{item.label}</span>
+                                <Icon className="h-4.5 w-4.5 shrink-0" />
+                                <span className="min-w-0 flex-1 truncate text-[13.5px] leading-tight">{item.label}</span>
                                 {Boolean(badge) && (
-                                  <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
                                     {badge! > 99 ? "99+" : badge}
                                   </span>
                                 )}
@@ -601,11 +601,11 @@ export function AppSidebar() {
                                     toggleSubmenu(item.label)
                                   }}
                                   aria-label={isSubOpen ? `Fechar ${item.label}` : `Abrir ${item.label}`}
-                                  className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors mr-1 cursor-pointer"
+                                  className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors mr-1 cursor-pointer"
                                 >
                                   <ChevronDown
                                     className={cn(
-                                      "h-3.5 w-3.5 transition-transform duration-200",
+                                      "h-4 w-4 transition-transform duration-200",
                                       !isSubOpen && "-rotate-90",
                                     )}
                                   />
@@ -614,7 +614,7 @@ export function AppSidebar() {
                             </div>
 
                             {hasChildren && isSubOpen && (
-                              <ul className="ml-3.5 space-y-0.5 border-l border-sidebar-border/60 py-0.5 pl-2">
+                              <ul className="ml-4 space-y-1 border-l border-sidebar-border/60 py-1 pl-2.5">
                                 {item.children!.map((child) => {
                                   const childActive = isActive(child.path, true)
                                   const childBadge = badgeFor(child.badgeKey, child.path)
@@ -624,20 +624,20 @@ export function AppSidebar() {
                                         to={child.path}
                                         onClick={() => setMobileOpen(false)}
                                         className={cn(
-                                          "group flex h-7 items-center gap-2 rounded-md px-2 text-xs transition-colors",
+                                          "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-xs transition-colors",
                                           childActive
                                             ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
-                                            : "text-sidebar-foreground/65 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                                         )}
                                       >
                                         {child.dotClass ? (
-                                          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", child.dotClass)} />
+                                          <span className={cn("h-2 w-2 rounded-full shrink-0", child.dotClass)} />
                                         ) : (
-                                          <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-sidebar-border group-hover:bg-sidebar-foreground/50" />
+                                          <span className="h-2 w-2 rounded-full shrink-0 bg-sidebar-border group-hover:bg-sidebar-foreground/50" />
                                         )}
-                                        <span className="min-w-0 flex-1 truncate">{child.label}</span>
+                                        <span className="min-w-0 flex-1 truncate text-[12.5px]">{child.label}</span>
                                         {Boolean(childBadge) && (
-                                          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive/15 px-1 text-[9px] font-bold text-destructive">
+                                          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-destructive/15 px-1.5 text-[9px] font-bold text-destructive">
                                             {childBadge > 99 ? "99+" : childBadge}
                                           </span>
                                         )}
@@ -659,16 +659,16 @@ export function AppSidebar() {
         </nav>
 
         {/* Footer Actions */}
-        <div className="shrink-0 space-y-0.5 border-t border-sidebar-border px-1.5 py-2">
+        <div className="shrink-0 space-y-1 border-t border-sidebar-border px-2 py-2.5">
           <button
             type="button"
             onClick={openSearch}
             className={cn(
-              "flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
-              collapsed ? "mx-auto h-9 w-9 justify-center" : "h-9 w-full gap-2.5 px-2.5 text-sm",
+              "flex items-center rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-9.5 w-full gap-2.5 px-2.5 text-sm font-medium",
             )}
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-4.5 w-4.5" />
             {!collapsed && <span>Pesquisar</span>}
           </button>
           <ThemeToggle collapsed={collapsed} />
@@ -676,22 +676,22 @@ export function AppSidebar() {
             type="button"
             onClick={() => signOut()}
             className={cn(
-              "flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-destructive transition-colors",
-              collapsed ? "mx-auto h-9 w-9 justify-center" : "h-9 w-full gap-2.5 px-2.5 text-sm",
+              "flex items-center rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-destructive transition-colors",
+              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-9.5 w-full gap-2.5 px-2.5 text-sm font-medium",
             )}
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4.5 w-4.5" />
             {!collapsed && <span>Sair</span>}
           </button>
           <button
             type="button"
             onClick={() => setCollapsed((value) => !value)}
             className={cn(
-              "hidden items-center rounded-lg text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors lg:flex",
-              collapsed ? "mx-auto h-9 w-9 justify-center" : "h-9 w-full gap-2.5 px-2.5 text-sm",
+              "hidden items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors lg:flex",
+              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-9.5 w-full gap-2.5 px-2.5 text-sm font-medium",
             )}
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <><ChevronLeft className="h-4 w-4" /><span>Colapsar menu</span></>}
+            {collapsed ? <ChevronRight className="h-4.5 w-4.5" /> : <><ChevronLeft className="h-4.5 w-4.5" /><span>Colapsar menu</span></>}
           </button>
         </div>
       </aside>
