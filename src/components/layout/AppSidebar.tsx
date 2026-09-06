@@ -1,12 +1,16 @@
 import { Link, useLocation } from "react-router-dom"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
+  BarChart3,
   Building2,
+  Cable,
   CalendarCheck2,
+  CalendarClock,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronsRight,
+  Factory,
+  FileText,
   IdCard,
   Inbox,
   Kanban,
@@ -15,15 +19,24 @@ import {
   Mail,
   MessageCircle,
   MessagesSquare,
+  Package,
   Phone,
+  Plug,
   Search,
   SendHorizontal,
+  Settings,
+  Share2,
+  ShoppingBag,
+  ShoppingCart,
   UserCog,
   Users,
+  Wrench,
+  Zap,
   type LucideIcon,
 } from "lucide-react"
 
 import { useAuth } from "@/contexts/AuthContext"
+import { isSuperAdminEmail } from "@/lib/superadmin"
 import { useEmailUnassignedCount } from "@/hooks/useEmailThreads"
 import { useChannelBadgeCounts } from "@/hooks/useChannelBadgeCounts"
 import { useCompanySettings } from "@/hooks/useSettings"
@@ -32,7 +45,6 @@ import { useGlobalSearchStore } from "@/store/globalSearchStore"
 import { useNotificationStore } from "@/store/notificationStore"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { MoreSheet } from "./MoreSheet"
 
 export interface SubNavItem {
   label: string
@@ -46,15 +58,27 @@ export interface NavItem {
   label: string
   path: string
   badgeKey?: string
+  superAdminOnly?: boolean
   children?: SubNavItem[]
 }
 
-const navSections: Array<{ label: string; items: NavItem[] }> = [
+export interface NavSection {
+  label: string
+  items: NavItem[]
+}
+
+const navSections: NavSection[] = [
   {
     label: "Operação",
     items: [
       { icon: CalendarCheck2, label: "Hoje", path: "/" },
       { icon: LayoutDashboard, label: "Indicadores", path: "/painel" },
+      { icon: Package, label: "Encomendas", path: "/pedidos" },
+      { icon: ShoppingCart, label: "Carrinhos", path: "/carrinhos" },
+      { icon: Factory, label: "Fornecedores", path: "/fornecedores" },
+      { icon: Mail, label: "Newsletter", path: "/newsletter" },
+      { icon: Share2, label: "Redes Sociais", path: "/social" },
+      { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
     ],
   },
   {
@@ -87,6 +111,7 @@ const navSections: Array<{ label: string; items: NavItem[] }> = [
           { label: "Apoio ao Cliente", path: "/email?mailbox=apoio.cliente@hotelequip.pt", dotClass: "bg-blue-500" },
         ],
       },
+      { icon: Cable, label: "Canais", path: "/canais" },
     ],
   },
   {
@@ -95,6 +120,9 @@ const navSections: Array<{ label: string; items: NavItem[] }> = [
       { icon: UserCog, label: "Leads", path: "/leads" },
       { icon: Kanban, label: "Pipeline", path: "/pipeline" },
       { icon: SendHorizontal, label: "Propostas", path: "/propostas" },
+      { icon: FileText, label: "Orçamentos", path: "/orcamentos" },
+      { icon: CalendarClock, label: "Agenda", path: "/agenda" },
+      { icon: ShoppingBag, label: "Loja", path: "/loja" },
     ],
   },
   {
@@ -105,34 +133,64 @@ const navSections: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: "Definições",
+    label: "Sistema",
     items: [
-      { icon: Building2, label: "Definições", path: "/definicoes" },
+      { icon: Settings, label: "Definições", path: "/definicoes" },
+      { icon: Users, label: "Utilizadores", path: "/utilizadores" },
+      { icon: Zap, label: "Workflows", path: "/definicoes/workflows" },
+      { icon: Plug, label: "Integrações", path: "/integracoes", superAdminOnly: true },
+      { icon: Wrench, label: "Dev Tools", path: "/developer-tools", superAdminOnly: true },
     ],
   },
 ]
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar:v2:collapsed"
-const SIDEBAR_SECTIONS_STATE_KEY = "sidebar:v2:sections"
+const SIDEBAR_ACTIVE_SECTION_KEY = "sidebar:v2:active_section"
 const SIDEBAR_SUBMENUS_STATE_KEY = "sidebar:v2:submenus"
 
 export function AppSidebar() {
   const location = useLocation()
+  const { signOut, user } = useAuth()
+  const isSuperAdmin = isSuperAdminEmail(user?.email)
+
   const [collapsed, setCollapsed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1",
   )
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem(SIDEBAR_SECTIONS_STATE_KEY)
-      if (saved) return JSON.parse(saved)
-    } catch {}
-    return {
-      "Operação": true,
-      "Comunicações": true,
-      "Vendas": true,
-      "Base": true,
-      "Definições": true,
+
+  const currentPath = `${location.pathname}${location.search}`
+  const isActive = (path: string, exact: boolean = false) => {
+    if (currentPath === path) return true
+    if (path === "/" && (location.pathname === "/" || location.pathname === "/hoje")) return true
+    if (path === "/customer360-shell" && (location.pathname.startsWith("/customer360") || location.pathname.startsWith("/clientes"))) return true
+    if (path === "/comunicacoes?channel=whatsapp" && location.pathname === "/comunicacoes" && (!location.search || location.search === "?channel=whatsapp")) return true
+    if (path === "/comunicacoes?channel=telecof" && (location.pathname === "/telecof" || (location.pathname === "/comunicacoes" && location.search === "?channel=telecof"))) return true
+    if (path === "/email") {
+      if (exact) {
+        return location.pathname === "/email" && !location.search
+      }
+      return location.pathname === "/email"
     }
+    if (!exact && !path.includes("?") && path !== "/" && location.pathname.startsWith(path)) return true
+    return false
+  }
+
+  // Identifica a secção correspondente à rota atual
+  const findSectionForCurrentPath = (): string | null => {
+    for (const section of navSections) {
+      const match = section.items.some(
+        (it) => isActive(it.path) || it.children?.some((ch) => isActive(ch.path, true)),
+      )
+      if (match) return section.label
+    }
+    return null
+  }
+
+  // Accordion Exclusivo: Apenas uma secção aberta de cada vez
+  const [activeSection, setActiveSection] = useState<string | null>(() => {
+    if (typeof window === "undefined") return "Operação"
+    const saved = localStorage.getItem(SIDEBAR_ACTIVE_SECTION_KEY)
+    if (saved) return saved
+    return "Operação"
   })
 
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>(() => {
@@ -146,9 +204,9 @@ export function AppSidebar() {
     }
   })
 
-  const [moreOpen, setMoreOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { signOut } = useAuth()
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const { data: settings } = useCompanySettings()
   const unreadCount = useNotificationStore((s) => s.badgeCounts.unreadCount)
   const { data: emailUnassignedCount } = useEmailUnassignedCount()
@@ -158,14 +216,44 @@ export function AppSidebar() {
   const logoUrl = (settings as any)?.logo_url || "https://files.hotelequip.pt/public/logo.png"
   const companyName = (settings as any)?.name || "CRM Hotelequip"
 
-  const toggleSection = (label: string) => {
-    setOpenSections((prev) => {
-      const next = { ...prev, [label]: prev[label] === false ? true : false }
+  // Gestão de abertura por clique (accordion exclusivo)
+  const handleSectionClick = (label: string) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    setActiveSection((current) => {
+      const next = current === label ? null : label
       try {
-        localStorage.setItem(SIDEBAR_SECTIONS_STATE_KEY, JSON.stringify(next))
+        if (next) {
+          localStorage.setItem(SIDEBAR_ACTIVE_SECTION_KEY, next)
+        } else {
+          localStorage.removeItem(SIDEBAR_ACTIVE_SECTION_KEY)
+        }
       } catch {}
       return next
     })
+  }
+
+  // Gestão de abertura por hover (passar com o rato com debounce de 180ms)
+  const handleSectionMouseEnter = (label: string) => {
+    if (collapsed) return
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setActiveSection(label)
+      try {
+        localStorage.setItem(SIDEBAR_ACTIVE_SECTION_KEY, label)
+      } catch {}
+    }, 180)
+  }
+
+  const handleSectionMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
   }
 
   const toggleSubmenu = (label: string) => {
@@ -177,6 +265,15 @@ export function AppSidebar() {
       return next
     })
   }
+
+  // Limpeza de timers no unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const toggle = () => setMobileOpen((open) => !open)
@@ -200,40 +297,17 @@ export function AppSidebar() {
     return () => window.removeEventListener("keydown", closeOnEscape)
   }, [])
 
-  const currentPath = `${location.pathname}${location.search}`
-  const isActive = (path: string, exact: boolean = false) => {
-    if (currentPath === path) return true
-    if (path === "/" && (location.pathname === "/" || location.pathname === "/hoje")) return true
-    if (path === "/customer360-shell" && (location.pathname.startsWith("/customer360") || location.pathname.startsWith("/clientes"))) return true
-    if (path === "/comunicacoes?channel=whatsapp" && location.pathname === "/comunicacoes" && (!location.search || location.search === "?channel=whatsapp")) return true
-    if (path === "/comunicacoes?channel=telecof" && (location.pathname === "/telecof" || (location.pathname === "/comunicacoes" && location.search === "?channel=telecof"))) return true
-    if (path === "/email") {
-      if (exact) {
-        return location.pathname === "/email" && !location.search
-      }
-      return location.pathname === "/email"
-    }
-    if (!exact && !path.includes("?") && path !== "/" && location.pathname.startsWith(path)) return true
-    return false
-  }
-
-  // Auto-expand section & submenu if active path is inside it
+  // Auto-expandir secção e submenu se a rota ativa mudar
   useEffect(() => {
-    for (const section of navSections) {
-      const sectionHasActive = section.items.some(
-        (it) => isActive(it.path) || it.children?.some((ch) => isActive(ch.path, true)),
-      )
-      if (sectionHasActive) {
-        setOpenSections((prev) => {
-          if (prev[section.label] !== false) return prev
-          const next = { ...prev, [section.label]: true }
-          try {
-            localStorage.setItem(SIDEBAR_SECTIONS_STATE_KEY, JSON.stringify(next))
-          } catch {}
-          return next
-        })
-      }
+    const currentSection = findSectionForCurrentPath()
+    if (currentSection && activeSection !== currentSection) {
+      setActiveSection(currentSection)
+      try {
+        localStorage.setItem(SIDEBAR_ACTIVE_SECTION_KEY, currentSection)
+      } catch {}
+    }
 
+    for (const section of navSections) {
       for (const item of section.items) {
         if (item.children?.some((ch) => isActive(ch.path, true))) {
           setOpenSubmenus((prev) => {
@@ -277,14 +351,14 @@ export function AppSidebar() {
         className={cn(
           "fixed inset-y-0 left-0 z-[60] hidden h-[100dvh] shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:flex lg:h-screen lg:shadow-none",
           mobileOpen && "flex crm-sidebar-mobile-open",
-          collapsed ? "w-[52px] lg:w-[52px]" : "w-[min(20rem,86vw)] lg:w-[220px]",
+          collapsed ? "w-[56px] lg:w-[56px]" : "w-[min(20rem,86vw)] lg:w-[224px]",
         )}
       >
         <div className={cn("flex h-14 shrink-0 items-center border-b border-sidebar-border", collapsed ? "justify-center px-0" : "justify-between px-3")}>
           <Link to="/dashboard" className="flex min-w-0 items-center gap-2" onClick={() => setMobileOpen(false)}>
             {collapsed ? (
               <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary">
-                {logoUrl ? <img src={logoUrl} alt={companyName} className="h-5 w-5 object-contain" /> : <Building2 className="h-4 w-4 text-sidebar-primary-foreground" />}
+                {logoUrl ? <img src={logoUrl} alt={companyName} className="h-5 w-5 object-contain" /> : <Settings className="h-4 w-4 text-sidebar-primary-foreground" />}
               </span>
             ) : (
               <img src={logoUrl} alt={companyName} className="h-7 w-auto max-w-[160px] object-contain" />
@@ -294,25 +368,54 @@ export function AppSidebar() {
 
         <nav className="flex-1 overflow-x-hidden overflow-y-auto px-1.5 py-2 scrollbar-thin">
           {navSections.map((section, sectionIndex) => {
-            const isOpen = openSections[section.label] !== false
+            const visibleItems = section.items.filter((it) => !it.superAdminOnly || isSuperAdmin)
+            if (visibleItems.length === 0) return null
+
+            const isOpen = activeSection === section.label
+            const sectionHasActive = visibleItems.some(
+              (it) => isActive(it.path) || it.children?.some((ch) => isActive(ch.path, true)),
+            )
+
             return (
-              <div key={section.label} className={cn(sectionIndex > 0 && "mt-2 border-t border-sidebar-border/60 pt-2")}>
+              <div
+                key={section.label}
+                className={cn(sectionIndex > 0 && "mt-1.5 border-t border-sidebar-border/50 pt-1.5")}
+                onMouseLeave={handleSectionMouseLeave}
+              >
                 {!collapsed ? (
                   <button
                     type="button"
-                    onClick={() => toggleSection(section.label)}
-                    className="sidebar-group-label group flex w-full items-center justify-between px-2.5 pb-1.5 pt-1 text-left transition-colors hover:text-sidebar-foreground cursor-pointer select-none"
+                    onClick={() => handleSectionClick(section.label)}
+                    onMouseEnter={() => handleSectionMouseEnter(section.label)}
+                    className={cn(
+                      "sidebar-group-label group flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs font-semibold uppercase tracking-wider transition-all duration-150 cursor-pointer select-none",
+                      isOpen
+                        ? "text-sidebar-foreground bg-sidebar-accent/60 shadow-xs"
+                        : sectionHasActive
+                        ? "text-sidebar-foreground/90 hover:bg-sidebar-accent/40"
+                        : "text-muted-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30",
+                    )}
                   >
-                    <span>{section.label}</span>
-                    <span className="text-muted-foreground/50 transition-colors group-hover:text-sidebar-foreground">
-                      {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                    <span className="flex items-center gap-1.5">
+                      {sectionHasActive && !isOpen && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
+                      )}
+                      <span>{section.label}</span>
+                    </span>
+                    <span className="text-muted-foreground/60 transition-transform duration-200 group-hover:text-sidebar-foreground">
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 transition-transform duration-200",
+                          !isOpen && "-rotate-90",
+                        )}
+                      />
                     </span>
                   </button>
                 ) : null}
 
                 {(collapsed || isOpen) && (
-                  <ul className="space-y-0.5">
-                    {section.items.map((item) => {
+                  <ul className={cn("space-y-0.5 mt-0.5", !collapsed && "animate-in fade-in-50 duration-150")}>
+                    {visibleItems.map((item) => {
                       const Icon = item.icon
                       const badge = badgeFor(item.badgeKey, item.path)
                       const hasChildren = Boolean(item.children && item.children.length > 0)
@@ -329,7 +432,7 @@ export function AppSidebar() {
                                   to={item.path}
                                   onClick={() => setMobileOpen(false)}
                                   className={cn(
-                                    "relative mx-auto flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+                                    "relative mx-auto flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
                                     active
                                       ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
                                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
@@ -337,13 +440,16 @@ export function AppSidebar() {
                                 >
                                   <Icon className="h-4 w-4 shrink-0" />
                                   {Boolean(badge) && (
-                                    <span className="absolute right-0.5 top-0.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                                    <span className="absolute right-0 top-0 flex h-3 min-w-3 items-center justify-center rounded-full bg-destructive px-0.5 text-[9px] font-bold text-destructive-foreground">
                                       {badge! > 99 ? "99+" : badge}
                                     </span>
                                   )}
                                 </Link>
                               </TooltipTrigger>
-                              <TooltipContent side="right">{item.label}</TooltipContent>
+                              <TooltipContent side="right">
+                                <span>{item.label}</span>
+                                <span className="block text-[10px] text-muted-foreground">{section.label}</span>
+                              </TooltipContent>
                             </Tooltip>
                           </li>
                         )
@@ -361,12 +467,12 @@ export function AppSidebar() {
                                 }
                               }}
                               className={cn(
-                                "relative flex h-10 flex-1 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors",
+                                "relative flex h-9 flex-1 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors",
                                 active && !hasActiveChild
-                                  ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
+                                  ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-xs"
                                   : active
                                   ? "text-sidebar-foreground font-medium hover:bg-sidebar-accent"
-                                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                               )}
                             >
                               <Icon className="h-4 w-4 shrink-0" />
@@ -386,7 +492,7 @@ export function AppSidebar() {
                                   toggleSubmenu(item.label)
                                 }}
                                 aria-label={isSubOpen ? `Fechar ${item.label}` : `Abrir ${item.label}`}
-                                className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors mr-1 cursor-pointer"
+                                className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors mr-1 cursor-pointer"
                               >
                                 <ChevronDown
                                   className={cn(
@@ -409,7 +515,7 @@ export function AppSidebar() {
                                       to={child.path}
                                       onClick={() => setMobileOpen(false)}
                                       className={cn(
-                                        "group flex h-8 items-center gap-2 rounded-md px-2 text-xs transition-colors",
+                                        "group flex h-7 items-center gap-2 rounded-md px-2 text-xs transition-colors",
                                         childActive
                                           ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
                                           : "text-sidebar-foreground/65 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
@@ -440,28 +546,16 @@ export function AppSidebar() {
               </div>
             )
           })}
-          <div className="mt-2 border-t border-sidebar-border/60 pt-2">
-            <button
-              type="button"
-              onClick={() => setMoreOpen(true)}
-              className={cn(
-                "flex items-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm",
-              )}
-            >
-              <ChevronsRight className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>Mais módulos</span>}
-            </button>
-          </div>
         </nav>
 
+        {/* Footer Actions */}
         <div className="shrink-0 space-y-0.5 border-t border-sidebar-border px-1.5 py-2">
           <button
             type="button"
             onClick={openSearch}
             className={cn(
-              "flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm",
+              "flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+              collapsed ? "mx-auto h-9 w-9 justify-center" : "h-9 w-full gap-2.5 px-2.5 text-sm",
             )}
           >
             <Search className="h-4 w-4" />
@@ -472,8 +566,8 @@ export function AppSidebar() {
             type="button"
             onClick={() => signOut()}
             className={cn(
-              "flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-destructive",
-              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm",
+              "flex items-center rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-destructive transition-colors",
+              collapsed ? "mx-auto h-9 w-9 justify-center" : "h-9 w-full gap-2.5 px-2.5 text-sm",
             )}
           >
             <LogOut className="h-4 w-4" />
@@ -483,15 +577,14 @@ export function AppSidebar() {
             type="button"
             onClick={() => setCollapsed((value) => !value)}
             className={cn(
-              "hidden items-center rounded-lg text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:flex",
-              collapsed ? "mx-auto h-10 w-10 justify-center" : "h-10 w-full gap-2.5 px-2.5 text-sm",
+              "hidden items-center rounded-lg text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors lg:flex",
+              collapsed ? "mx-auto h-9 w-9 justify-center" : "h-9 w-full gap-2.5 px-2.5 text-sm",
             )}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <><ChevronLeft className="h-4 w-4" /><span>Colapsar menu</span></>}
           </button>
         </div>
       </aside>
-      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
     </>
   )
 }
