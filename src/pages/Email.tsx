@@ -11,12 +11,14 @@ import { useAllThreadsLite } from "@/hooks/useAllThreadsLite";
 import { useRealCrmMetrics } from "@/hooks/useRealCrmMetrics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { Search, Inbox, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 // ─── Configurable categories ──────────────────────────────────────────────
 const EMAIL_CATEGORIES = [
-  { key: "", label: "Todas" },
+  { key: "foco_comercial", label: "⭐ Clientes & Negócios" },
+  { key: "", label: "Todas (sem ruído)" },
   { key: "pedido_orcamento", label: "Pedidos de orçamento" },
   { key: "followup_cliente", label: "Follow-ups" },
   { key: "reclamacao", label: "Reclamações" },
@@ -26,7 +28,7 @@ const EMAIL_CATEGORIES = [
   { key: "fatura_administrativo", label: "Faturas" },
   { key: "outro", label: "Outro" },
   { key: "no_reply", label: "Automáticos", muted: true },
-  { key: "spam", label: "Spam", muted: true },
+  { key: "spam", label: "Spam / Ruído", muted: true },
 ] as const;
 
 const MAILBOXES = [
@@ -47,6 +49,7 @@ const URGENT_TOAST_KEY = "email_urgent_seen";
 
 export default function Email() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { employee } = useCurrentEmployee();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -54,7 +57,7 @@ export default function Email() {
   const [search, setSearch] = useState("");
   const [activeMailbox, setActiveMailbox] = useState(() => searchParams.get("mailbox") || "");
   const [activeStatus, setActiveStatus] = useState("");
-  const [activeCategory, setActiveCategory] = useState("");
+  const [activeCategory, setActiveCategory] = useState(() => searchParams.get("category") || "foco_comercial");
 
   // Keep state in sync with URL search param changes
   useEffect(() => {
@@ -89,23 +92,35 @@ export default function Email() {
   // Category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    const commercialCats = new Set(["pedido_orcamento", "followup_cliente", "reclamacao", "compra_cliente", "assistencia_tecnica"]);
+    let focoCount = 0;
     for (const t of threads ?? []) {
       const cat = t.category || "outro";
       counts[cat] = (counts[cat] || 0) + 1;
+      if (commercialCats.has(cat)) {
+        focoCount++;
+      }
     }
     counts[""] = (threads ?? []).length;
+    counts["foco_comercial"] = focoCount;
     return counts;
   }, [threads]);
 
   // Contagem de não-lidos (read_at === null) por categoria
   const unreadCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    const commercialCats = new Set(["pedido_orcamento", "followup_cliente", "reclamacao", "compra_cliente", "assistencia_tecnica"]);
+    let focoUnread = 0;
     for (const t of threads ?? []) {
       if (t.read_at) continue; // já lida
       const cat = t.category || "outro";
       counts[cat] = (counts[cat] || 0) + 1;
+      if (commercialCats.has(cat)) {
+        focoUnread++;
+      }
     }
     counts[""] = (threads ?? []).filter((t) => !t.read_at).length;
+    counts["foco_comercial"] = focoUnread;
     return counts;
   }, [threads]);
 
@@ -124,12 +139,30 @@ export default function Email() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threads]);
 
-  // Client-side search filter + ocultar ruído (spam/automáticos) da vista "Todas".
+  // Client-side search filter + ocultar ruído (spam/automáticos/chamadas perdidas) da vista comercial
   const MUTED_CATEGORIES = ["spam", "no_reply"];
+  const isNoiseEmail = (t: EmailThread) => {
+    const from = (t.from_address || "").toLowerCase();
+    const subj = (t.subject || "").toLowerCase();
+    return (
+      from.includes("telecof.net") ||
+      from.includes("cttexpress") ||
+      from.includes("notifications.ctt") ||
+      from.includes("no-reply") ||
+      from.includes("noreply") ||
+      subj.includes("chamada não atendida") ||
+      subj.includes("chamada perdida")
+    );
+  };
+
   const filtered = useMemo(() => {
     let list = threads ?? [];
     if (!MUTED_CATEGORIES.includes(activeCategory)) {
-      list = list.filter((t) => !MUTED_CATEGORIES.includes(t.category ?? ""));
+      list = list.filter((t) => !MUTED_CATEGORIES.includes(t.category ?? "") && !isNoiseEmail(t));
+    }
+    if (activeCategory === "foco_comercial") {
+      const commercialCats = new Set(["pedido_orcamento", "followup_cliente", "reclamacao", "compra_cliente", "assistencia_tecnica"]);
+      list = list.filter((t) => commercialCats.has(t.category ?? ""));
     }
     if (!search.trim()) return list;
     const q = search.toLowerCase();
@@ -137,6 +170,35 @@ export default function Email() {
       (t) => (t.subject ?? "").toLowerCase().includes(q) || (t.from_address ?? "").toLowerCase().includes(q)
     );
   }, [threads, search, activeCategory]);
+
+  const handleMarkAsNoise = async (thread: EmailThread) => {
+    try {
+      await directusRequest(`/items/email_threads/${encodeURIComponent(thread.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          category: "spam",
+          status: "closed",
+          closed_at: new Date().toISOString(),
+        }),
+      });
+      toast({
+        title: "Marcado como Ruído",
+        description: "Email arquivado e removido da caixa de entrada comercial.",
+      });
+      if (selectedThread?.id === thread.id) {
+        setSelectedThread(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ["email-threads"] });
+      queryClient.invalidateQueries({ queryKey: ["email-threads-unassigned-count"] });
+      queryClient.invalidateQueries({ queryKey: ["real-crm-metrics"] });
+    } catch (err: any) {
+      toast({
+        title: "Erro ao arquivar",
+        description: err?.message || "Não foi possível marcar como ruído",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSelect = (thread: EmailThread) => {
     setSelectedThread(thread);
@@ -328,6 +390,7 @@ export default function Email() {
               allThreads={allThreadsLite}
               onOpenThread={(id) => { const t = (threads ?? []).find(x => x.id === id) || (allThreadsLite ?? []).find(x => x.id === id); if (t) handleSelect(t as EmailThread); }}
               isSelected={selectedThread?.id === thread.id}
+              onMarkNoise={() => handleMarkAsNoise(thread)}
             />
           );
         })
@@ -351,6 +414,7 @@ export default function Email() {
         onBack={() => setSelectedThread(null)}
         onAssign={() => handleAssign(selectedThread)}
         onClose={handleClose}
+        onMarkNoise={() => handleMarkAsNoise(selectedThread)}
       />
     );
   };

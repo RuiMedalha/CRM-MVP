@@ -301,7 +301,7 @@ function QuotationPDFDocument({ quotation, items, company, customer, logoBase64 
     unit_price: n(i.unit_price),
     quantity: n(i.quantity) || 1,
     discount_percent: n(i.discount_percent),
-    iva_percent: n((i as any).iva_percent),
+    iva_percent: (i as any).iva_percent !== undefined && (i as any).iva_percent !== null && Number((i as any).iva_percent) > 0 ? n((i as any).iva_percent) : 23,
   }));
   const totals = calculateProposalTotals({
     items: engineItems,

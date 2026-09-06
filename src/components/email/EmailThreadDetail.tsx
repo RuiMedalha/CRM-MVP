@@ -1,8 +1,8 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { format } from "date-fns/format";
 import { pt } from "date-fns/locale";
-import { ArrowLeft, UserPlus, CheckCircle2, User, Copy, Bot, Reply, X, ExternalLink, ChevronDown } from "lucide-react";
+import { ArrowLeft, UserPlus, CheckCircle2, User, Copy, Bot, Reply, X, ExternalLink, ChevronDown, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useEmailMessages } from "@/hooks/useEmailThreads";
@@ -200,6 +200,7 @@ interface Props {
   onBack: () => void;
   onAssign: () => void;
   onClose: () => void;
+  onMarkNoise?: () => void;
 }
 
 /** Secção 3: Contexto do cliente no Email (negócios abertos, propostas, interações recentes) */
@@ -272,7 +273,7 @@ function EmailClientContext({ contactId }: { contactId: number | null }) {
   );
 }
 
-export function EmailThreadDetail({ thread, currentEmployeeId, onBack, onAssign, onClose }: Props) {
+export function EmailThreadDetail({ thread, currentEmployeeId, onBack, onAssign, onClose, onMarkNoise }: Props) {
   const { data: messages, isLoading: messagesLoading } = useEmailMessages(thread.id);
   const { toast } = useToast();
   const { search: searchProducts } = useMeilisearch();
@@ -563,6 +564,18 @@ Email:
           )}>
             {STATUS_LABELS[thread.status] ?? thread.status}
           </span>
+          {thread.status !== "closed" && onMarkNoise && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 px-2 ml-auto"
+              onClick={onMarkNoise}
+              title="Marcar como Ruído/Spam e arquivar"
+            >
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Ruído
+            </Button>
+          )}
         </div>
 
         {/* Agent assignment + Contact */}
@@ -914,6 +927,18 @@ Email:
           <Button size="sm" variant="outline" className="gap-1.5" onClick={onClose}>
             <CheckCircle2 className="h-3.5 w-3.5" />
             Marcar resolvido
+          </Button>
+        )}
+        {thread.status !== "closed" && onMarkNoise && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+            onClick={onMarkNoise}
+            title="Marcar como Ruído/Spam e arquivar"
+          >
+            <ShieldAlert className="h-3.5 w-3.5" />
+            Marcar Ruído
           </Button>
         )}
         <Button

@@ -124,6 +124,7 @@ export function StepContent() {
       sku,
       quantity: 1,
       unit_price: product.price || 0,
+      iva_percent: 23,
       line_total: product.price || 0,
       image_url: imageUrl,
       product_url: product.link || undefined,
@@ -145,6 +146,7 @@ export function StepContent() {
       ai_description: manualDesc.trim() || undefined,
       quantity: qty,
       unit_price: price,
+      iva_percent: 23,
       line_total: price * qty,
       manual_entry: true,
     };

@@ -146,7 +146,14 @@ function reducer(state: ProposalFormState, action: Action): ProposalFormState {
 
     case "ADD_ITEM": {
       const key = action.category === "additional" ? "additional_items" : "items";
-      return { ...state, [key]: [...state[key], action.item], isDirty: true };
+      const itemWithIva = {
+        ...action.item,
+        iva_percent:
+          action.item.iva_percent !== undefined && action.item.iva_percent !== null
+            ? action.item.iva_percent
+            : 23,
+      };
+      return { ...state, [key]: [...state[key], itemWithIva], isDirty: true };
     }
 
     case "REMOVE_ITEM": {

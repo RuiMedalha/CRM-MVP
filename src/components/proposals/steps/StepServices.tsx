@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useProposalForm } from "@/contexts/ProposalFormContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ const DEFAULT_SERVICES: (Omit<QuotationItem, "line_total"> & { defaultActive: bo
     ai_description: "Instalação completa do equipamento no local",
     quantity: 1,
     unit_price: 0,
+    iva_percent: 23,
     defaultActive: true,
   },
   {
@@ -26,6 +27,7 @@ const DEFAULT_SERVICES: (Omit<QuotationItem, "line_total"> & { defaultActive: bo
     ai_description: "Avaliação técnica no local antes da instalação",
     quantity: 1,
     unit_price: 50,
+    iva_percent: 23,
     defaultActive: true,
   },
   {
@@ -34,6 +36,7 @@ const DEFAULT_SERVICES: (Omit<QuotationItem, "line_total"> & { defaultActive: bo
     ai_description: "Formação para a equipa sobre o uso do equipamento",
     quantity: 1,
     unit_price: 0,
+    iva_percent: 23,
     defaultActive: true,
   },
   {
@@ -42,6 +45,7 @@ const DEFAULT_SERVICES: (Omit<QuotationItem, "line_total"> & { defaultActive: bo
     ai_description: "Transporte e entrega no local indicado",
     quantity: 1,
     unit_price: 0,
+    iva_percent: 23,
     defaultActive: true,
   },
 ];
@@ -126,6 +130,7 @@ export function StepServices() {
             ai_description: service.ai_description,
             quantity: service.quantity,
             unit_price: service.unit_price,
+            iva_percent: 23,
             line_total: service.quantity * service.unit_price,
           };
           dispatch({ type: "ADD_ITEM", item, category: "additional" });
@@ -145,6 +150,7 @@ export function StepServices() {
     if (active) {
       const item: QuotationItem = {
         ...service,
+        iva_percent: service.iva_percent ?? 23,
         line_total: service.quantity * service.unit_price,
       };
       dispatch({ type: "ADD_ITEM", item, category: "additional" });

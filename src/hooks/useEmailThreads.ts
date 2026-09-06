@@ -53,7 +53,7 @@ const THREAD_FIELDS = [
 function buildThreadParams(filters: EmailFilters): string {
   const parts: string[] = [
     `fields=${THREAD_FIELDS}`,
-    "limit=50",
+    "limit=100",
     "sort=-date_created",
     "filter[status][_neq]=invalid", // Exclude invalid/malformed threads (null mailbox, etc)
   ];
@@ -67,8 +67,13 @@ function buildThreadParams(filters: EmailFilters): string {
   if (filters.status) {
     parts.push(`filter[status][_eq]=${encodeURIComponent(filters.status)}`);
   }
-  if (filters.category) {
+  if (filters.category === "foco_comercial") {
+    parts.push("filter[category][_in]=pedido_orcamento,followup_cliente,reclamacao,compra_cliente,assistencia_tecnica");
+  } else if (filters.category) {
     parts.push(`filter[category][_eq]=${encodeURIComponent(filters.category)}`);
+  } else {
+    // Default view: omit spam and no_reply so real customer emails are not pushed off
+    parts.push("filter[category][_nin]=spam,no_reply");
   }
 
   return parts.join("&");
@@ -91,7 +96,7 @@ export function useEmailUnassignedCount() {
     queryKey: ["email-threads-unassigned-count"],
     queryFn: async (): Promise<number> => {
       const res = await directusRequest<{ data: Array<{ count: { id: number } }> }>(
-        "/items/email_threads?filter[assigned_to][_null]=true&filter[status][_neq]=closed&aggregate[count]=id"
+        "/items/email_threads?filter[assigned_to][_null]=true&filter[status][_neq]=closed&filter[category][_nin]=spam,no_reply&aggregate[count]=id"
       );
       return res?.data?.[0]?.count?.id ?? 0;
     },

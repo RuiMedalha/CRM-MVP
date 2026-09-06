@@ -1,6 +1,6 @@
-﻿import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { UserPlus, ShieldAlert } from "lucide-react";
 import type { EmailThread } from "@/hooks/useEmailThreads";
 import { findPotentialDuplicateThread } from "@/lib/emailDuplicateDetection";
 
@@ -98,9 +98,10 @@ interface Props {
   allThreads?: EmailThread[];
   onOpenThread?: (id: string) => void;
   isSelected?: boolean;
+  onMarkNoise?: () => void;
 }
 
-export function EmailThreadCard({ thread, onClick, onAssign, showAssign, allThreads, onOpenThread, isSelected }: Props) {
+export function EmailThreadCard({ thread, onClick, onAssign, showAssign, allThreads, onOpenThread, isSelected, onMarkNoise }: Props) {
   const urgency = URGENCY_CONFIG[thread.urgency] ?? URGENCY_CONFIG.normal;
   const category = CATEGORY_CONFIG[thread.category];
   const slaExceeded = isSlaExceeded(thread);
@@ -115,48 +116,57 @@ export function EmailThreadCard({ thread, onClick, onAssign, showAssign, allThre
 
   return (
     <div
-      role="button"
-      tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className={cn(
-        "relative rounded-lg border bg-card p-3 cursor-pointer transition-colors hover:bg-accent/50",
-        thread.status === "closed" && "opacity-60",
-        isSelected && "ring-2 ring-primary/40 bg-primary/5",
-        getBorderClass(thread)
+        "cursor-pointer rounded-lg border p-3 transition-colors hover:bg-accent/40 relative",
+        getBorderClass(thread),
+        isSelected && "bg-accent/60 ring-1 ring-primary/40",
+        thread.status === "closed" && "opacity-70 bg-muted/20"
       )}
     >
-      {/* Top row: badges + mailbox + SLA */}
-      <div className="flex items-center gap-1.5 flex-wrap mb-1">
-        <span className={cn("inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium", urgency.color)}>
-          {urgency.dot} {urgency.label}
+      {/* Top line: unread dot + mailbox + category + urgency */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {!thread.read_at && (
+          <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" title="Não lida" />
+        )}
+        <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-semibold tracking-wide", mailboxBadge.color)}>
+          {mailboxBadge.label}
         </span>
         {category && (
-          <span className={cn("inline-flex rounded px-1.5 py-0.5 text-xs font-medium", category.color)}>
+          <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium", category.color)}>
             {category.label}
           </span>
         )}
-        <span className={cn("inline-flex rounded px-1.5 py-0.5 text-xs font-medium", mailboxBadge.color)}>
-          📬 {mailboxBadge.label}
+        <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium flex items-center gap-1", urgency.color)}>
+          <span>{urgency.dot}</span>
+          <span>{urgency.label}</span>
         </span>
         {slaCountdown && (
-          <span className={cn("text-xs", slaCountdown.color)}>{slaCountdown.text}</span>
-        )}
-        {duplicate && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onOpenThread?.(duplicate.id); }}
-            className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors"
-            title={`Também recebido em ${duplicate.mailbox}`}
-          >
-            ⚠️ Também em {dupeMailbox?.label}
-          </button>
+          <span className={cn("text-xs whitespace-nowrap ml-auto", slaCountdown.color)}>
+            {slaCountdown.text}
+          </span>
         )}
       </div>
 
-      {/* Subject line */}
-      <div className="flex items-center gap-1 text-sm">
-        <span className="text-muted-foreground">👤</span>
+      {/* Potential duplicate badge */}
+      {duplicate && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenThread?.(duplicate.id);
+          }}
+          className="mt-1 flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 hover:underline cursor-pointer"
+        >
+          <span>⚠️ Possível duplicado de</span>
+          <span className={cn("rounded px-1 py-0.2 text-[10px] font-semibold", dupeMailbox?.color)}>
+            {dupeMailbox?.label}
+          </span>
+          <span className="truncate max-w-[160px] font-medium">#{duplicate.id.slice(0, 8)}</span>
+        </div>
+      )}
+
+      {/* From + Subject */}
+      <div className="flex items-baseline gap-1 mt-1 text-xs">
         <span className="font-medium truncate">{thread.from_address}</span>
         <span className="text-muted-foreground mx-0.5">→</span>
         <span className="truncate flex-1 text-foreground">{thread.subject || "(sem assunto)"}</span>
@@ -184,20 +194,32 @@ export function EmailThreadCard({ thread, onClick, onAssign, showAssign, allThre
         </span>
       </div>
 
-      {/* Assign button */}
-      {showAssign && (
-        <div className="flex justify-end mt-2">
+      {/* Quick Action buttons */}
+      <div className="flex justify-end gap-1.5 mt-2">
+        {onMarkNoise && thread.status !== "closed" && (
+          <Button
+            size="sm"
+            variant="ghost"
+            title="Marcar como Ruído/Spam e arquivar"
+            className="h-6 text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 px-1.5"
+            onClick={(e) => { e.stopPropagation(); onMarkNoise(); }}
+          >
+            <ShieldAlert className="h-3 w-3" />
+            Ruído
+          </Button>
+        )}
+        {showAssign && (
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs gap-1"
+            className="h-6 text-xs gap-1 px-2"
             onClick={(e) => { e.stopPropagation(); onAssign(); }}
           >
             <UserPlus className="h-3 w-3" />
             Assumir
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

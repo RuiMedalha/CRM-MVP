@@ -357,7 +357,7 @@ export async function duplicateQuotation(id: string): Promise<QuotationRow> {
         sku: item.sku,
         quantity: item.quantity,
         unit_price: item.unit_price,
-        iva_percent: item.iva_percent,
+        iva_percent: item.iva_percent ?? 23,
         cost_price: item.cost_price,
         discount_percent: item.discount_percent,
         line_total: item.line_total,

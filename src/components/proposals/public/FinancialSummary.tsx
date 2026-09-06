@@ -10,12 +10,19 @@ interface FinancialSummaryProps {
 
 export function FinancialSummary({ quotation, items }: FinancialSummaryProps) {
   // Motor financeiro canónico — cálculo único para todos os canais
-  const engineItems = items.map((i) => ({
-    unit_price: n(i.unit_price),
-    quantity: n(i.quantity) || 1,
-    discount_percent: n(i.discount_percent),
-    iva_percent: n((i as any).iva_percent),
-  }));
+  const engineItems = items.map((i) => {
+    const rawIva = (i as any).iva_percent;
+    const ivaVal =
+      rawIva !== undefined && rawIva !== null && String(rawIva).trim() !== "" && Number(rawIva) > 0
+        ? n(rawIva)
+        : 23;
+    return {
+      unit_price: n(i.unit_price),
+      quantity: n(i.quantity) || 1,
+      discount_percent: n(i.discount_percent),
+      iva_percent: ivaVal,
+    };
+  });
 
   const result = calculateProposalTotals({
     items: engineItems,

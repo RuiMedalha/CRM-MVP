@@ -16,7 +16,7 @@ export function StepPreview() {
     unit_price: i.unit_price || 0,
     quantity: i.quantity || 1,
     discount_percent: i.discount_percent || 0,
-    iva_percent: (i as any).iva_percent || 0,
+    iva_percent: (i as any).iva_percent ? Number((i as any).iva_percent) : 23,
   }));
   const totals = calculateProposalTotals({
     items: engineItems,

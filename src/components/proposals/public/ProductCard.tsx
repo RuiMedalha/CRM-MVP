@@ -18,7 +18,11 @@ export function ProductCard({ item, hasUrgency, canRemove, onRemove }: ProductCa
   const discount = n(item.discount_percent);
   const quantity = n(item.quantity);
   const lineTotal = n(item.line_total);
-  const ivaPct = n((item as any).iva_percent);
+  const rawIva = (item as any).iva_percent;
+  const ivaPct =
+    rawIva !== undefined && rawIva !== null && String(rawIva).trim() !== "" && Number(rawIva) > 0
+      ? n(rawIva)
+      : 23;
   const sku = (item as any).sku as string | undefined;
 
   // Meilisearch fields (may be stored in item directly or in ai_description/notes for legacy)
