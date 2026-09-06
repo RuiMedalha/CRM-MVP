@@ -33,7 +33,9 @@ interface OrganizationHeaderProps {
   dealsLost?: number;
   commercialScore?: number;
   lastContactDays?: number;
-  nextTask?: string;
+  // Actions
+  onNewProposal?: () => void;
+  onNewQuotation?: () => void;
 }
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "info" | "muted"> = {
@@ -63,18 +65,43 @@ export function OrganizationHeader({
   name, status, roles, assignedTo, lastActivity,
   city, phone, email, website, vatNumber, createdAt,
   annualValue, pipelineActive, dealsWon, dealsLost, commercialScore, lastContactDays, nextTask,
+  onNewProposal, onNewQuotation,
 }: OrganizationHeaderProps) {
   return (
-    <div className="flex items-start justify-between gap-6">
+    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
       {/* Left — Identity */}
       <div className="min-w-0 flex-1">
-          {/* Name + badges */}
+          {/* Name + badges + Quick CTA buttons */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
             <h1 className="text-xl font-bold text-foreground truncate">{name}</h1>
             <StatusBadge label={STATUS_LABEL[status] ?? status} variant={STATUS_VARIANT[status] ?? "muted"} size="sm" />
             {roles.map((r) => (
               <StatusBadge key={r} label={ROLE_LABEL[r] ?? r} variant="info" />
             ))}
+
+            {/* Prominent header action buttons */}
+            <div className="flex items-center gap-2 ml-auto sm:ml-2">
+              {onNewProposal && (
+                <button
+                  type="button"
+                  onClick={onNewProposal}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 active:scale-95 rounded-lg shadow-sm transition-all cursor-pointer"
+                  title="Criar nova proposta comercial com pré-visualização e PDF"
+                >
+                  <span className="text-sm leading-none font-bold">+</span> Nova Proposta
+                </button>
+              )}
+              {onNewQuotation && (
+                <button
+                  type="button"
+                  onClick={onNewQuotation}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 active:scale-95 rounded-lg shadow-sm transition-all cursor-pointer"
+                  title="Criar novo orçamento tradicional com discriminação de IVA e produtos"
+                >
+                  <span className="text-sm leading-none font-bold">+</span> Novo Orçamento
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Info line */}

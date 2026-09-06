@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -170,10 +170,57 @@ export function QuotationCreator({
       if (initialItems && initialItems.length > 0) {
         setItems(initialItems);
       } else if (items.length === 0) {
+        const draftKey = `hotelequip_quotation_draft_${contactId || "default"}`;
+        const stored = localStorage.getItem(draftKey) || localStorage.getItem("hotelequip_quotation_draft_default");
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+              setItems(parsed.items);
+              if (parsed.notes) setNotes(parsed.notes);
+              if (parsed.termsConditions) setTermsConditions(parsed.termsConditions);
+              if (parsed.internalNotes) setInternalNotes(parsed.internalNotes);
+              if (parsed.validUntil) setValidUntil(parsed.validUntil);
+              return;
+            }
+          } catch {
+            // ignore
+          }
+        }
         addNewItem();
       }
     }
-  }, [open, initialItems, editingQuotationId]);
+  }, [open, initialItems, editingQuotationId, contactId]);
+
+  // Auto-save quotation draft to localStorage on any edit
+  useEffect(() => {
+    if (!open || editingQuotationId) return;
+    const hasAnyContent = items.some((i) => i.product_name || i.unit_price > 0) || notes.trim() || termsConditions.trim() || internalNotes.trim();
+    if (!hasAnyContent) return;
+
+    const draftKey = `hotelequip_quotation_draft_${contactId || "default"}`;
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            contactId,
+            contactName,
+            items,
+            notes,
+            termsConditions,
+            internalNotes,
+            validUntil,
+            savedAt: new Date().toISOString(),
+          }),
+        );
+      } catch {
+        // ignore
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [open, editingQuotationId, contactId, contactName, items, notes, termsConditions, internalNotes, validUntil]);
 
   // Calcular validade padrão (30 dias)
   useEffect(() => {
@@ -182,7 +229,7 @@ export function QuotationCreator({
       date.setDate(date.getDate() + 30);
       setValidUntil(date.toISOString().split('T')[0]);
     }
-  }, [open]);
+  }, [open, validUntil]);
 
   // Pesquisa Meilisearch (debounce) para a linha ativa
   useEffect(() => {
@@ -361,7 +408,9 @@ export function QuotationCreator({
         /^\d+$/.test(String(contactId || "")) ? Number(contactId) : contactId;
 
       const basePayload: any = {
+        document_type: "quotation",
         customer_id: customerIdForDirectus,
+        customer_name: contactName || undefined,
         deal_id: dealId || undefined,
         status: 'draft',
         subtotal: round2(subtotal),
@@ -402,6 +451,13 @@ export function QuotationCreator({
       }
 
       setQuotationId(quotation.id);
+      try {
+        const draftKey = `hotelequip_quotation_draft_${contactId || "default"}`;
+        localStorage.removeItem(draftKey);
+        localStorage.removeItem("hotelequip_quotation_draft_default");
+      } catch {
+        // ignore
+      }
       toast({ title: `Orçamento ${quotation.quotation_number || ''} guardado com sucesso!` });
       setShowPreview(true);
 
@@ -484,7 +540,7 @@ export function QuotationCreator({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[98vw] max-w-[1400px] h-[96vh] max-h-[96vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[98vw] max-w-[1400px] h-[96vh] max-h-[96vh] overflow-hidden flex flex-col p-3 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -920,16 +976,26 @@ export function QuotationCreator({
 
         <Separator className="my-4" />
 
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handleClose}>
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2">
+          <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
             Cancelar
           </Button>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setShowPreview(true)} disabled={items.filter(i => i.product_name).length === 0}>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setShowPreview(true)}
+              disabled={items.filter(i => i.product_name).length === 0}
+              className="w-full sm:w-auto font-medium"
+            >
               <Eye className="h-4 w-4 mr-2" />
               Pré-visualizar
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button
+              variant="warning"
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full sm:w-auto text-white font-semibold shadow-sm active:scale-98"
+            >
               <Calculator className="h-4 w-4 mr-2" />
               {saving ? 'A guardar...' : 'Criar Orçamento'}
             </Button>

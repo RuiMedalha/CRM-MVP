@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Popover, PopoverContent } from "@/components/ui/popover";
 import {
   SendHorizontal,
+  Calculator,
   UserPlus,
   IdCard,
   CheckSquare,
@@ -19,8 +20,14 @@ const quickActions: QuickAction[] = [
   {
     label: "Nova Proposta",
     description: "Criar uma proposta comercial",
-    path: "/propostas?new=1",
+    path: "/propostas/nova",
     icon: SendHorizontal,
+  },
+  {
+    label: "Novo Orçamento",
+    description: "Criar orçamento rápido",
+    path: "/orcamentos",
+    icon: Calculator,
   },
   {
     label: "Novo Lead",

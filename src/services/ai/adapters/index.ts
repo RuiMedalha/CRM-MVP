@@ -37,6 +37,14 @@ export function createAIAdapter(meta: AIProviderMeta): AIProvider {
         base_url: meta.base_url || "https://api.moonshot.cn/v1/chat/completions",
         default_model: meta.default_model || "moonshot-v1-8k",
       });
+    case "gemini":
+      return new OpenAICompatibleAdapter({
+        ...meta,
+        base_url:
+          meta.base_url ||
+          "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        default_model: meta.default_model || "gemini-2.0-flash",
+      });
     case "openai_compatible":
     default:
       return new OpenAICompatibleAdapter(meta);

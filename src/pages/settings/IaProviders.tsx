@@ -107,8 +107,14 @@ const PROVIDER_PRESETS: Record<
   minimax: {
     label: "MiniMax AI (MiniMax-Text-01 / 01)",
     defaultModel: "MiniMax-Text-01",
-    defaultBaseUrl: "https://api.minimax.chat/v1/text/chatcompletion_v2",
+    defaultBaseUrl: "https://api.minimax.io/v1/chat/completions",
     placeholderKey: "ey...",
+  },
+  gemini: {
+    label: "Google Gemini (Gemini 2.0 Flash / 1.5 Pro)",
+    defaultModel: "gemini-2.0-flash",
+    defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    placeholderKey: "AIzaSy...",
   },
   openai_compatible: {
     label: "OpenAI Compatível (Ollama / vLLM / LM Studio)",
@@ -673,6 +679,7 @@ export default function IaProviders() {
                       <SelectItem value="deepseek">DeepSeek AI (DeepSeek API - V3 / R1)</SelectItem>
                       <SelectItem value="kimi">Kimi AI / Moonshot (Kimi 3 / K1.5)</SelectItem>
                       <SelectItem value="minimax">MiniMax AI (Text Chat - 01)</SelectItem>
+                      <SelectItem value="gemini">Google Gemini (Gemini 2.0 Flash / 1.5 Pro)</SelectItem>
                       <SelectItem value="opencode">OpenCode Engine</SelectItem>
                       <SelectItem value="openai_compatible">
                         OpenAI Compatível (Ollama / Local / vLLM)

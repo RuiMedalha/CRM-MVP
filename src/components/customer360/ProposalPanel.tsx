@@ -68,18 +68,33 @@ export function ProposalPanel({ proposals, contactId, contactName }: ProposalPan
       action={
         <div className="flex items-center gap-2">
           {contactId && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                navigate("/propostas/nova", {
-                  state: { prefill: { contactId, contactName } },
-                })
-              }
-              className="h-6 text-xs gap-1"
-            >
-              <Plus className="h-3 w-3" /> Nova
-            </Button>
+            <>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const query = new URLSearchParams({
+                    contactId: String(contactId),
+                    customerId: String(contactId),
+                    ...(contactName ? { name: contactName, contactName } : {}),
+                  });
+                  navigate(`/propostas/nova?${query.toString()}`, {
+                    state: { prefill: { contactId, contactName } },
+                  });
+                }}
+                className="h-7 text-xs gap-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5" /> Proposta
+              </Button>
+              <Button
+                size="sm"
+                onClick={() =>
+                  navigate(`/orcamentos?customerId=${encodeURIComponent(String(contactId))}&create=1&name=${encodeURIComponent(contactName || "")}`)
+                }
+                className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5" /> Orçamento
+              </Button>
+            </>
           )}
           <Link
             to="/propostas"
@@ -91,7 +106,42 @@ export function ProposalPanel({ proposals, contactId, contactName }: ProposalPan
       }
     >
       {proposals.length === 0 ? (
-        <EmptyState icon="📄" message="Ainda não existem propostas para este cliente." />
+        <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 bg-muted/20 rounded-xl border border-dashed border-border/80">
+          <div className="text-3xl">📄</div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Ainda não existem propostas ou orçamentos para este cliente.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Cria uma proposta comercial ou um orçamento rápido.</p>
+          </div>
+          {contactId && (
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+              <Button
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs gap-1.5 shadow-sm"
+                onClick={() => {
+                  const query = new URLSearchParams({
+                    contactId: String(contactId),
+                    customerId: String(contactId),
+                    ...(contactName ? { name: contactName, contactName } : {}),
+                  });
+                  navigate(`/propostas/nova?${query.toString()}`, {
+                    state: { prefill: { contactId, contactName } },
+                  });
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" /> Criar Proposta
+              </Button>
+              <Button
+                size="sm"
+                className="bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs gap-1.5 shadow-sm"
+                onClick={() =>
+                  navigate(`/orcamentos?customerId=${encodeURIComponent(String(contactId))}&create=1&name=${encodeURIComponent(contactName || "")}`)
+                }
+              >
+                <Plus className="h-3.5 w-3.5" /> Criar Orçamento
+              </Button>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-2">
           {proposals.map((p) => {

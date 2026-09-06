@@ -599,7 +599,6 @@ export async function listContacts(params?: {
     const searchFields = [
       "company_name",
       "contact_name",
-      "name",
       "contact_person",
       "nif",
       "phone",

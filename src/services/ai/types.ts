@@ -6,6 +6,7 @@ export type AIProviderType =
   | "minimax"
   | "deepseek"
   | "kimi"
+  | "gemini"
   | "openai_compatible";
 
 export interface AICompletionOptions {

@@ -37,16 +37,8 @@ function mergeConversationsByRecency(
   }
 
   return Array.from(mergedMap.values()).sort((a, b) => {
-    const ta = Math.max(
-      new Date(a.lastActivityAt || 0).getTime(),
-      new Date(a.updatedAt || 0).getTime(),
-      new Date(a.createdAt || 0).getTime(),
-    )
-    const tb = Math.max(
-      new Date(b.lastActivityAt || 0).getTime(),
-      new Date(b.updatedAt || 0).getTime(),
-      new Date(b.createdAt || 0).getTime(),
-    )
+    const ta = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : new Date(a.createdAt || 0).getTime()
+    const tb = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : new Date(b.createdAt || 0).getTime()
     return tb - ta
   })
 }

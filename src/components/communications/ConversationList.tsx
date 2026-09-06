@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Plus } from "lucide-react"
+import { Bot, Plus } from "lucide-react"
 import { useVirtualizer } from "@tanstack/react-virtual"
+import { useWhatsAppAutoResponder } from "@/hooks/useWhatsAppAutoResponder"
+import { cn } from "@/lib/utils"
 
 import { getChannelVisual } from "@/lib/channelRegistry"
 import { filterConversationsWithStats } from "@/lib/inboxFilters"
@@ -29,6 +31,7 @@ const OVERSCAN = 6;
 export function ConversationList() {
   const { user } = useAuth()
   const [newConvOpen, setNewConvOpen] = useState(false)
+  const { autoAiActive, autoAiMode, setAutoAiMode } = useWhatsAppAutoResponder()
   const filters = useInboxFilterStore()
   const activeTab = useInboxFilterStore((s) => s.activeTab)
   const setActiveTab = useInboxFilterStore((s) => s.setActiveTab)
@@ -146,12 +149,60 @@ export function ConversationList() {
                   : "Escolha um canal"}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const nextMode =
+                  autoAiMode === "off" ? "always" : autoAiMode === "always" ? "out_of_hours" : "off"
+                setAutoAiMode(nextMode)
+              }}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition shadow-xs",
+                autoAiMode === "always"
+                  ? "border-emerald-500/50 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 ring-1 ring-emerald-500/30"
+                  : autoAiMode === "out_of_hours"
+                    ? "border-indigo-500/50 bg-indigo-50 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 ring-1 ring-indigo-500/30"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted",
+              )}
+              title={
+                autoAiMode === "always"
+                  ? "Piloto Geral: SEMPRE ATIVO (24/7). Clique para mudar para 'Apenas Fora de Horas'."
+                  : autoAiMode === "out_of_hours"
+                    ? "Piloto Geral: APENAS FORA DE HORAS. Clique para Pausar."
+                    : "Piloto Geral: PAUSADO (pode ligar individualmente em cada chat). Clique para Ativar a Todos."
+              }
+            >
+              <Bot
+                className={cn(
+                  "h-3.5 w-3.5",
+                  autoAiMode === "always"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : autoAiMode === "out_of_hours"
+                      ? "text-indigo-600 dark:text-indigo-400"
+                      : "text-muted-foreground",
+                )}
+              />
+              <span className="text-[11px] font-medium">Piloto Geral:</span>
+              <span
+                className={cn(
+                  "px-1.5 py-0.5 text-[9px] font-bold uppercase rounded",
+                  autoAiMode === "always"
+                    ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-black"
+                    : autoAiMode === "out_of_hours"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-muted text-muted-foreground border border-border",
+                )}
+              >
+                {autoAiMode === "always" ? "TODOS" : autoAiMode === "out_of_hours" ? "FORA DE HORAS" : "PAUSADO"}
+              </span>
+            </button>
+
             {hasMessageScope && (
               <button
                 type="button"
                 onClick={clearMessageScope}
-                className="text-xs font-medium text-blue-600 hover:underline"
+                className="text-xs font-medium text-blue-600 hover:underline px-1"
               >
                 Canais
               </button>

@@ -93,7 +93,7 @@ const Integracoes = forwardRef<HTMLDivElement>(function Integracoes(_, ref) {
   const [meilisearch, setMeilisearch] = useState<MeilisearchSettings>({
     meilisearch_host: "",
     meilisearch_api_key: "",
-    meilisearch_index: "products_stage",
+    meilisearch_index: "products_palamenta",
   });
 
   const [testingMeilisearch, setTestingMeilisearch] = useState(false);
@@ -475,7 +475,7 @@ const Integracoes = forwardRef<HTMLDivElement>(function Integracoes(_, ref) {
                 <div className="space-y-2">
                   <Label>Índice</Label>
                   <Input
-                    value={meilisearch.meilisearch_index || "products_stage"}
+                    value={meilisearch.meilisearch_index || "products_palamenta"}
                     onChange={(e) => setMeilisearch((prev) => ({ ...prev, meilisearch_index: e.target.value }))}
                   />
                 </div>

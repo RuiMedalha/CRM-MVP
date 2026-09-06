@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,11 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, FileText, Calendar, Euro, Eye, Plus } from "lucide-react";
+import { Search, FileText, Calendar, Euro, Eye, Plus, MessageCircle, Copy } from "lucide-react";
 import { listQuotations, listQuotationsByCustomer } from "@/integrations/directus/quotations";
 import { QuotationPreview } from "@/components/quotations/QuotationPreview";
 import { QuotationCreator } from "@/components/quotations/QuotationCreator";
 import { useContacts } from "@/hooks/useContacts";
+import { toast } from "@/hooks/use-toast";
 import type { ContactItem } from "@/integrations/directus/contacts";
 import { useSearchParams } from "react-router-dom";
 
@@ -29,10 +30,18 @@ export default function Orcamentos() {
 
   const customerId = searchParams.get("customerId") || "";
   const openIdFromUrl = searchParams.get("openId") || "";
+  const createParam = searchParams.get("create") || "";
+  const nameParam = searchParams.get("name") || "";
 
   useEffect(() => {
     if (openIdFromUrl) setOpenId(String(openIdFromUrl));
   }, [openIdFromUrl]);
+
+  useEffect(() => {
+    if (createParam === "1" && customerId) {
+      setCreateFor({ id: customerId, name: nameParam || "" });
+    }
+  }, [createParam, customerId, nameParam]);
 
   const query = useQuery({
     queryKey: ["quotations", "all", search, customerId],
@@ -46,9 +55,11 @@ export default function Orcamentos() {
   const contacts = (contactsQuery.data || []) as ContactItem[];
 
   // Filter to quotations only (ORC- prefix or document_type === 'quotation')
-  const items = (query.data || []).filter((q: any) =>
-    q.document_type === "quotation" || (!q.document_type && (q.quotation_number || "").startsWith("ORC-"))
-  );
+  const items = (query.data || [])
+    .filter((q: any) =>
+      q.document_type === "quotation" || (q.quotation_number || "").startsWith("ORC-")
+    )
+    .sort((a: any, b: any) => Number(b.id || 0) - Number(a.id || 0));
   const isLoading = query.isLoading;
 
   const count = useMemo(() => items.length, [items.length]);
@@ -123,31 +134,67 @@ export default function Orcamentos() {
                       <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-3">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {q.date_created ? new Date(q.date_created).toLocaleDateString("pt-PT") : "—"}
+                          {(q.date_created || q.date_updated) ? new Date(q.date_created || q.date_updated).toLocaleDateString("pt-PT") : "—"}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Euro className="h-3 w-3" />
+                          <Euro className="h-3 w-3 font-medium text-foreground" />
                           {Number(q.total_amount || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        <span className="truncate">
-                          {(q.customer_id && q.customer_id.company_name) ? String(q.customer_id.company_name) : "Sem cliente"}
+                        <span className="truncate font-medium text-foreground">
+                          {q.customer_name || q.customer_company || (q.customer_id && (q.customer_id.company_name || q.customer_id.contact_name)) || "Sem cliente"}
                         </span>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenId(String(q.id));
-                        const cid = q.customer_id?.id ? String(q.customer_id.id) : undefined;
-                        const cname = q.customer_id?.company_name ? String(q.customer_id.company_name) : undefined;
-                        setOpenMeta({ customerId: cid, customerName: cname });
-                      }}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Abrir
-                    </Button>
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                        title="Enviar por WhatsApp"
+                        onClick={() => {
+                          const phone = String(q.sent_to_phone || q.customer_id?.phone || "").replace(/\D/g, "");
+                          const cName = q.customer_name || q.customer_company || q.customer_id?.company_name || q.customer_id?.contact_name || "";
+                          const greeting = cName ? `Olá ${cName}!` : "Olá!";
+                          const baseUrl = import.meta.env.VITE_PROPOSALS_BASE_URL || "https://proposta.hotelequip.pt";
+                          const docUrl = q.public_token ? `${baseUrl}/p/${q.public_token}` : "";
+                          const total = Number(q.total_amount || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
+                          let msg = `${greeting} Segue o seu orçamento (${q.quotation_number || q.id}) no valor de ${total}.`;
+                          if (docUrl) msg += `\nConsulte os detalhes: ${docUrl}`;
+                          msg += `\nFicamos à total disposição!`;
+                          const waUrl = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                          window.open(waUrl, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                        title="Copiar link"
+                        onClick={() => {
+                          const baseUrl = import.meta.env.VITE_PROPOSALS_BASE_URL || "https://proposta.hotelequip.pt";
+                          const docUrl = q.public_token ? `${baseUrl}/p/${q.public_token}` : `${window.location.origin}/orcamentos?openId=${q.id}`;
+                          navigator.clipboard.writeText(docUrl);
+                          toast({ title: "Link copiado!", description: docUrl });
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setOpenId(String(q.id));
+                          const cid = q.customer_id?.id ? String(q.customer_id.id) : undefined;
+                          const cname = q.customer_id?.company_name ? String(q.customer_id.company_name) : (q.customer_name || undefined);
+                          setOpenMeta({ customerId: cid, customerName: cname });
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-1.5" />
+                        Abrir
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

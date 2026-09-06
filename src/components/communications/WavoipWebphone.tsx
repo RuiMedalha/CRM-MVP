@@ -118,7 +118,8 @@ function positionWavoipFab(): void {
     composerRect && composerRect.bottom > 0 && composerRect.top < window.innerHeight,
   )
   const isShortLandscape = window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches
-  const hideForChatComposer = isShortLandscape && composerIsVisible
+  const hasOpenDialog = Boolean(document.querySelector('[role="dialog"][data-state="open"]'))
+  const hideFab = (isShortLandscape && composerIsVisible) || hasOpenDialog
   const bottom = isMobile
     ? "calc(4.5rem + env(safe-area-inset-bottom))"
     : "1.5rem"
@@ -128,7 +129,7 @@ function positionWavoipFab(): void {
     button.style.setProperty("bottom", bottom)
     button.style.setProperty("right", right)
     button.style.setProperty("z-index", "40")
-    if (hideForChatComposer) {
+    if (hideFab) {
       button.style.setProperty("display", "none")
       button.style.setProperty("pointer-events", "none")
     } else {

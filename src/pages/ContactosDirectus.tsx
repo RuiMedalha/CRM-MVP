@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Eye, Phone, Mail, MessageCircle, FileText, Workflow, ChevronLeft, ChevronRight, Download, Upload, Tag, X, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Phone, Mail, MessageCircle, FileText, Calculator, SendHorizontal, Workflow, ChevronLeft, ChevronRight, Download, Upload, Tag, X, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listContacts, createContact, findDuplicateContact, patchContact } from "@/integrations/directus/contacts";
@@ -555,10 +555,27 @@ export default function ContactosDirectus() {
         <div className="grid gap-3 md:hidden">
           {isLoading ? (
             [...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
-          ) : contacts.length === 0 ? (
+          ) : filteredContacts.length === 0 ? (
             <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                Nenhum contacto encontrado
+              <CardContent className="py-10 text-center text-sm text-muted-foreground space-y-2">
+                <p>Nenhum contacto encontrado{searchTerm ? ` para "${searchTerm}"` : ""}.</p>
+                {(searchTerm || iaFilter !== "all" || letterFilter || roleFilter || sourceFilter || showArchived) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setIaFilter("all");
+                      setLetterFilter("");
+                      setRoleFilter("");
+                      setSourceFilter("");
+                      setShowArchived(false);
+                      setPage(1);
+                    }}
+                  >
+                    Limpar filtros
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -617,6 +634,40 @@ export default function ContactosDirectus() {
                         </Badge>
                       ) : null}
                     </div>
+                  </div>
+
+                  <div className="grid min-w-0 grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const query = new URLSearchParams({
+                          contactId: String(c.id),
+                          ...(c.contact_name || c.name || c.company_name ? { name: c.contact_name || c.name || c.company_name } : {}),
+                          ...(c.company_name ? { company: c.company_name } : {}),
+                          ...(c.email ? { email: c.email } : {}),
+                          ...(c.phone ? { phone: c.phone } : {}),
+                        });
+                        navigate(`/propostas/nova?${query.toString()}`);
+                      }}
+                    >
+                      <SendHorizontal className="h-3.5 w-3.5 mr-1 text-purple-600" />
+                      + Proposta
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/orcamentos?customerId=${encodeURIComponent(String(c.id))}&create=1&name=${encodeURIComponent(c.company_name || c.contact_name || "")}`);
+                      }}
+                    >
+                      <Calculator className="h-3.5 w-3.5 mr-1 text-amber-600" />
+                      + Orçamento
+                    </Button>
                   </div>
 
                   <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
@@ -770,10 +821,28 @@ export default function ContactosDirectus() {
                     <TableCell><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : contacts.length === 0 ? (
+              ) : filteredContacts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                    Nenhum contacto encontrado
+                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                    <p>Nenhum contacto encontrado{searchTerm ? ` para "${searchTerm}"` : ""}.</p>
+                    {(searchTerm || iaFilter !== "all" || letterFilter || roleFilter || sourceFilter || showArchived) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setIaFilter("all");
+                          setLetterFilter("");
+                          setRoleFilter("");
+                          setSourceFilter("");
+                          setShowArchived(false);
+                          setPage(1);
+                        }}
+                      >
+                        Limpar filtros
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -820,6 +889,50 @@ export default function ContactosDirectus() {
                     <TableCell className="hidden lg:table-cell">{c.email || "-"}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs px-2 gap-1 text-purple-700 bg-purple-50/70 border-purple-200 hover:bg-purple-100 hover:text-purple-800 font-medium"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const query = new URLSearchParams({
+                              contactId: String(c.id),
+                              customerId: String(c.id),
+                              ...(c.contact_name || c.name || c.company_name ? { name: c.contact_name || c.name || c.company_name } : {}),
+                              ...(c.company_name ? { company: c.company_name } : {}),
+                              ...(c.email ? { email: c.email } : {}),
+                              ...(c.phone ? { phone: c.phone } : {}),
+                            });
+                            navigate(`/propostas/nova?${query.toString()}`, {
+                              state: {
+                                prefill: {
+                                  contactId: String(c.id),
+                                  contactName: c.contact_name || c.name || c.company_name || undefined,
+                                  company: c.company_name || undefined,
+                                  email: c.email || undefined,
+                                  phone: c.phone || undefined,
+                                },
+                              },
+                            });
+                          }}
+                          title="Criar proposta comercial para este cliente"
+                        >
+                          <SendHorizontal className="h-3 w-3" />
+                          <span>Proposta</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs px-2 gap-1 text-amber-700 bg-amber-50/70 border-amber-200 hover:bg-amber-100 hover:text-amber-800 font-medium"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/orcamentos?customerId=${encodeURIComponent(String(c.id))}&contactId=${encodeURIComponent(String(c.id))}&create=1&name=${encodeURIComponent(c.company_name || c.contact_name || "")}`);
+                          }}
+                          title="Criar orçamento para este cliente"
+                        >
+                          <Calculator className="h-3 w-3" />
+                          <span>Orçamento</span>
+                        </Button>
                         {c.__firstQuotationId ? (
                           <Button
                             variant="ghost"
@@ -995,6 +1108,60 @@ export default function ContactosDirectus() {
         <div className="fixed inset-x-0 bottom-16 md:bottom-4 z-40 flex justify-center px-4 pointer-events-none">
           <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-lg">
             <span className="text-sm font-medium whitespace-nowrap">{selectedIds.size} seleccionado{selectedIds.size > 1 ? "s" : ""}</span>
+            {selectedIds.size === 1 && (
+              <>
+                <Button
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs gap-1 h-8"
+                  onClick={() => {
+                    const selId = Array.from(selectedIds)[0];
+                    const c = filteredContacts.find((x: any) => String(x.id) === selId);
+                    if (!c) return;
+                    const query = new URLSearchParams({
+                      contactId: String(c.id),
+                      customerId: String(c.id),
+                      ...(c.contact_name || c.name || c.company_name ? { name: c.contact_name || c.name || c.company_name } : {}),
+                      ...(c.company_name ? { company: c.company_name } : {}),
+                      ...(c.email ? { email: c.email } : {}),
+                      ...(c.phone ? { phone: c.phone } : {}),
+                    });
+                    navigate(`/propostas/nova?${query.toString()}`, {
+                      state: {
+                        prefill: {
+                          contactId: String(c.id),
+                          contactName: c.contact_name || c.name || c.company_name || undefined,
+                          company: c.company_name || undefined,
+                          email: c.email || undefined,
+                          phone: c.phone || undefined,
+                        },
+                      },
+                    });
+                  }}
+                >
+                  <SendHorizontal className="h-3.5 w-3.5" /> + Proposta
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs gap-1 h-8"
+                  onClick={() => {
+                    const selId = Array.from(selectedIds)[0];
+                    const c = filteredContacts.find((x: any) => String(x.id) === selId);
+                    if (!c) return;
+                    navigate(`/orcamentos?customerId=${encodeURIComponent(String(c.id))}&contactId=${encodeURIComponent(String(c.id))}&create=1&name=${encodeURIComponent(c.company_name || c.contact_name || "")}`);
+                  }}
+                >
+                  <Calculator className="h-3.5 w-3.5" /> + Orçamento
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-8"
+                  onClick={() => navigate(`/customer360-shell/${encodeURIComponent(Array.from(selectedIds)[0])}`)}
+                >
+                  Ver Ficha 360
+                </Button>
+              </>
+            )}
             <div className="flex items-center gap-1.5">
               <Input
                 value={bulkTag}

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Eye, Users, Clock, Calendar, ArrowLeft, Edit, Copy, FileDown, Loader2 } from "lucide-react";
+import { Eye, Users, Clock, Calendar, ArrowLeft, Edit, Copy, FileDown, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { generateProposalPDF } from "@/utils/generateProposalPDF";
 
@@ -73,6 +73,20 @@ export default function ProposalDetail() {
     } else {
       toast({ title: "Proposta sem link público", variant: "destructive" });
     }
+  };
+
+  const handleWhatsApp = () => {
+    const baseUrl = import.meta.env.VITE_PROPOSALS_BASE_URL || "https://proposta.hotelequip.pt";
+    const token = (data as any)?.public_token;
+    const url = token ? `${baseUrl}/p/${token}` : window.location.href;
+    const rawPhone = (data as any)?.sent_to_phone || (data as any)?.customer_id?.phone || "";
+    const phone = String(rawPhone).replace(/\D/g, "");
+    const name = (data as any)?.customer_id?.contact_name || (data as any)?.customer_id?.company_name || (data as any)?.customer_name || "";
+    const greeting = name ? `Olá ${name}!` : "Olá!";
+    const num = (data as any)?.quotation_number || "a sua proposta";
+    const msg = encodeURIComponent(`${greeting} Segue a sua proposta personalizada da HotelEquip (${num}):\n${url}\n\nQualquer dúvida estou totalmente disponível.`);
+    const waUrl = phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
+    window.open(waUrl, "_blank", "noopener,noreferrer");
   };
 
   const handlePDF = async () => {
@@ -154,6 +168,10 @@ export default function ProposalDetail() {
             <Button variant="outline" size="sm" onClick={copyLink}>
               <Copy className="h-4 w-4 mr-1.5" />
               Copiar link
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleWhatsApp}>
+              <MessageCircle className="h-4 w-4 mr-1.5 text-green-600" />
+              WhatsApp
             </Button>
             <Button variant="outline" size="sm" onClick={handlePDF} disabled={pdfLoading}>
               {pdfLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <FileDown className="h-4 w-4 mr-1.5" />}

@@ -14,6 +14,7 @@ import {
 import { FileText, Download, Send, Loader2, Printer, Pencil, MessageCircle, Copy } from 'lucide-react';
 import { useCompanySettings } from '@/hooks/useSettings';
 import { fetchQuotationPdf, getQuotationById, patchQuotation } from '@/integrations/directus/quotations';
+import { generateProposalPDF } from "@/utils/generateProposalPDF";
 import { toast } from "@/hooks/use-toast";
 import { createDeal, listDeals, patchDeal } from "@/integrations/directus/deals";
 import { Input } from "@/components/ui/input";
@@ -171,21 +172,36 @@ export function QuotationPreview({ open, onOpenChange, quotationId, onEdit }: Qu
   };
 
   const handlePrint = () => {
-    // Imprimir o PDF (mais fiável do que imprimir a página React)
-    handleOpenPdf(true).catch(() => undefined);
+    handleGeneratePdf().catch(() => undefined);
   };
 
-  const handleOpenPdf = async (_forPrint?: boolean) => {
-    if (!quotationId) return;
+  const handleGeneratePdf = async () => {
+    if (!quotation) return;
     setPdfBusy(true);
     try {
-      const blob = await fetchQuotationPdf(String(quotationId));
-      const url = URL.createObjectURL(blob);
-      const w = window.open(url, "_blank");
-      if (!w) {
-        toast({ title: "Popup bloqueado", description: "Permite popups para abrir o PDF.", variant: "destructive" });
-        return;
-      }
+      const companySettings = settings as any;
+      const company = {
+        name: companySettings?.name || "HotelEquip",
+        logo_url: companySettings?.logo_url || "",
+        phone: companySettings?.phone || "",
+        email: companySettings?.email || "",
+        address: companySettings?.address || "",
+        vat_number: companySettings?.vat_number || "",
+        iban: companySettings?.iban || "",
+        payment_instructions: companySettings?.payment_instructions || "",
+        multibanco_entity: companySettings?.multibanco_entity || "",
+        multibanco_reference: companySettings?.multibanco_reference || "",
+      };
+
+      const pdfQuotation = {
+        ...quotation,
+        customer_name: quotation.customer?.contact_name || quotation.customer?.company_name || "",
+        customer_company: quotation.customer?.company_name || "",
+        items: quotation.items || [],
+      };
+
+      await generateProposalPDF(pdfQuotation, company);
+      toast({ title: "PDF gerado com sucesso!" });
     } catch (e: any) {
       toast({ title: "Erro ao gerar PDF", description: String(e?.message || e), variant: "destructive" });
     } finally {
@@ -193,25 +209,8 @@ export function QuotationPreview({ open, onOpenChange, quotationId, onEdit }: Qu
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (!quotationId) return;
-    setPdfBusy(true);
-    try {
-      const blob = await fetchQuotationPdf(String(quotationId));
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${quotation?.quotation_number || quotationId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e: any) {
-      toast({ title: "Erro ao gerar PDF", description: String(e?.message || e), variant: "destructive" });
-    } finally {
-      setPdfBusy(false);
-    }
-  };
+  const handlePrintPdf = handleGeneratePdf;
+  const handleDownloadPdf = handleGeneratePdf;
 
   const normalizeCustomerId = (cid: any) => {
     const s = String(cid ?? "");
@@ -354,18 +353,23 @@ export function QuotationPreview({ open, onOpenChange, quotationId, onEdit }: Qu
 
   const getPdfShareLink = () => {
     const link = String(quotation?.pdf_link || "").trim();
-    return link || "";
+    if (link) return link;
+    if ((quotation as any)?.public_token) {
+      const baseUrl = import.meta.env.VITE_PROPOSALS_BASE_URL || "https://proposta.hotelequip.pt";
+      return `${baseUrl}/p/${(quotation as any).public_token}`;
+    }
+    return "";
   };
 
   const handleCopyPdfLink = async () => {
     const link = getPdfShareLink();
     if (!link) {
-      toast({ title: "Sem link do PDF", description: "Gera o PDF/automação e guarda um link público em `pdf_link`.", variant: "destructive" });
+      toast({ title: "Sem link público", description: "O orçamento não possui link público ou PDF associado.", variant: "destructive" });
       return;
     }
     try {
       await navigator.clipboard.writeText(link);
-      toast({ title: "Link copiado" });
+      toast({ title: "Link copiado!", description: link });
     } catch {
       toast({ title: "Não foi possível copiar", variant: "destructive" });
     }
@@ -374,11 +378,16 @@ export function QuotationPreview({ open, onOpenChange, quotationId, onEdit }: Qu
   const handleSendWhatsApp = () => {
     const phone = getCustomerPhoneE164ish();
     const link = getPdfShareLink();
-    if (!link) {
-      toast({ title: "Sem link do PDF", description: "Gera o PDF/automação e guarda um link público em `pdf_link`.", variant: "destructive" });
-      return;
+    const clientName = quotation?.customer?.contact_name || quotation?.customer?.company_name || "";
+    const greeting = clientName ? `Olá ${clientName}!` : "Olá!";
+    const num = quotation?.quotation_number || quotationId;
+    const totalFormatted = Number(quotation?.total_amount || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
+    let msgText = `${greeting} Segue o seu orçamento da HotelEquip (${num}) no valor total de ${totalFormatted}.`;
+    if (link) {
+      msgText += `\nConsulte os detalhes aqui: ${link}`;
     }
-    const msg = encodeURIComponent(`Olá! Segue o orçamento ${quotation?.quotation_number || quotationId}:\n${link}`);
+    msgText += `\nQualquer dúvida estamos à inteira disposição!`;
+    const msg = encodeURIComponent(msgText);
     const url = phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -512,6 +521,19 @@ export function QuotationPreview({ open, onOpenChange, quotationId, onEdit }: Qu
                 <Badge variant="outline" className="mr-2">{quotation?.deal_id ? "Negócio" : "Pipeline"}</Badge>
                 {quotation?.deal_id ? "Abrir no Pipeline" : "Criar/Ligar"}
               </Button>
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                onClick={handleSendWhatsApp}
+                title="Enviar por WhatsApp diretamente para o cliente"
+              >
+                <MessageCircle className="h-4 w-4 mr-1.5" />
+                WhatsApp
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCopyPdfLink} title="Copiar link do documento">
+                <Copy className="h-4 w-4 mr-1" />
+                Copiar Link
+              </Button>
               <Button variant="outline" size="sm" onClick={handlePrint} disabled={pdfBusy}>
                 <Printer className="h-4 w-4 mr-1" />
                 Imprimir
@@ -520,7 +542,7 @@ export function QuotationPreview({ open, onOpenChange, quotationId, onEdit }: Qu
                 <Download className="h-4 w-4 mr-1" />
                 PDF
               </Button>
-              <Button size="sm" onClick={handleOpenSendDialog} disabled={sending}>
+              <Button size="sm" variant="secondary" onClick={handleOpenSendDialog} disabled={sending}>
                 <Send className="h-4 w-4 mr-1" />
                 Enviar por Email
               </Button>

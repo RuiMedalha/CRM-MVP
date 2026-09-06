@@ -33,13 +33,19 @@ export interface MeilisearchProduct {
 }
 
 const MEILISEARCH_STORAGE_KEY = "hotelequip_meilisearch_settings";
-const DEFAULT_HOST = "https://meilisearch.hotelequip.pt";
-const DEFAULT_INDEX = "products_stage";
+const DEFAULT_HOST = "https://search.palamenta.com.pt";
+const DEFAULT_INDEX = "products_palamenta";
 
 // Environment defaults — always prefer env vars over localStorage
 const ENV_HOST = (import.meta.env.VITE_MEILISEARCH_URL || "").trim();
 const ENV_KEY = (import.meta.env.VITE_MEILISEARCH_SEARCH_KEY || "").trim();
 const ENV_INDEX = (import.meta.env.VITE_MEILISEARCH_INDEX || DEFAULT_INDEX).trim();
+
+function sanitizeIndex(idx?: string): string {
+  const clean = (idx || "").trim();
+  if (!clean || clean === "products_stage") return DEFAULT_INDEX;
+  return clean;
+}
 
 export function getMeilisearchSettings(): MeilisearchSettings {
   // Env vars take priority
@@ -47,7 +53,7 @@ export function getMeilisearchSettings(): MeilisearchSettings {
     return {
       meilisearch_host: ENV_HOST,
       meilisearch_api_key: ENV_KEY,
-      meilisearch_index: ENV_INDEX,
+      meilisearch_index: sanitizeIndex(ENV_INDEX),
     };
   }
   // Fallback to localStorage (Definições page)
@@ -58,7 +64,7 @@ export function getMeilisearchSettings(): MeilisearchSettings {
       return {
         meilisearch_host: parsed.meilisearch_host || DEFAULT_HOST,
         meilisearch_api_key: parsed.meilisearch_api_key || "",
-        meilisearch_index: parsed.meilisearch_index || DEFAULT_INDEX,
+        meilisearch_index: sanitizeIndex(parsed.meilisearch_index),
       };
     } catch {
       // ignore
@@ -72,7 +78,11 @@ export function getMeilisearchSettings(): MeilisearchSettings {
 }
 
 export function saveMeilisearchSettings(settings: MeilisearchSettings) {
-  localStorage.setItem(MEILISEARCH_STORAGE_KEY, JSON.stringify(settings));
+  const normalized: MeilisearchSettings = {
+    ...settings,
+    meilisearch_index: sanitizeIndex(settings.meilisearch_index),
+  };
+  localStorage.setItem(MEILISEARCH_STORAGE_KEY, JSON.stringify(normalized));
 }
 
 export function useMeilisearch() {
@@ -93,99 +103,97 @@ export function useMeilisearch() {
     setIsSearching(true);
     setError(null);
 
-    // 1. Tentar Meilisearch primário
     try {
-      const indexName = settings.meilisearch_index || DEFAULT_INDEX;
-      const url = `${host}/indexes/${indexName}/search`;
+      // 1. Tentar Meilisearch primário
+      try {
+        const indexName = settings.meilisearch_index || DEFAULT_INDEX;
+        const url = `${host}/indexes/${indexName}/search`;
 
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
 
-      if (settings.meilisearch_api_key) {
-        headers["Authorization"] = `Bearer ${settings.meilisearch_api_key}`;
-      }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers,
-        signal: controller.signal,
-        body: JSON.stringify({
-          q,
-          limit: 24,
-          attributesToRetrieve: [
-            "id",
-            "name",
-            "title",
-            "sku",
-            "price",
-            "cost",
-            "description",
-            "short_description",
-            "content",
-            "category",
-            "image_url",
-            "featured_media_url",
-            "media_url",
-            "link",
-            "images",
-            "image",
-            "featured_media",
-            "featured_media_id",
-            "thumbnail",
-            "thumb",
-            "imageId",
-            "mediaId",
-          ],
-        }),
-      });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        const products: MeilisearchProduct[] = data.hits || [];
-        if (products.length > 0) {
-          setResults(products);
-          return products;
+        if (settings.meilisearch_api_key) {
+          headers["Authorization"] = `Bearer ${settings.meilisearch_api_key}`;
         }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers,
+          signal: controller.signal,
+          body: JSON.stringify({
+            q,
+            limit: 24,
+            attributesToRetrieve: ["*"],
+          }),
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          const hits = data.hits || [];
+          if (hits.length > 0) {
+            const mapped: MeilisearchProduct[] = hits.map((h: any) => ({
+              id: String(h.id),
+              name: h.title || h.name || "Produto",
+              title: h.title || h.name || "Produto",
+              sku: h.sku || String(h.id),
+              price: Number(h.price || h.sale_price || h.regular_price || 0),
+              cost: Number(h.cost || 0),
+              description: h.short_description || h.full_description || h.description || "",
+              short_description: h.short_description || "",
+              category: Array.isArray(h.categories) ? h.categories.join(", ") : (h.category || ""),
+              image_url: h.thumbnail || h.featured_media_url || (Array.isArray(h.images) && h.images[0]) || h.image_url,
+              thumbnail: h.thumbnail || h.image_url,
+              link: h.url || h.link,
+              datasheet_url: h.datasheet_url,
+              brand: h.brand,
+              model: h.model,
+            }));
+            setResults(mapped);
+            return mapped;
+          }
+        }
+      } catch (meiliErr) {
+        console.warn("[Meilisearch] Primário falhou ou sem resposta, a tentar catálogo Directus:", meiliErr);
       }
-    } catch (meiliErr) {
-      console.warn("[Meilisearch] Primário falhou ou sem resposta, a tentar catálogo Directus:", meiliErr);
-    }
 
-    // 2. Fallback Directus (products / loja_produtos)
-    try {
-      const encoded = encodeURIComponent(q);
-      const directusRes = await directusRequest<{ data: any[] }>(
-        `/items/products?search=${encoded}&limit=20`
-      ).catch(() => null);
+      // 2. Fallback Directus (products / loja_produtos)
+      try {
+        const encoded = encodeURIComponent(q);
+        const directusRes = await directusRequest<{ data: any[] }>(
+          `/items/products?search=${encoded}&limit=20`
+        ).catch(() => null);
 
-      if (directusRes?.data && Array.isArray(directusRes.data) && directusRes.data.length > 0) {
-        const mappedProducts: MeilisearchProduct[] = directusRes.data.map((item) => ({
-          id: String(item.id),
-          name: item.name || item.title || "Produto",
-          title: item.title || item.name || "Produto",
-          sku: item.sku || item.reference || String(item.id),
-          price: Number(item.price || item.unit_price || 0),
-          cost: Number(item.cost || item.cost_price || 0),
-          description: item.description || item.short_description || "",
-          category: item.category || item.family || "",
-          image_url: item.image_url || item.thumbnail || (item.image ? `/assets/${item.image}` : undefined),
-          link: item.link || item.url || undefined,
-        }));
-        setResults(mappedProducts);
-        return mappedProducts;
+        if (directusRes?.data && Array.isArray(directusRes.data) && directusRes.data.length > 0) {
+          const mappedProducts: MeilisearchProduct[] = directusRes.data.map((item) => ({
+            id: String(item.id),
+            name: item.name || item.title || "Produto",
+            title: item.title || item.name || "Produto",
+            sku: item.sku || item.reference || String(item.id),
+            price: Number(item.price || item.unit_price || 0),
+            cost: Number(item.cost || item.cost_price || 0),
+            description: item.description || item.short_description || "",
+            category: item.category || item.family || "",
+            image_url: item.image_url || item.thumbnail || (item.image ? `/assets/${item.image}` : undefined),
+            link: item.link || item.url || undefined,
+          }));
+          setResults(mappedProducts);
+          return mappedProducts;
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
-    }
 
-    // Nenhum resultado encontrado
-    setResults([]);
-    return [];
+      // Nenhum resultado encontrado
+      setResults([]);
+      return [];
+    } finally {
+      setIsSearching(false);
+    }
   }, []);
 
   const clearResults = useCallback(() => {

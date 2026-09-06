@@ -28,7 +28,7 @@ export function TelecofAttendanceWorkbench() {
     if (!hasInitializedSelectionRef.current && events.length > 0) {
       hasInitializedSelectionRef.current = true
       if (!selectedEventId) {
-        const firstUnhandled = events.find((e) => e.operationalStatus === "unhandled" || e.operationalStatus === "new") || events[0]
+        const firstUnhandled = events.find((e) => e.operationalStatus === "unhandled" || e.operationalStatus === "new" || e.operationalStatus === "missed") || events[0]
         if (firstUnhandled) {
           selectEvent(firstUnhandled.id)
         }

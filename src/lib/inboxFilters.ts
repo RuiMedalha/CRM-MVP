@@ -227,10 +227,11 @@ export function filterConversationsWithStats(
     )
   }
 
-  const sorted = list.sort(
-    (a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  )
+  const sorted = list.sort((a, b) => {
+    const ta = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : new Date(a.createdAt || 0).getTime()
+    const tb = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : new Date(b.createdAt || 0).getTime()
+    return tb - ta
+  })
   stats.final = sorted.length
 
   return { list: sorted, stats }

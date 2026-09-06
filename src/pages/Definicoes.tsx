@@ -57,7 +57,7 @@ export default function Definicoes() {
   const [meilisearch, setMeilisearch] = useState<MeilisearchSettings>({
     meilisearch_host: "",
     meilisearch_api_key: "",
-    meilisearch_index: "products_stage",
+    meilisearch_index: "products_palamenta",
   });
 
   const [integrations, setIntegrations] = useState({
@@ -721,11 +721,11 @@ export default function Definicoes() {
                 <Label htmlFor="meili_index">Ãndice</Label>
                 <Input
                   id="meili_index"
-                  value={meilisearch.meilisearch_index || "products_stage"}
+                  value={meilisearch.meilisearch_index || "products_palamenta"}
                   onChange={(e) =>
                     setMeilisearch((prev) => ({ ...prev, meilisearch_index: e.target.value }))
                   }
-                  placeholder="products_stage"
+                  placeholder="products_palamenta"
                 />
               </div>
             </div>

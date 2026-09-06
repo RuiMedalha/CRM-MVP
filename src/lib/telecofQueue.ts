@@ -6,7 +6,7 @@ import type { TelecofQueueFilter } from "@/types/communication"
 
 export const TELECOF_UNHANDLED_AFTER_MS = 5 * 60 * 1000
 
-const OPEN_STATUSES = new Set(["new", "unhandled", "in_progress"])
+const OPEN_STATUSES = new Set(["new", "unhandled", "missed", "in_progress", "callback"])
 const RESOLVED_STATUSES = new Set(["resolved", "treated"])
 const SPAM_STATUSES = new Set(["spam", "advertising"])
 const ARCHIVE_LIST_STATUSES = new Set([

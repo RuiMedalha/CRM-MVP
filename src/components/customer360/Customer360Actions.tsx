@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Phone, Mail, MessageCircle, FileText, Target, StickyNote, CheckSquare, MapPin, Wrench, Loader2 } from "lucide-react";
+import { Phone, Mail, MessageCircle, FileText, Calculator, Target, StickyNote, CheckSquare, MapPin, Wrench, Loader2 } from "lucide-react";
 import { useCompanySettings } from "@/hooks/useSettings";
 import { DEAL_STATUSES } from "@/hooks/useDeals";
 import { useCustomerDossier } from "@/hooks/useCustomerDossier";
@@ -22,12 +22,13 @@ import { cn } from "@/lib/utils";
 interface Customer360ActionsProps {
   contactId?: string;
   contactName?: string;
+  contactCompany?: string;
   contactPhone?: string;
   contactEmail?: string;
   contactEmailAssistencia?: string;
 }
 
-export function Customer360Actions({ contactId, contactName, contactPhone, contactEmail, contactEmailAssistencia }: Customer360ActionsProps) {
+export function Customer360Actions({ contactId, contactName, contactCompany, contactPhone, contactEmail, contactEmailAssistencia }: Customer360ActionsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // Hook unificado do dossiê — single read + 4 mutações coerentes com o resto da app.
@@ -77,17 +78,39 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
   // 4. Nova proposta
   const handleNewProposal = useCallback(() => {
     if (!contactId) return;
-    navigate('/propostas/nova', {
+    const query = new URLSearchParams({
+      contactId: String(contactId),
+      customerId: String(contactId),
+      ...(contactName ? { name: contactName, contactName } : {}),
+      ...(contactCompany ? { company: contactCompany } : {}),
+      ...(contactEmail ? { email: contactEmail } : {}),
+      ...(contactPhone ? { phone: contactPhone } : {}),
+    });
+    navigate(`/propostas/nova?${query.toString()}`, {
       state: {
         prefill: {
           contactId,
           contactName: contactName || undefined,
+          company: contactCompany || undefined,
           email: contactEmail || undefined,
           phone: contactPhone || undefined,
         },
       },
     });
-  }, [contactId, contactName, contactEmail, contactPhone, navigate]);
+  }, [contactId, contactName, contactCompany, contactEmail, contactPhone, navigate]);
+
+  // 5. Novo orçamento
+  const handleNewQuotation = useCallback(() => {
+    if (!contactId) return;
+    const query = new URLSearchParams({
+      customerId: String(contactId),
+      contactId: String(contactId),
+      create: "1",
+      ...(contactName ? { name: contactName } : {}),
+      ...(contactCompany ? { company: contactCompany } : {}),
+    });
+    navigate(`/orcamentos?${query.toString()}`);
+  }, [contactId, contactName, contactCompany, navigate]);
 
   // 5. Nova oportunidade (via useCustomerDossier hook)
   const [dealTitle, setDealTitle] = useState("");
@@ -224,11 +247,12 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
 
   return (
     <>
-      <div className="flex flex-wrap gap-1.5 items-center">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 -mx-1 px-1 sm:flex-wrap sm:overflow-visible sm:pb-0 scrollbar-none">
+        <ActionBtn icon={FileText} label="Nova proposta" onClick={handleNewProposal} variant="purple" />
+        <ActionBtn icon={Calculator} label="Novo orçamento" onClick={handleNewQuotation} variant="amber" />
         <ActionBtn icon={Phone} label="Ligar" onClick={handleCall} variant="green" />
         <ActionBtn icon={MessageCircle} label="WhatsApp" onClick={handleWhatsApp} variant="green" />
         <ActionBtn icon={Mail} label="Email" onClick={handleEmail} variant="blue" />
-        <ActionBtn icon={FileText} label="Nova proposta" onClick={handleNewProposal} />
         <ActionBtn icon={Target} label="Nova oportunidade" onClick={() => setDealOpen(true)} />
         <ActionBtn icon={StickyNote} label="Nova nota" onClick={() => setNoteOpen(true)} />
         <ActionBtn icon={CheckSquare} label="Nova tarefa" onClick={() => setTaskOpen(true)} />
@@ -372,6 +396,8 @@ export function Customer360Actions({ contactId, contactName, contactPhone, conta
 }
 
 const VARIANT_CLASSES = {
+  purple: "text-white bg-purple-600 hover:bg-purple-700 border-purple-600 shadow-sm font-semibold hover:text-white",
+  amber: "text-white bg-amber-500 hover:bg-amber-600 border-amber-500 shadow-sm font-semibold hover:text-white",
   green: "text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 border-emerald-200/80 dark:text-emerald-400 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 dark:border-emerald-800/40",
   blue: "text-blue-700 bg-blue-50/80 hover:bg-blue-100/90 border-blue-200/80 dark:text-blue-400 dark:bg-blue-950/40 dark:hover:bg-blue-950/70 dark:border-blue-800/40",
   default: "text-muted-foreground bg-card hover:text-foreground hover:bg-muted/70 border-border/80 shadow-xs",

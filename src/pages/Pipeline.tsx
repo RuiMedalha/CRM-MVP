@@ -49,7 +49,24 @@ const PIPELINE_COLORS: Record<string, string> = {
   "perdido": "border-t-red-400",
 };
 
+const DEFAULT_STAGES: PipelineStageRow[] = [
+  { id: "lead", pipeline_id: "default", name: "Lead", color: "#facc15", order: 1 },
+  { id: "qualificacao", pipeline_id: "default", name: "Qualificação", color: "#60a5fa", order: 2 },
+  { id: "proposta", pipeline_id: "default", name: "Proposta", color: "#c084fc", order: 3 },
+  { id: "negociacao", pipeline_id: "default", name: "Negociação", color: "#f472b6", order: 4 },
+  { id: "ganho", pipeline_id: "default", name: "Ganho", color: "#4ade80", order: 5 },
+  { id: "perdido", pipeline_id: "default", name: "Perdido", color: "#f87171", order: 6 },
+];
+
 function getStageColor(stage: PipelineStageRow): string {
+  const key = (stage.id || stage.name || "").toLowerCase();
+  if (PIPELINE_COLORS[key]) {
+    return PIPELINE_COLORS[key];
+  }
+  const nameKey = (stage.name || "").toLowerCase();
+  if (PIPELINE_COLORS[nameKey]) {
+    return PIPELINE_COLORS[nameKey];
+  }
   return stage.color ? `border-t-[${stage.color}]` : "border-t-slate-300";
 }
 
@@ -60,6 +77,11 @@ export default function Pipeline() {
   const { data: pipelines } = usePipelines();
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const { data: stages, isLoading: stagesLoading } = useStages(activePipelineId ?? undefined);
+
+  const effectiveStages = useMemo<PipelineStageRow[]>(() => {
+    if (stages && stages.length > 0) return stages;
+    return DEFAULT_STAGES;
+  }, [stages]);
   const { data: contacts } = useContacts();
   const { data: manufacturers } = useManufacturers();
   const updateDeal = useUpdateDeal();
@@ -183,8 +205,9 @@ export default function Pipeline() {
         if ((deal as any).stage_id) {
           return (deal as any).stage_id === stage.id;
         }
-        // Fallback para deals sem pipeline: mapeia status antigo para stage name
-        return (deal.status ?? "").toLowerCase() === stage.name.toLowerCase();
+        // Fallback para deals sem pipeline: mapeia status antigo para stage id ou nome
+        const st = (deal.status ?? "").toLowerCase();
+        return st === stage.id.toLowerCase() || st === stage.name.toLowerCase();
       });
     },
     [filteredDeals],
@@ -220,9 +243,10 @@ export default function Pipeline() {
         await updateDeal.mutateAsync({
           id: draggableId,
           stage_id: targetStageId,
+          status: targetStageId,
           pipeline_id: activePipelineId ?? undefined,
         } as any);
-        const stageLabel = stages?.find((s) => s.id === targetStageId)?.name ?? targetStageId;
+        const stageLabel = effectiveStages.find((s) => s.id === targetStageId)?.name ?? targetStageId;
         toast({ title: `Movido para ${stageLabel}`, duration: 2000 });
         emit(
           "update",
@@ -246,11 +270,11 @@ export default function Pipeline() {
         toast({ title: "Erro ao mover negócio", variant: "destructive", duration: 3000 });
       }
     },
-    [deals, stages, activePipelineId, updateDeal, emit, user, followUpsByDealId],
+    [deals, effectiveStages, activePipelineId, updateDeal, emit, user, followUpsByDealId],
   );
 
   const activePipeline = pipelines?.find((p) => p.id === activePipelineId);
-  const isLoading = dealsLoading || stagesLoading;
+  const isLoading = dealsLoading || (stagesLoading && !!activePipelineId);
 
   return (
     <AppLayout>
@@ -384,13 +408,9 @@ export default function Pipeline() {
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="flex gap-3 p-3 min-h-0 h-full">
             <DragDropContext onDragEnd={handleDragEnd}>
-              {(!activePipeline || !stages || stages.length === 0) && !isLoading && (
+              {(!effectiveStages || effectiveStages.length === 0) && !isLoading && (
                 <div className="flex items-center justify-center w-full text-muted-foreground">
-                  <p>
-                    {!pipelines?.length
-                      ? "Nenhuma pipeline configurada. Vá a Definições > Pipelines para criar uma."
-                      : "Nenhum stage definido para esta pipeline."}
-                  </p>
+                  <p>Nenhuma etapa de pipeline configurada.</p>
                 </div>
               )}
               {isLoading &&
@@ -408,7 +428,7 @@ export default function Pipeline() {
                     </Card>
                   </div>
                 ))}
-              {stages?.map((stage) => {
+              {effectiveStages.map((stage) => {
                 const columnDeals = getDealsByStage(stage);
                 const columnTotal = getColumnTotal(stage);
                 const isCollapsed = collapsedColumns.includes(stage.id);

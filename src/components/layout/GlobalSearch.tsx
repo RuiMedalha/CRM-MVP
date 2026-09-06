@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Building2, FileText, Kanban, MessagesSquare, Search, X } from "lucide-react"
 
@@ -36,11 +36,17 @@ function kindLabel(kind: ResultKind): string {
 export function GlobalSearch() {
   const { isOpen, close } = useGlobalSearchStore()
   const [query, setQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
 
-  const { data: contacts } = useContacts()
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 200)
+    return () => clearTimeout(t)
+  }, [query])
+
+  const { data: contacts } = useContacts(debouncedQuery || undefined)
   const { data: deals } = useDeals()
   const storeConversations = useConversationStore((s) => s.conversations)
   const storeGroupConversations = useConversationStore((s) => s.groupConversations)

@@ -34,6 +34,13 @@ function buttonsAsText(buttons: NonNullable<MessageTemplate["buttons"]>): string
 
 export const BUILT_IN_SNIPPETS: MessageTemplate[] = [
   {
+    id: "builtin-triage",
+    name: "👋 Acolhimento, Horário & Triagem (Automática)",
+    content: "Olá! Obrigado pelo seu contacto com a HotelEquip. 👋\n\nRecebemos a sua mensagem. De momento a nossa equipa está em atendimento, mas responderemos com a máxima brevidade!\n\n🕒 O nosso horário de atendimento é de 2ª a 6ª feira, das 09h00 às 13h00 e das 14h00 às 18h00.\n\nPara o podermos encaminhar de imediato para o departamento responsável, indique-nos por favor o motivo do seu contacto:\n1️⃣ Avaria / Assistência Técnica (manutenção, peças ou reparação)\n2️⃣ Pedido de Orçamento (novos equipamentos ou projetos)\n3️⃣ Pedido de Informações (encomendas, faturas ou dúvidas gerais)\n\nPor favor, responda apenas com o número da sua opção (1, 2 ou 3).",
+    channel: "all",
+    enabled: true,
+  },
+  {
     id: "builtin-recovery",
     name: "📞 Recuperação de Chamada Não Atendida",
     content: "Olá! Vimos que nos tentou ligar há pouco para a nossa central, mas infelizmente não conseguimos atender a tempo. Em que podemos ajudar?",

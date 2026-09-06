@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     host: "::",
-    port: 8080,
+    port: 8081,
     proxy: {
       "/chatwoot-api": {
         target: "https://chat.hotelequip.pt",
@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => ({
           { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
-      devOptions: { enabled: true },
+      devOptions: { enabled: false },
     }),
   ].filter(Boolean),
   resolve: {

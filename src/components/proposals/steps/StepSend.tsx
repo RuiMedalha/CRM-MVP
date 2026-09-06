@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProposalForm, type FollowUp } from "@/contexts/ProposalFormContext";
 import { calculatePersuasionScore } from "@/utils/persuasionScore";
@@ -33,6 +33,7 @@ import {
   FileDown,
   ArrowLeft,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 import type { Quotation } from "@/types/quotation";
 
@@ -45,6 +46,25 @@ export function StepSend() {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [savedQuotationId, setSavedQuotationId] = useState<string | null>(null);
   const [followupsEnabled, setFollowupsEnabled] = useState(true);
+
+  useEffect(() => {
+    if (!sentResult && state.editingId) {
+      (async () => {
+        try {
+          const { quotation } = await getQuotationById(state.editingId);
+          if (quotation) {
+            setSavedQuotationId(state.editingId);
+            if (quotation.public_token) {
+              const baseUrl = import.meta.env.VITE_PROPOSALS_BASE_URL || "https://proposta.hotelequip.pt";
+              setSentResult({ token: quotation.public_token, url: `${baseUrl}/p/${quotation.public_token}` });
+            }
+          }
+        } catch {
+          // ignore
+        }
+      })();
+    }
+  }, [state.editingId, sentResult]);
 
   const { score } = useMemo(() => calculatePersuasionScore(state), [state]);
   const total = state.items.reduce((sum, i) => sum + (i.line_total || 0), 0);
@@ -238,14 +258,14 @@ export function StepSend() {
         }
       }
 
-      if (mode !== "skip") {
-        const result = await sendQuotation(quotationId, {
-          email: state.customer_email,
-          phone: state.sent_to_phone || state.customer_phone,
-        });
-        setSentResult(result);
-        setSavedQuotationId(quotationId);
+      const result = await sendQuotation(quotationId, {
+        email: mode === "skip" ? undefined : state.customer_email,
+        phone: state.sent_to_phone || state.customer_phone,
+      });
+      setSentResult(result);
+      setSavedQuotationId(quotationId);
 
+      if (mode !== "skip") {
         await triggerQuotationSent({
           id: quotationId,
           quotation_number: quotationNumber,
@@ -259,11 +279,9 @@ export function StepSend() {
           public_token: result.token,
           status: "sent",
         } as Quotation);
-
         toast({ title: "Proposta enviada!", description: `Link: ${result.url}` });
       } else {
-        toast({ title: "Proposta guardada como rascunho" });
-        navigate("/propostas");
+        toast({ title: "Link da proposta pronto a partilhar!", description: `Link: ${result.url}` });
       }
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Falha ao enviar", variant: "destructive" });
@@ -334,32 +352,41 @@ export function StepSend() {
               </div>
 
               <div className="flex gap-3 mt-4 flex-wrap justify-center">
+                <Button
+                  size="default"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                  onClick={() => {
+                    const phone = (state.sent_to_phone || state.customer_phone || "").replace(/[^0-9]/g, "");
+                    const validUntilText = state.valid_until
+                      ? new Date(state.valid_until).toLocaleDateString("pt-PT")
+                      : "";
+                    const message = `Olá ${state.customer_name || ""}, segue a sua proposta personalizada da HotelEquip:\n${sentResult.url}${validUntilText ? `\nVálida até ${validUntilText}.` : ""}\nQualquer dúvida estou à inteira disposição.`;
+                    const waUrl = phone
+                      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+                      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+                    window.open(waUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Enviar por WhatsApp
+                </Button>
                 <Button variant="outline" onClick={copyLink}>
                   <Copy className="h-4 w-4 mr-1.5" />
                   Copiar link
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    const phone = (state.sent_to_phone || state.customer_phone || "").replace(/[^0-9]/g, "");
-                    const validUntilText = state.valid_until
-                      ? new Date(state.valid_until).toLocaleDateString("pt-PT")
-                      : "";
-                    const message = `Olá ${state.customer_name || ""}, segue a sua proposta personalizada da HotelEquip:\n${sentResult.url}${validUntilText ? `\nVálida até ${validUntilText}.` : ""} Qualquer dúvida estou disponível.`;
-                    const waUrl = phone
-                      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-                      : `https://wa.me/?text=${encodeURIComponent(message)}`;
-                    window.open(waUrl, "_blank");
-                  }}
+                  onClick={() => window.open(sentResult.url, "_blank", "noopener,noreferrer")}
                 >
-                  <MessageCircle className="h-4 w-4 mr-1.5" />
-                  Enviar por WhatsApp
+                  <ExternalLink className="h-4 w-4 mr-1.5 text-blue-500" />
+                  Abrir página pública
                 </Button>
                 <Button variant="outline" onClick={handleDownloadPDF} disabled={loadingPdf}>
                   {loadingPdf ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <FileDown className="h-4 w-4 mr-1.5" />}
                   {loadingPdf ? "A gerar..." : "Descarregar PDF"}
                 </Button>
                 <Button
+                  variant="ghost"
                   onClick={() => {
                     reset();
                     navigate("/propostas");

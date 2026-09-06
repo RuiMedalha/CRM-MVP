@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getContactById } from "@/integrations/directus/contacts";
 import { useProposalForm } from "@/contexts/ProposalFormContext";
 import { useContacts } from "@/hooks/useContacts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +16,31 @@ export function StepClient() {
   const [showResults, setShowResults] = useState(false);
 
   const { data: contacts = [], isLoading } = useContacts(searchQuery);
+
+  // Auto-fill from Directus if customer_id is present but name/email/phone are missing
+  const customerIdToFetch = state.customer_id;
+  const shouldFetchContact = !!customerIdToFetch && (!state.customer_name || !state.customer_email || !state.customer_phone);
+  const { data: contactDetails } = useQuery({
+    queryKey: ["step-client-contact", customerIdToFetch],
+    queryFn: () => getContactById(customerIdToFetch!),
+    enabled: shouldFetchContact,
+  });
+
+  useEffect(() => {
+    if (contactDetails) {
+      const c = contactDetails as any;
+      const personName = c.contact_person || c.contact_name || c.full_name || "";
+      const companyName = c.company_name || "";
+      updateFields({
+        customer_name: state.customer_name || personName || companyName,
+        customer_company: state.customer_company || companyName,
+        customer_email: state.customer_email || c.email || c.contact_email || "",
+        customer_phone: state.customer_phone || c.phone || c.contact_phone || "",
+        sent_to_phone: state.sent_to_phone || c.phone || c.contact_phone || "",
+        isExistingCustomer: true,
+      });
+    }
+  }, [contactDetails, state.customer_name, state.customer_company, state.customer_email, state.customer_phone, state.sent_to_phone, updateFields]);
 
   const handleSelectContact = (contact: any) => {
     // Prioritize person name (contact_person / contact_name) over company_name
@@ -55,16 +82,24 @@ export function StepClient() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Existing customer banner */}
-          {state.isExistingCustomer && state.customer_name && (
-            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-              <div className="flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                  Cliente existente: {state.customer_name}
-                </span>
+          {state.isExistingCustomer && (state.customer_name || state.customer_company) && (
+            <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <UserCheck className="h-5 w-5 text-emerald-600 shrink-0" />
+                <div>
+                  <div className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                    Cliente associado: {state.customer_name || state.customer_company}
+                    {state.customer_company && state.customer_name && state.customer_name !== state.customer_company && (
+                      <span className="text-xs font-normal text-muted-foreground ml-2">({state.customer_company})</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-emerald-700/80 dark:text-emerald-400 mt-0.5">
+                    {[state.customer_phone, state.customer_email].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleClearCustomer}>
-                Alterar
+              <Button variant="outline" size="sm" onClick={handleClearCustomer} className="text-xs">
+                Alterar cliente
               </Button>
             </div>
           )}

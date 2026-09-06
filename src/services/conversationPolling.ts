@@ -6,7 +6,7 @@ import { startRealtimeMessages } from "./realtimeMessages"
 
 import type { Conversation } from "@/types/conversation"
 
-export const POLL_INTERVAL_MS = 10000
+export const POLL_INTERVAL_MS = 2500
 
 /**
  * Feature flag para WebSocket realtime.
@@ -50,16 +50,8 @@ export async function fetchConversationsWithFallback(): Promise<ConversationFetc
     ])
 
     const all = [...waResult, ...askmeResult, ...emailResult].sort((a, b) => {
-      const ta = Math.max(
-        new Date(a.lastActivityAt || 0).getTime(),
-        new Date(a.updatedAt || 0).getTime(),
-        new Date(a.createdAt || 0).getTime(),
-      )
-      const tb = Math.max(
-        new Date(b.lastActivityAt || 0).getTime(),
-        new Date(b.updatedAt || 0).getTime(),
-        new Date(b.createdAt || 0).getTime(),
-      )
+      const ta = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : new Date(a.createdAt || 0).getTime()
+      const tb = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : new Date(b.createdAt || 0).getTime()
       return tb - ta
     })
 

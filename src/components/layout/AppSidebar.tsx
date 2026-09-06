@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Factory,
   FileText,
-  IdCard,
   Inbox,
   Kanban,
   LayoutDashboard,
@@ -142,7 +141,6 @@ const navSections: NavSection[] = [
     },
     items: [
       { icon: Users, label: "Contactos", path: "/contactos" },
-      { icon: IdCard, label: "Ficha de Cliente", path: "/customer360-shell" },
     ],
   },
   {
@@ -235,7 +233,7 @@ export function AppSidebar() {
   const isActive = (path: string, exact: boolean = false) => {
     if (currentPath === path) return true
     if (path === "/" && (location.pathname === "/" || location.pathname === "/hoje")) return true
-    if (path === "/customer360-shell" && (location.pathname.startsWith("/customer360") || location.pathname.startsWith("/clientes"))) return true
+    if (path === "/contactos" && (location.pathname.startsWith("/contactos") || location.pathname.startsWith("/customer360") || location.pathname.startsWith("/clientes"))) return true
     if (path === "/comunicacoes?channel=whatsapp" && location.pathname === "/comunicacoes" && (!location.search || location.search === "?channel=whatsapp")) return true
     if (path === "/comunicacoes?channel=telecof" && (location.pathname === "/telecof" || (location.pathname === "/comunicacoes" && location.search === "?channel=telecof"))) return true
     if (path === "/email") {

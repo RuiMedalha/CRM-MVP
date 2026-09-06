@@ -25,13 +25,13 @@ const buttonVariants = cva(
         soft:
           "bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-100 dark:bg-brand-900/30 dark:text-brand-200 dark:border-brand-800/40",
         outline:
-          "border border-brand-200 bg-background text-brand-700 hover:bg-brand-50 hover:border-brand-300 dark:border-brand-700 dark:text-brand-200 dark:hover:bg-brand-900/40",
+          "border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground shadow-xs",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost:
-          "hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-brand-900/40",
+          "hover:bg-accent hover:text-accent-foreground",
         link:
-          "text-brand-600 underline-offset-4 hover:underline hover:text-brand-700",
+          "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",

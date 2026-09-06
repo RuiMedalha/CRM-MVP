@@ -15,7 +15,7 @@
  */
 
 import { useMemo, useState, useCallback, useEffect } from "react";
-import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate, Navigate } from "react-router-dom";
 import { identifyByPhoneOrEmail } from "@/services/contactIdentification";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Customer360Layout } from "@/components/customer360/Customer360Layout";
@@ -164,6 +164,49 @@ export default function Customer360Shell() {
     }
   }, [id, c360?.organization?.name, c360?.organization?.phone, c360?.organization?.email]);
 
+  const handleNewProposal = useCallback(() => {
+    if (!id) return;
+    const org = c360?.organization;
+    const orgName = org?.name || "";
+    const orgComp = org?.company_name || orgName;
+    const orgEmail = org?.email || "";
+    const orgPhone = org?.phone || org?.mobile_phone || "";
+    const query = new URLSearchParams({
+      contactId: String(id),
+      customerId: String(id),
+      ...(orgName ? { name: orgName, contactName: orgName } : {}),
+      ...(orgComp ? { company: orgComp } : {}),
+      ...(orgEmail ? { email: orgEmail } : {}),
+      ...(orgPhone ? { phone: orgPhone } : {}),
+    });
+    navigate(`/propostas/nova?${query.toString()}`, {
+      state: {
+        prefill: {
+          contactId: id,
+          contactName: orgName || undefined,
+          company: orgComp || undefined,
+          email: orgEmail || undefined,
+          phone: orgPhone || undefined,
+        },
+      },
+    });
+  }, [id, c360?.organization, navigate]);
+
+  const handleNewQuotation = useCallback(() => {
+    if (!id) return;
+    const org = c360?.organization;
+    const orgName = org?.name || "";
+    const orgComp = org?.company_name || orgName;
+    const query = new URLSearchParams({
+      customerId: String(id),
+      contactId: String(id),
+      create: "1",
+      ...(orgName ? { name: orgName } : {}),
+      ...(orgComp ? { company: orgComp } : {}),
+    });
+    navigate(`/orcamentos?${query.toString()}`);
+  }, [id, c360?.organization, navigate]);
+
   if (resolvingSearch) {
     return (
       <AppLayout>
@@ -175,7 +218,7 @@ export default function Customer360Shell() {
     );
   }
 
-  if (isHubMode) return <AppLayout><Customer360Hub /></AppLayout>;
+  if (isHubMode) return <Navigate to="/contactos" replace />;
 
   if (isCreateMode) {
     const prefill = {
@@ -280,7 +323,20 @@ export default function Customer360Shell() {
         <div className="bg-card border-b border-border px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <OrganizationHeader name={org.name} status={org.status} roles={org.roles} assignedTo={org.assignedTo} lastActivity={org.lastActivityAt ? formatShortDate(org.lastActivityAt) : undefined} phone={org.phone} email={org.email} website={org.website} vatNumber={org.vatNumber} annualValue={org.annualValue} />
+              <OrganizationHeader
+                name={org.name}
+                status={org.status}
+                roles={org.roles}
+                assignedTo={org.assignedTo}
+                lastActivity={org.lastActivityAt ? formatShortDate(org.lastActivityAt) : undefined}
+                phone={org.phone}
+                email={org.email}
+                website={org.website}
+                vatNumber={org.vatNumber}
+                annualValue={org.annualValue}
+                onNewProposal={handleNewProposal}
+                onNewQuotation={handleNewQuotation}
+              />
             </div>
             <div className="hidden xl:flex items-center gap-4 shrink-0">{healthScore && <HealthScore score={healthScore.score} size="lg" />}<div className="w-px h-10 bg-border" /><NextAction action={nextAction} compact /></div>
           </div>
@@ -288,7 +344,13 @@ export default function Customer360Shell() {
         </div>
         <div className="border-b border-border bg-card px-5 py-2">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <Customer360Actions contactId={id} contactName={org.name} contactPhone={org.phone || org.mobile_phone} contactEmail={org.email} />
+            <Customer360Actions
+              contactId={id}
+              contactName={org.name}
+              contactCompany={org.company_name || org.name}
+              contactPhone={org.phone || org.mobile_phone}
+              contactEmail={org.email}
+            />
           </div>
         </div>
         <div className="px-5 py-1.5 border-b border-border bg-card/40"><Breadcrumb items={[{ label: "HotelEquip", href: "/" }, { label: "Clientes", href: "/clientes" }, { label: org.name }]} /></div>

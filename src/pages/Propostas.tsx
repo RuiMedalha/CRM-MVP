@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -16,7 +16,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { Plus, Search, Eye, Copy, MoreHorizontal, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Copy, MoreHorizontal, Loader2, MessageCircle, ExternalLink } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,10 +57,12 @@ export default function Propostas() {
     queryFn: () => listQuotations({ search: searchQuery, limit: 200 }),
   });
 
-  // Filter to proposals only (PRP- prefix or document_type === 'proposal')
-  const proposals = quotations.filter((q: any) =>
-    q.document_type === "proposal" || (!q.document_type && !(q.quotation_number || "").startsWith("ORC-"))
-  );
+  // Filter to proposals only (PRP- prefix or document_type === 'proposal' excluding ORC-)
+  const proposals = quotations
+    .filter((q: any) =>
+      (q.quotation_number || "").startsWith("PRP-") || (q.document_type === "proposal" && !(q.quotation_number || "").startsWith("ORC-"))
+    )
+    .sort((a: any, b: any) => Number(b.id || 0) - Number(a.id || 0));
 
   const filtered = activeTab === "all"
     ? proposals
@@ -153,18 +155,32 @@ export default function Propostas() {
                 {filtered.map((q: any) => {
                   const status = statusConfig[q.status] || statusConfig.draft;
                   const customerName =
-                    q.customer_id?.company_name || q.customer_id?.contact_name || "—";
+                    q.customer_name ||
+                    q.customer_company ||
+                    q.customer_id?.company_name ||
+                    q.customer_id?.contact_name ||
+                    "—";
+                  const displayDate = q.date_created || q.date_updated;
+                  const baseUrl = import.meta.env.VITE_PROPOSALS_BASE_URL || "https://proposta.hotelequip.pt";
+                  const proposalUrl = q.public_token
+                    ? `${baseUrl}/p/${q.public_token}`
+                    : `${window.location.origin}/propostas/${q.id}/detalhe`;
+                  const phone = String(q.sent_to_phone || q.customer_id?.phone || "").replace(/\D/g, "");
+                  const greeting = customerName !== "—" ? `Olá ${customerName}!` : "Olá!";
+                  const waMsg = encodeURIComponent(`${greeting} Segue a sua proposta da HotelEquip (${q.quotation_number || ""}):\n${proposalUrl}\n\nFicamos à total disposição!`);
+                  const waUrl = phone ? `https://wa.me/${phone}?text=${waMsg}` : `https://wa.me/?text=${waMsg}`;
+
                   return (
                     <TableRow
                       key={q.id}
-                      className="cursor-pointer"
+                      className="cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() => navigate(`/propostas/${q.id}/detalhe`)}
                     >
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="font-mono text-sm font-medium">
                         {q.quotation_number || "—"}
                       </TableCell>
-                      <TableCell>{customerName}</TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="font-medium text-foreground">{customerName}</TableCell>
+                      <TableCell className="text-right font-semibold">
                         {q.total_amount ? `€${Number(q.total_amount).toFixed(2)}` : "—"}
                       </TableCell>
                       <TableCell>
@@ -173,31 +189,64 @@ export default function Propostas() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
-                        {q.date_created
-                          ? new Date(q.date_created).toLocaleDateString("pt-PT")
+                        {displayDate
+                          ? new Date(displayDate).toLocaleDateString("pt-PT")
                           : "—"}
                       </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/propostas/${q.id}`); }}>
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/propostas/${q.id}/detalhe`); }}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver detalhe
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleDuplicate(q.id, e)} disabled={duplicatingId === q.id}>
-                              {duplicatingId === q.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Copy className="h-4 w-4 mr-2" />}
-                              Duplicar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                            title="Enviar por WhatsApp"
+                            onClick={() => window.open(waUrl, "_blank", "noopener,noreferrer")}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            title="Copiar link"
+                            onClick={() => {
+                              navigator.clipboard.writeText(proposalUrl);
+                              toast({ title: "Link copiado!", description: proposalUrl });
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => navigate(`/propostas/${q.id}`)}>
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/propostas/${q.id}/detalhe`)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Ver detalhe
+                              </DropdownMenuItem>
+                              {q.public_token && (
+                                <DropdownMenuItem onClick={() => window.open(`${baseUrl}/p/${q.public_token}`, "_blank", "noopener,noreferrer")}>
+                                  <ExternalLink className="h-4 w-4 mr-2 text-blue-500" />
+                                  Abrir página pública
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => window.open(waUrl, "_blank", "noopener,noreferrer")}>
+                                <MessageCircle className="h-4 w-4 mr-2 text-green-600" />
+                                Enviar WhatsApp
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => handleDuplicate(q.id, e)} disabled={duplicatingId === q.id}>
+                                {duplicatingId === q.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Copy className="h-4 w-4 mr-2" />}
+                                Duplicar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

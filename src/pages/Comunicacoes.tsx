@@ -2,6 +2,7 @@ import React, { Suspense, useCallback, useEffect, useState } from "react"
 import { MessagesSquare } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 import { AppLayout } from "@/components/layout/AppLayout"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 import {
   ComunicacoesChannelsSidebar,
@@ -89,9 +90,11 @@ function HubInboxView({ hasSelection }: { hasSelection: boolean }) {
         "min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex crm-hub-thread",
         hasSelection ? "flex" : "hidden",
       )}>
-        <Suspense fallback={<HubThreadFallback />}>
-          <HubConversationView />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<HubThreadFallback />}>
+            <HubConversationView />
+          </Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   )
@@ -182,11 +185,13 @@ export default function Comunicacoes() {
   return (
     <AppLayout fullHeight>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
-        <header className="crm-communications-header relative z-[50] flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-3">
-          <MessagesSquare className="h-5 w-5 shrink-0 text-primary" />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold text-foreground">Comunicações</h1>
-            <p className="truncate text-xs text-muted-foreground">Inbox omnicanal</p>
+        <header className="crm-communications-header relative z-[50] flex shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <MessagesSquare className="h-5 w-5 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold text-foreground">Comunicações</h1>
+              <p className="truncate text-xs text-muted-foreground">Inbox omnicanal</p>
+            </div>
           </div>
         </header>
 

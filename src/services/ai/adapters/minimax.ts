@@ -1,4 +1,4 @@
-﻿import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
+import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
 import { withRetry } from "./utils";
 
 export class MinimaxAdapter implements AIProvider {
@@ -23,7 +23,7 @@ export class MinimaxAdapter implements AIProvider {
     }
 
     const model = options?.model || this.meta.default_model || "MiniMax-Text-01";
-    const rawUrl = this.meta.base_url?.trim() || "https://api.minimax.chat/v1/text/chatcompletion_v2";
+    const rawUrl = this.meta.base_url?.trim() || "https://api.minimax.io/v1/chat/completions";
     const systemPrompt = options?.systemPrompt || options?.system;
     
     // Check if it uses Anthropic-compatible format or OpenAI format
@@ -96,6 +96,17 @@ export class MinimaxAdapter implements AIProvider {
       }
 
       const data = await res.json();
+      
+      // MiniMax retorna HTTP 200 mesmo quando há erro de quota, chave ou modelo via base_resp
+      if (data.base_resp && typeof data.base_resp.status_code === "number" && data.base_resp.status_code !== 0) {
+        throw new Error(`MiniMax (${data.base_resp.status_code}): ${data.base_resp.status_msg || "Erro na API MiniMax"}`);
+      }
+
+      if (data.error) {
+        const msg = typeof data.error === "string" ? data.error : data.error.message || JSON.stringify(data.error);
+        throw new Error(`MiniMax: ${msg}`);
+      }
+
       let text = "";
 
       if (Array.isArray(data.content)) {
@@ -104,8 +115,16 @@ export class MinimaxAdapter implements AIProvider {
         text = data.choices[0].message.content;
       } else if (data.choices?.[0]?.messages?.[0]?.text) {
         text = data.choices[0].messages[0].text;
+      } else if (data.choices?.[0]?.text) {
+        text = data.choices[0].text;
       } else if (data.reply) {
         text = data.reply;
+      }
+
+      if (!text) {
+        console.warn("[MiniMax] Resposta vazia ou estrutura desconhecida:", data);
+        const snippet = JSON.stringify(data).slice(0, 180);
+        throw new Error(`MiniMax conectou mas não retornou texto gerado. Resposta da API: ${snippet}`);
       }
 
       const tokens =

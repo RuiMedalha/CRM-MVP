@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
-import { ChevronLeft, ExternalLink, Plus, Users } from "lucide-react"
+import { ChevronLeft, ExternalLink, Plus, Users, Bot } from "lucide-react"
 import { Link } from "react-router-dom"
+import { cn } from "@/lib/utils"
 
 import { ConversationStatusBadge } from "./ConversationStatusBadge"
 import { getChannelVisual } from "@/lib/channelRegistry"
@@ -97,6 +98,11 @@ export function ChatHeader({ booking }: { booking?: ChatHeaderBooking } = {}) {
     ? `/customer360-shell/novo?phone=${encodeURIComponent(phone)}&name=${encodeURIComponent(conversation.customerName)}`
     : "/customer360-shell/novo"
 
+  const isBotActive =
+    conversation.status === "ai_active" ||
+    conversation.mode === "bot" ||
+    Boolean(conversation.aiEnabled)
+
   return (
     <header className="crm-chat-header border-b border-border bg-card px-4 py-3 shrink-0">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
@@ -159,27 +165,40 @@ export function ChatHeader({ booking }: { booking?: ChatHeaderBooking } = {}) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {ops.canAssume && (
-            <button
-              type="button"
-              disabled={ops.busy}
-              onClick={ops.assume}
-              className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+          {/* Botão claro e visível de Piloto Automático na conversa atual */}
+          <button
+            type="button"
+            disabled={ops.busy}
+            onClick={() => {
+              if (isBotActive) {
+                ops.assume()
+              } else {
+                ops.reactivate()
+              }
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition shadow-xs",
+              isBotActive
+                ? "border-emerald-500/50 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 ring-1 ring-emerald-500/30"
+                : "border-amber-500/50 bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+            )}
+            title={
+              isBotActive
+                ? "Piloto Automático da IA ATIVO nesta conversa. Clique para passar a atendimento manual."
+                : "Atendimento MANUAL. Clique para ligar o Piloto Automático da IA nesta conversa."
+            }
+          >
+            <Bot className={cn("h-4 w-4", isBotActive ? "text-emerald-600 dark:text-emerald-400 animate-pulse" : "text-amber-600 dark:text-amber-400")} />
+            <span>Neste Chat:</span>
+            <span
+              className={cn(
+                "px-1.5 py-0.5 text-[9px] font-bold uppercase rounded",
+                isBotActive ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-black" : "bg-amber-600 text-white"
+              )}
             >
-              Assumir conversa
-            </button>
-          )}
-
-          {ops.canReactivate && (
-            <button
-              type="button"
-              disabled={ops.busy}
-              onClick={ops.reactivate}
-              className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-            >
-              Reativar IA
-            </button>
-          )}
+              {isBotActive ? "IA LIGADA" : "MANUAL"}
+            </span>
+          </button>
 
           {ops.canClose && (
             <button

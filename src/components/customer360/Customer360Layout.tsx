@@ -18,9 +18,11 @@ export function Customer360Layout({ header, toolbar, left, center, right }: Cust
       {header}
 
       {/* Action toolbar */}
-      <div className="border-b border-border bg-card px-5 py-2">
-        {toolbar}
-      </div>
+      {toolbar && (
+        <div className="border-b border-border bg-card px-5 py-2 empty:hidden">
+          {toolbar}
+        </div>
+      )}
 
       {/* Main 3-column grid */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[28%_44%_28%] min-h-0">

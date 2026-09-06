@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Customer360Hub — página inicial do módulo Customer 360.
  * Pesquisa de contactos + botões de criação.
  */
@@ -37,7 +37,7 @@ export function Customer360Hub() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [recents, setRecents] = useState<RecentContact[]>([]);
-  const { data: contacts, isLoading } = useContacts(query.length >= 2 ? query : "");
+  const { data: contacts, isLoading } = useContacts(query);
   const results = (contacts ?? []).slice(0, 10);
 
   useEffect(() => {
@@ -93,16 +93,16 @@ export function Customer360Hub() {
           </div>
         )}
 
-        {/* Results */}
-        {query.length >= 2 && (
-          <SectionCard title={`Resultados${results.length > 0 ? ` (${results.length})` : ""}`}>
-            {isLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : results.length === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground">Nenhum contacto encontrado.</p>
+        {/* Results / Contacts list */}
+        <SectionCard title={query.length >= 2 ? `Resultados${results.length > 0 ? ` (${results.length})` : ""}` : "Contactos Principais"}>
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : results.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground">Nenhum contacto encontrado.</p>
+              {query && (
                 <Button
                   variant="link"
                   size="sm"
@@ -111,31 +111,31 @@ export function Customer360Hub() {
                 >
                   Criar "{query}" como novo contacto →
                 </Button>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {results.map((c: any) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => navigate(`/customer360-shell/${c.id}`)}
-                    className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-left hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                      {(c.company_name || c.contact_name || "?").charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{c.company_name || c.contact_name || "—"}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {[c.phone, c.email, c.nif].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-        )}
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1 divide-y divide-border/30">
+              {results.map((c: any) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => navigate(`/customer360-shell/${c.id}`)}
+                  className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-left hover:bg-accent/50 transition-colors pt-2"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {(c.company_name || c.contact_name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{c.company_name || c.contact_name || "—"}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[c.phone, c.email, c.nif].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </SectionCard>
 
         {/* Action buttons */}
         <div className="flex items-center justify-center gap-3">

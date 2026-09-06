@@ -79,10 +79,10 @@ export async function listQuotations(params?: { search?: string; limit?: number;
   const search = params?.search?.trim() || "";
   const res = await directusRequest<{ data: QuotationRow[] }>(
     `/items/${DIRECTUS_QUOTATIONS_COLLECTION}${qs({
-      limit: params?.limit ?? 200,
+      limit: params?.limit ?? 300,
       page: params?.page ?? 1,
-      sort: "-date_created",
-      fields: "id,quotation_number,status,total_amount,valid_until,date_created,date_updated,deal_id,document_type,customer_id.id,customer_id.company_name",
+      sort: "-id",
+      fields: "id,quotation_number,status,total_amount,valid_until,date_created,date_updated,deal_id,document_type,public_token,sent_to_phone,customer_name,customer_company,customer_id.id,customer_id.company_name,customer_id.contact_name,customer_id.phone",
       ...(search ? { search } : {}),
     })}`
   );
@@ -95,8 +95,8 @@ export async function listQuotationsByCustomer(customerId: string | number, para
     `/items/${DIRECTUS_QUOTATIONS_COLLECTION}${qs({
       limit: params?.limit ?? 100,
       page: params?.page ?? 1,
-      sort: "-date_created",
-      fields: "id,quotation_number,status,total_amount,valid_until,date_created,date_updated,deal_id",
+      sort: "-id",
+      fields: "id,quotation_number,status,total_amount,valid_until,date_created,date_updated,deal_id,document_type,public_token,customer_name,customer_company",
       "filter[customer_id][_eq]": cid as any,
     })}`
   );
@@ -160,12 +160,25 @@ export async function getQuotationById(quotationId: string) {
   return { quotation: res.data || null, items: items.data || [] };
 }
 
+export function generatePublicToken(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(8)))
+    .map((b) => b.toString(36))
+    .join("")
+    .substring(0, 16);
+}
+
 export async function createQuotation(payload: Partial<QuotationRow>) {
   const docType = (payload as any).document_type as DocumentType | undefined;
   const quotation_number = payload.quotation_number || generateQuotationNumber(docType || "proposal");
+  const public_token = (payload as any).public_token || generatePublicToken();
   const res = await directusRequest<{ data: QuotationRow }>(`/items/${DIRECTUS_QUOTATIONS_COLLECTION}`, {
     method: "POST",
-    body: JSON.stringify({ ...payload, quotation_number, document_type: docType || "proposal" }),
+    body: JSON.stringify({
+      ...payload,
+      quotation_number,
+      public_token,
+      document_type: docType || "proposal",
+    }),
   });
   return res.data;
 }
@@ -275,12 +288,6 @@ export async function createQuotationFromDeal(dealId: string, customerId?: strin
 
 const TEMPLATES_COLLECTION = "quotation_templates";
 
-function generatePublicToken(): string {
-  return Array.from(crypto.getRandomValues(new Uint8Array(8)))
-    .map((b) => b.toString(36))
-    .join("")
-    .substring(0, 16);
-}
 
 /**
  * Enviar proposta — gera token público, atualiza status para "sent"

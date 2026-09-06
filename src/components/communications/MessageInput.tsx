@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Image as ImageIcon,
   Mic,
@@ -7,6 +7,8 @@ import {
   Video,
   FileText,
   X,
+  Sparkles,
+  Loader2,
 } from "lucide-react"
 
 import { sendAgentMessage, sendAgentMedia } from "@/services/whatsappOutboundMessage"
@@ -17,6 +19,8 @@ import { findStoredConversation, useConversationStore } from "@/store/conversati
 import { useMessageComposerStore } from "@/store/messageComposerStore"
 import { useMessageStore } from "@/store/messageStore"
 import { useAuth } from "@/contexts/AuthContext"
+import { aiRouter } from "@/services/ai/router"
+import { toast } from "@/hooks/use-toast"
 
 import { QuotedReplyBar } from "./QuotedReplyBar"
 import { MessageTemplatesPopover, BUILT_IN_SNIPPETS } from "./MessageTemplatesPopover"
@@ -71,12 +75,13 @@ export function MessageInput() {
 
   const SNIPPET_SHORTCUTS = useMemo(
     () => [
-      { key: "/iban", name: "IBAN & Transferência", text: BUILT_IN_SNIPPETS[1]?.content || "" },
-      { key: "/fatura", name: "Dados de Faturação", text: BUILT_IN_SNIPPETS[2]?.content || "" },
-      { key: "/nif", name: "Pedido de NIF", text: BUILT_IN_SNIPPETS[2]?.content || "" },
-      { key: "/recuperar", name: "Recuperação de Chamada", text: BUILT_IN_SNIPPETS[0]?.content || "" },
-      { key: "/horario", name: "Horário & Morada", text: BUILT_IN_SNIPPETS[3]?.content || "" },
-      { key: "/envio", name: "Envio & Tracking", text: BUILT_IN_SNIPPETS[4]?.content || "" },
+      { key: "/triagem", name: "Acolhimento & Triagem", text: BUILT_IN_SNIPPETS[0]?.content || "" },
+      { key: "/recuperar", name: "Recuperação de Chamada", text: BUILT_IN_SNIPPETS[1]?.content || "" },
+      { key: "/horario", name: "Horário & Atendimento", text: BUILT_IN_SNIPPETS[4]?.content || "" },
+      { key: "/iban", name: "IBAN & Transferência", text: BUILT_IN_SNIPPETS[2]?.content || "" },
+      { key: "/fatura", name: "Dados de Faturação", text: BUILT_IN_SNIPPETS[3]?.content || "" },
+      { key: "/nif", name: "Pedido de NIF", text: BUILT_IN_SNIPPETS[3]?.content || "" },
+      { key: "/envio", name: "Envio & Tracking", text: BUILT_IN_SNIPPETS[5]?.content || "" },
     ],
     []
   )
@@ -93,6 +98,71 @@ export function MessageInput() {
   function insertSnippet(content: string) {
     setText(content)
     setSlashIndex(0)
+  }
+
+  const [suggesting, setSuggesting] = useState(false)
+  const allMessages = useMessageStore((s) => s.messages)
+
+  const convMessages = useMemo(() => {
+    if (!selectedConversationId) return []
+    return allMessages
+      .filter((m) => m.conversationId === selectedConversationId)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .slice(-8)
+  }, [allMessages, selectedConversationId])
+
+  async function handleAiSuggest() {
+    if (!selectedConversationId || suggesting) return
+    setSuggesting(true)
+    setSendError(null)
+    try {
+      const historyText = convMessages
+        .map((m) => `${m.senderType === "customer" ? "Cliente" : "HotelEquip"}: ${m.content || "(mídia)"}`)
+        .join("\n")
+
+      const customerName = conversation?.customerName || "o cliente"
+      const hasPreviousReplies = convMessages.some((m) => m.senderType === "agent" || m.senderType === "user")
+      const lastCustomerMsg = [...convMessages].reverse().find((m) => m.senderType === "customer")?.content || ""
+
+      const prompt = `Histórico da conversa no WhatsApp com ${customerName}:
+${historyText || "(Sem histórico anterior)"}
+
+A ÚLTIMA mensagem enviada pelo cliente foi: "${lastCustomerMsg}"
+
+Gera a próxima resposta da HotelEquip reagindo diretamente a esta última mensagem:`
+
+      const systemPrompt = `És um consultor experiente da HotelEquip (equipamentos para hotelaria e restauração em Portugal) a responder diretamente no WhatsApp.
+O teu tom é profissional, rápido, muito empático e em Português de Portugal.
+
+REGRAS DE OURO (MUITO IMPORTANTE):
+1. ${hasPreviousReplies ? "A conversa JÁ ESTÁ EM CURSO. É TERMINANTEMENTE PROIBIDO dizer 'Olá', 'Agradecemos o seu contacto', repetir saudações ou saudar o cliente pelo nome outra vez. Responde direto como uma pessoa real no WhatsApp." : "Faz uma saudação inicial curta e simpática."}
+2. CONTINUIDADE E INTELIGÊNCIA: NUNCA repitas o mesmo texto que já enviaste antes. Lê o que o cliente disse na última mensagem e reage a isso especificamente.
+3. GARANTIA E SUPORTE TÉCNICO: NUNCA declares nem assumas de imediato que a reparação/máquina está coberta pela garantia sem validação prévia. Mostra empatia pelo problema e solicita o NIF da empresa ou envio de foto da fatura de compra para podermos analisar e abrir o processo com a assistência técnica. Pede também a marca/modelo e morada caso ainda não tenham sido informados.
+4. Tamanho: Máximo de 1 a 2 frases curtas, naturais e sem burocracia.
+5. Sem aspas, sem markdown e sem parecer um robô mecânico.`
+
+      const res = await aiRouter.completeWithFallback(prompt, {
+        systemPrompt,
+        maxTokens: 200,
+        temperature: 0.3,
+      })
+
+      if (res.text) {
+        setText(res.text.trim())
+        toast({
+          title: "Sugestão inteligente da IA ✨",
+          description: `Resposta contextualizada via ${res.providerLabel || "MiniMax"}.`,
+        })
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro ao gerar sugestão de IA",
+        description: err.message || "Não foi possível obter a resposta da IA.",
+        variant: "destructive",
+      })
+    } finally {
+      setSuggesting(false)
+    }
   }
 
   useEffect(() => {
@@ -358,6 +428,22 @@ export function MessageInput() {
           channel={conversation?.channel}
           onSelect={(content) => setText((prev) => prev ? `${prev} ${content}` : content)}
         />
+
+        {/* Botão de Sugestão com IA (MiniMax) */}
+        <button
+          type="button"
+          disabled={sending || suggesting}
+          onClick={() => void handleAiSuggest()}
+          className="flex h-11 items-center gap-1.5 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300 transition text-xs font-semibold shrink-0 disabled:opacity-50 shadow-sm"
+          title="Sugerir resposta com IA (MiniMax)"
+        >
+          {suggesting ? (
+            <Loader2 className="h-4 w-4 animate-spin text-amber-600 dark:text-amber-400" />
+          ) : (
+            <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500" />
+          )}
+          <span className="hidden md:inline">{suggesting ? "A pensar…" : "Sugerir IA"}</span>
+        </button>
 
         {isWhatsApp ? (
           <>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SaveBar — barra sticky de gravação da Ficha Mestre.
  * Mostra contagem de alterações, estado, e botões.
  */
@@ -16,11 +16,14 @@ interface SaveBarProps {
   onSave: () => void;
   onCancel: () => void;
   onOpenCustomer360?: () => void;
+  onNewProposal?: () => void;
+  onNewQuotation?: () => void;
 }
 
 export function SaveBar({
   isDirty, isSaving, lastError, lastSuccess, changeCount = 0,
   lastSavedAt, onSave, onCancel, onOpenCustomer360,
+  onNewProposal, onNewQuotation,
 }: SaveBarProps) {
   return (
     <div className="flex items-center justify-between sticky top-0 z-10 bg-[#f8f9fb] border-b border-border py-2.5 px-1 -mx-1">
@@ -45,6 +48,26 @@ export function SaveBar({
       </div>
 
       <div className="flex items-center gap-1.5">
+        {onNewProposal && (
+          <Button
+            type="button"
+            size="sm"
+            className="h-7 text-xs gap-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+            onClick={onNewProposal}
+          >
+            + Proposta
+          </Button>
+        )}
+        {onNewQuotation && (
+          <Button
+            type="button"
+            size="sm"
+            className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold"
+            onClick={onNewQuotation}
+          >
+            + Orçamento
+          </Button>
+        )}
         {onOpenCustomer360 && (
           <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={onOpenCustomer360}>
             ← Voltar ao Customer360

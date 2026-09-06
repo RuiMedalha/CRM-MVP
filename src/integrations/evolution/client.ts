@@ -3,21 +3,21 @@ import { directusRequest } from "@/integrations/directus/client"
 
 const DEFAULT_INSTANCE =
   (import.meta.env.VITE_EVOLUTION_INSTANCE as string | undefined)?.trim() ||
-  "hotelequip-918";
+  "hotelequip-916";
 
 // ─── All Evolution calls go through /wa-proxy endpoint ───────────────────
 
-// Enviar texto
 export async function sendTextViaEvolution(
   number: string,
   text: string,
   instanceName: string = DEFAULT_INSTANCE,
-): Promise<void> {
-  const resp = await directusRequest<{ ok: boolean; status: number }>("/wa-proxy", {
+): Promise<{ ok: boolean; status?: number; data?: any }> {
+  const resp = await directusRequest<{ ok: boolean; status: number; data?: any }>("/wa-proxy", {
     method: "POST",
     body: JSON.stringify({ provider: "evolution", action: "sendText", number, text, instance: instanceName }),
   });
   if (!(resp as any)?.ok) throw new Error(`Evolution sendText failed`);
+  return resp;
 }
 
 // Enviar imagem ou vídeo (URL pública)

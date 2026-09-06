@@ -217,7 +217,54 @@ export interface PrefillData {
 }
 
 export function ProposalFormProvider({ children, editingId, prefillData, existingData }: { children: React.ReactNode; editingId?: string; prefillData?: PrefillData; existingData?: Partial<ProposalFormState> }) {
-  const [state, dispatch] = useReducer(reducer, { ...initialState, editingId, newsletter_discount_code: generateDiscountCode() });
+  const init = (): ProposalFormState => {
+    const base: ProposalFormState = {
+      ...initialState,
+      editingId,
+      newsletter_discount_code: generateDiscountCode(),
+    };
+    if (prefillData) {
+      if (prefillData.contactId) base.customer_id = prefillData.contactId;
+      if (prefillData.contactName) base.customer_name = prefillData.contactName;
+      if (prefillData.company) base.customer_company = prefillData.company;
+      if (prefillData.email) base.customer_email = prefillData.email;
+      if (prefillData.phone) {
+        base.customer_phone = prefillData.phone;
+        base.sent_to_phone = prefillData.phone;
+      }
+      if (prefillData.notes) base.notes = prefillData.notes;
+      if (prefillData.contactId || prefillData.email || prefillData.phone) {
+        base.isExistingCustomer = true;
+      }
+      if (prefillData.products && prefillData.products.length > 0) {
+        base.items = prefillData.products.map((p) => ({
+          item_type: "product",
+          product_name: p.name,
+          sku: (p as any).sku || "",
+          quantity: p.quantity || 1,
+          unit_price: p.price || 0,
+          iva_percent: 23,
+          line_total: (p.price || 0) * (p.quantity || 1),
+        }));
+      }
+    }
+    if (existingData) {
+      Object.assign(base, existingData);
+      if (prefillData) {
+        if (!base.customer_id && prefillData.contactId) base.customer_id = prefillData.contactId;
+        if (!base.customer_name && prefillData.contactName) base.customer_name = prefillData.contactName;
+        if (!base.customer_company && prefillData.company) base.customer_company = prefillData.company;
+        if (!base.customer_email && prefillData.email) base.customer_email = prefillData.email;
+        if (!base.customer_phone && prefillData.phone) {
+          base.customer_phone = prefillData.phone;
+          base.sent_to_phone = prefillData.phone;
+        }
+      }
+    }
+    return base;
+  };
+
+  const [state, dispatch] = useReducer(reducer, undefined, init);
 
   // Load existing data when editing a quotation
   useEffect(() => {
@@ -256,20 +303,41 @@ export function ProposalFormProvider({ children, editingId, prefillData, existin
   useEffect(() => {
     if (existingData) return; // editing mode uses existingData instead
 
-    const storageKey = editingId ? `${STORAGE_KEY}_${editingId}` : STORAGE_KEY;
-    const stored = localStorage.getItem(storageKey);
+    const contactKey = prefillData?.contactId ? `${STORAGE_KEY}_contact_${prefillData.contactId}` : null;
+    const storageKey = editingId ? `${STORAGE_KEY}_${editingId}` : contactKey || STORAGE_KEY;
+    const stored = localStorage.getItem(storageKey) || (!editingId && contactKey ? localStorage.getItem(STORAGE_KEY) : null);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        // Rascunho encontrado — restaurar (nunca apagar automaticamente)
-        dispatch({ type: "LOAD_DRAFT", state: { ...initialState, ...parsed, editingId } });
+        if (parsed && typeof parsed === "object") {
+          // If draft belongs to current contact or generic draft, restore it
+          const draftContactId = parsed.customer_id;
+          if (!prefillData?.contactId || !draftContactId || String(draftContactId) === String(prefillData.contactId)) {
+            dispatch({
+              type: "LOAD_DRAFT",
+              state: {
+                ...initialState,
+                ...parsed,
+                editingId,
+                // Ensure prefill contact values are preserved/merged
+                ...(prefillData?.contactId ? { customer_id: prefillData.contactId } : {}),
+                ...(prefillData?.contactName ? { customer_name: prefillData.contactName } : {}),
+                ...(prefillData?.company ? { customer_company: prefillData.company } : {}),
+                ...(prefillData?.email ? { customer_email: prefillData.email } : {}),
+                ...(prefillData?.phone ? { customer_phone: prefillData.phone, sent_to_phone: prefillData.phone } : {}),
+                isExistingCustomer: true,
+              },
+            });
+            return;
+          }
+        }
       } catch {
-        // Dados corruptos — ignorar (o utilizador começará do zero)
+        // Dados corruptos — ignorar
       }
     }
-  }, [editingId, existingData]);
+  }, [editingId, existingData, prefillData]);
 
-  // Apply prefill data (from email/contact page navigation)
+  // Apply prefill data (from email/contact page navigation) if state is fresh
   useEffect(() => {
     if (!prefillData) return;
     const fields: Partial<ProposalFormState> = {};
@@ -304,12 +372,20 @@ export function ProposalFormProvider({ children, editingId, prefillData, existin
     }
   }, [prefillData]);
 
-  // Auto-save to localStorage on state change
+  // Auto-save to localStorage on state change immediately
   useEffect(() => {
     if (!state.isDirty) return;
-    const storageKey = editingId ? `${STORAGE_KEY}_${editingId}` : STORAGE_KEY;
     const toSave = { ...state, isDirty: false };
-    localStorage.setItem(storageKey, JSON.stringify(toSave));
+    const serialized = JSON.stringify(toSave);
+
+    if (editingId) {
+      localStorage.setItem(`${STORAGE_KEY}_${editingId}`, serialized);
+    } else {
+      localStorage.setItem(STORAGE_KEY, serialized);
+      if (state.customer_id) {
+        localStorage.setItem(`${STORAGE_KEY}_contact_${state.customer_id}`, serialized);
+      }
+    }
   }, [state, editingId]);
 
   const goToStep = useCallback((step: number) => dispatch({ type: "SET_STEP", step }), []);

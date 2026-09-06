@@ -140,8 +140,8 @@ export const DEFAULT_WORKFLOWS: WorkflowRow[] = [
   },
   {
     id: "wf-new-lead-welcome-wa",
-    name: "Novo Lead Criado -> Enviar WhatsApp Boas-vindas",
-    description: "Envia mensagem de boas-vindas pelo WhatsApp quando um novo lead com telefone entra no CRM.",
+    name: "WhatsApp Automático: Acolhimento, Horário & Triagem",
+    description: "Dispara automaticamente a mensagem inaugural de recepção com horário de funcionamento e menu de triagem (Avaria, Orçamento ou Dúvidas).",
     trigger_collection: "leads",
     trigger_event: "create",
     trigger_conditions: [
@@ -153,7 +153,7 @@ export const DEFAULT_WORKFLOWS: WorkflowRow[] = [
         type: "send_whatsapp",
         params: {
           to: "{{phone}}",
-          message: "Olá {{first_name}}! Recebemos o seu pedido de contacto na HotelEquip. O nosso gestor comercial entrará em contacto em breve.",
+          message: "Olá! Obrigado pelo seu contacto com a HotelEquip. 👋\n\nRecebemos a sua mensagem. De momento a nossa equipa está em atendimento, mas responderemos com a máxima brevidade!\n\n🕒 O nosso horário de atendimento é de 2ª a 6ª feira, das 09h00 às 13h00 e das 14h00 às 18h00.\n\nPara o podermos encaminhar de imediato para o departamento responsável, indique-nos por favor o motivo do seu contacto:\n1️⃣ Avaria / Assistência Técnica (manutenção, peças ou reparação)\n2️⃣ Pedido de Orçamento (novos equipamentos ou projetos)\n3️⃣ Pedido de Informações (encomendas, faturas ou dúvidas gerais)\n\nPor favor, responda apenas com o número da sua opção (1, 2 ou 3).",
         },
       },
       {
@@ -163,13 +163,43 @@ export const DEFAULT_WORKFLOWS: WorkflowRow[] = [
           activity_type: "whatsapp",
           channel: "evolution",
           direction: "out",
-          summary: "Mensagem automática de boas-vindas WhatsApp enviada.",
+          summary: "Mensagem inaugural de acolhimento e triagem WhatsApp enviada.",
         },
       },
     ],
     is_active: true,
     date_created: "2026-08-22T14:30:00.000Z",
-    date_updated: "2026-08-22T14:30:00.000Z",
+    date_updated: "2026-09-06T14:45:00.000Z",
+  },
+  {
+    id: "wf-ai-whatsapp-responder",
+    name: "IA WhatsApp: Triagem & Resposta Automática Inteligente",
+    description: "Analisa a mensagem recebida com IA (Claude/GPT), identifica se é Avaria, Orçamento ou Dúvida e responde em linguagem natural.",
+    trigger_collection: "activity",
+    trigger_event: "create",
+    trigger_conditions: [
+      { field: "channel", op: "_eq", value: "whatsapp" },
+      { field: "direction", op: "_eq", value: "in" },
+    ],
+    actions: [
+      {
+        id: "act-ai-1",
+        type: "webhook",
+        params: {
+          url: "https://api.hotelequip.pt/webhook/ai-whatsapp-router",
+          method: "POST",
+          headers: { "X-Source": "CRM-AI-Agent" },
+          payload: {
+            message: "{{summary}}",
+            sender: "{{phone}}",
+            context: "Hotelequip: Assistência Técnica, Orçamentos e Vendas de Equipamentos Hoteleiros",
+          },
+        },
+      },
+    ],
+    is_active: false,
+    date_created: "2026-09-06T14:45:00.000Z",
+    date_updated: "2026-09-06T14:45:00.000Z",
   },
   {
     id: "wf-deal-stage-won-moloni",

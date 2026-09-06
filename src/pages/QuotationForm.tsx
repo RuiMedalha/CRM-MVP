@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -14,7 +14,8 @@ import { StepPreview } from "@/components/proposals/steps/StepPreview";
 import { StepSend } from "@/components/proposals/steps/StepSend";
 import { Button } from "@/components/ui/button";
 import { Save, SendHorizontal, Loader2 } from "lucide-react";
-import { getQuotationById, createQuotation, patchQuotation, createQuotationItems, generateQuotationNumber } from "@/integrations/directus/quotations";
+import { getQuotationById, createQuotation, patchQuotation, createQuotationItems, replaceQuotationItems, sendQuotation, generateQuotationNumber } from "@/integrations/directus/quotations";
+import { getContactById } from "@/integrations/directus/contacts";
 import { toast } from "@/hooks/use-toast";
 import type { ProposalFormState } from "@/contexts/ProposalFormContext";
 import type { QuotationItem } from "@/types/quotation";
@@ -101,9 +102,12 @@ function FormContent() {
     });
   }, [state]);
 
-  // Point 1: create draft ID immediately for new proposals
+  // Point 1: create draft ID immediately for new proposals once client prefill is ready
   useEffect(() => {
     if (state.editingId || didCreateDraft.current) return;
+    // If a contactId was passed, wait until customer_name is set
+    if (state.customer_id && !state.customer_name) return;
+
     didCreateDraft.current = true;
     const initialPayload = buildDraftPayload();
     createQuotation({
@@ -130,11 +134,11 @@ function FormContent() {
           }));
           await createQuotationItems(itemsPayload).catch(() => {});
         }
-        navigate(`/propostas/${created.id}`, { replace: true });
+        navigate(`/propostas/${created.id}${location.search}`, { replace: true, state: location.state });
       }
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [state.customer_id, state.customer_name]);
 
   // Save draft (manual button only) — creates new or patches existing
   const handleSaveDraft = async () => {
@@ -178,6 +182,74 @@ function FormContent() {
     }
   };
 
+  // Save and prepare for immediate send / sharing
+  const handleSaveAndSend = async () => {
+    setDraftSaving(true);
+    try {
+      let id = state.editingId;
+      const payload = buildDraftPayload();
+
+      if (!id) {
+        const created = await createQuotation({
+          ...payload,
+          status: "sent",
+          document_type: "proposal",
+          quotation_number: generateQuotationNumber("proposal"),
+        } as any);
+        if (!created?.id) throw new Error("Falha ao criar proposta");
+        id = String(created.id);
+        updateField("editingId", id);
+
+        const allItems = [...state.items, ...state.additional_items].map((item, idx) => ({
+          quotation_id: id,
+          item_type: item.item_type || "product",
+          product_id: item.product_id || null,
+          product_name: item.product_name,
+          sku: item.sku || null,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_percent: item.discount_percent || 0,
+          iva_percent: (item as any).iva_percent ?? 23,
+          line_total: item.line_total,
+          sort_order: idx,
+        }));
+        if (allItems.length > 0) {
+          await createQuotationItems(allItems);
+        }
+      } else {
+        await patchQuotation(id, { ...payload, status: "sent" } as any);
+        const allItems = [...state.items, ...state.additional_items].map((item, idx) => ({
+          quotation_id: id,
+          item_type: item.item_type || "product",
+          product_id: item.product_id || null,
+          product_name: item.product_name,
+          sku: item.sku || null,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_percent: item.discount_percent || 0,
+          iva_percent: (item as any).iva_percent ?? 23,
+          line_total: item.line_total,
+          sort_order: idx,
+        }));
+        if (allItems.length > 0) {
+          await replaceQuotationItems(id, allItems);
+        }
+      }
+
+      await sendQuotation(id, {
+        email: state.customer_email,
+        phone: state.sent_to_phone || state.customer_phone,
+      });
+
+      goToStep(7);
+      toast({ title: "Proposta pronta a enviar!", description: "Link e opções de partilha gerados." });
+    } catch (err: any) {
+      toast({ title: "Erro ao preparar proposta", description: err.message || "Erro", variant: "destructive" });
+    } finally {
+      setDraftSaving(false);
+    }
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 0:
@@ -215,7 +287,12 @@ function FormContent() {
             {draftSaving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
             Guardar rascunho
           </Button>
-          <Button size="sm" onClick={async () => { await handleSaveDraft(); goToStep(7); }} disabled={draftSaving}>
+          <Button
+            size="sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-sm"
+            onClick={handleSaveAndSend}
+            disabled={draftSaving}
+          >
             <SendHorizontal className="h-4 w-4 mr-1.5" />
             Guardar e enviar
           </Button>
@@ -231,7 +308,7 @@ function FormContent() {
       </div>
 
       {/* Navigation buttons */}
-      <div className="flex items-center justify-between pt-4 border-t">
+      <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm py-3 px-2 flex items-center justify-between border-t z-10 -mx-4 md:mx-0 px-4 md:px-0">
         <Button
           variant="outline"
           onClick={prevStep}
@@ -239,9 +316,21 @@ function FormContent() {
         >
           Voltar
         </Button>
-        {currentStep < 7 && (
-          <Button onClick={nextStep}>
+        {currentStep < 7 ? (
+          <Button
+            onClick={nextStep}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-sm mr-14 md:mr-0"
+          >
             Próximo
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSaveAndSend}
+            disabled={draftSaving}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-sm mr-14 md:mr-0"
+          >
+            <SendHorizontal className="h-4 w-4 mr-1.5" />
+            Guardar e enviar
           </Button>
         )}
       </div>
@@ -365,27 +454,70 @@ export default function QuotationForm() {
         }
       : undefined;
 
-  const prefillData = statePrefill || queryPrefill;
+  const rawPrefill = {
+    ...(queryPrefill || {}),
+    ...(statePrefill || {}),
+  };
+
+  const contactIdToFetch = rawPrefill.contactId;
+  const { data: fetchedContact, isLoading: isFetchingContact } = useQuery({
+    queryKey: ["prefill-contact", contactIdToFetch],
+    queryFn: () => getContactById(contactIdToFetch!),
+    enabled: !!contactIdToFetch,
+  });
+
+  const prefillData: QuotationFormPrefill | undefined = useMemo(() => {
+    if (!rawPrefill.contactId && !rawPrefill.contactName && !rawPrefill.email && !fetchedContact) {
+      return undefined;
+    }
+    const c = fetchedContact as any;
+    return {
+      contactId: rawPrefill.contactId || (c ? String(c.id) : undefined),
+      contactName: rawPrefill.contactName || c?.contact_person || c?.contact_name || c?.company_name || undefined,
+      company: rawPrefill.company || c?.company_name || undefined,
+      email: rawPrefill.email || c?.email || undefined,
+      phone: rawPrefill.phone || c?.phone || undefined,
+      notes: rawPrefill.notes,
+      products: rawPrefill.products,
+    };
+  }, [rawPrefill, fetchedContact]);
+
   const isNewProposal = location.pathname.includes("/nova");
   const isEditing = !!id && !isNewProposal;
 
   // Load existing quotation when editing
-  const { data: existingData, isLoading } = useQuery({
+  const { data: existingData, isLoading: isLoadingExisting } = useQuery({
     queryKey: ["quotation-edit", id],
     queryFn: async () => {
       if (!id) return null;
       const result = await getQuotationById(id);
       if (!result.quotation) return null;
-      return mapQuotationToFormState(result.quotation, result.items);
+      const mapped = mapQuotationToFormState(result.quotation, result.items);
+      // Auto-populate customer info if customer_id is present but name/email missing
+      if (mapped.customer_id && (!mapped.customer_name || !mapped.customer_email)) {
+        try {
+          const c = await getContactById(mapped.customer_id);
+          if (c) {
+            mapped.customer_name = (c as any).contact_person || (c as any).contact_name || (c as any).company_name || "";
+            mapped.customer_company = (c as any).company_name || "";
+            if (!mapped.customer_email) mapped.customer_email = (c as any).email || (c as any).contact_email || "";
+            if (!mapped.customer_phone) mapped.customer_phone = (c as any).phone || (c as any).contact_phone || "";
+            if (!mapped.sent_to_phone) mapped.sent_to_phone = mapped.customer_phone;
+            mapped.isExistingCustomer = true;
+          }
+        } catch {}
+      }
+      return mapped;
     },
     enabled: isEditing,
   });
 
-  if (isEditing && isLoading) {
+  if ((isEditing && isLoadingExisting) || (isNewProposal && contactIdToFetch && isFetchingContact && !rawPrefill.contactName)) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">A carregar dados do cliente para a proposta…</p>
         </div>
       </AppLayout>
     );

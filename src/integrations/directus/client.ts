@@ -304,6 +304,15 @@ export async function directusRequest<T>(
 
       // Refresh failed -> clear stored tokens to avoid endless 401 loops.
       clearDirectusSession();
+
+      const fallback = DIRECTUS_ADMIN_TOKEN || DIRECTUS_FALLBACK_TOKEN;
+      if (fallback && token !== fallback) {
+        res = await doFetch(fallback);
+        const ctFallback = res.headers.get("content-type") || "";
+        const isJsonFallback = ctFallback.includes("application/json");
+        const bodyFallback: unknown = isJsonFallback ? await res.json().catch(() => null) : await res.text().catch(() => null);
+        if (res.ok) return bodyFallback as T;
+      }
     }
     const payload = (body || {}) as DirectusErrorPayload;
     const message = (() => {

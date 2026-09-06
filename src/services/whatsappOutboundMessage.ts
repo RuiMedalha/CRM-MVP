@@ -62,13 +62,11 @@ function resolveWhatsAppProvider(conv: Conversation): WhatsAppProvider {
 
 function resolveEvolutionInstance(conv: Conversation): string {
   // 1. Se tem instanceName guardado — usa directamente
-  if (conv.instanceName === 'hotelequip-918') return 'hotelequip-918'
-  if (conv.instanceName === 'hotelequip-916') return 'hotelequip-916'
+  if (conv.instanceName === 'hotelequip-918' || conv.instanceName?.includes('918')) return 'hotelequip-918'
+  if (conv.instanceName === 'hotelequip-916' || conv.instanceName?.includes('916')) return 'hotelequip-916'
 
-  // 2. Fallback — hotelequip-918 (916 desconectado)
-  // Nota: instance_name é preenchido pelo n8n ao criar a conversa.
-  // Conversas antigas sem instanceName fazem fallback para 918.
-  return 'hotelequip-918'
+  // 2. Fallback — hotelequip-916 (canal comercial ativo no Evolution)
+  return 'hotelequip-916'
 }
 
 export interface SendAgentMessageResult {
@@ -134,7 +132,7 @@ export async function sendAgentMessage(
       providerMessageId = (metaResult as any)?.messages?.[0]?.id ?? undefined;
     } else {
       const evoResult = await sendTextViaEvolution(phone, trimmed, resolveEvolutionInstance(conversation))
-      providerMessageId = (evoResult as any)?.key?.id ?? undefined;
+      providerMessageId = (evoResult as any)?.data?.key?.id ?? (evoResult as any)?.key?.id ?? undefined;
     }
     // Phase 2.F2: Persistir delivery_status=sent + provider_message_id no Directus
     directusRequest(`/items/messages/${encodeURIComponent(message.id)}`, {

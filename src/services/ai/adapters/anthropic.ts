@@ -1,4 +1,4 @@
-﻿import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
+import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
 import { withRetry } from "./utils";
 
 export class AnthropicAdapter implements AIProvider {
@@ -18,15 +18,56 @@ export class AnthropicAdapter implements AIProvider {
     options?: AICompletionOptions
   ): Promise<AICompletionResult> {
     const apiKey = this.meta.api_key?.trim();
+    const model = options?.model || this.meta.default_model || "claude-haiku-4-5";
+    const maxTokens = options?.maxTokens || 1024;
+    const systemPrompt = options?.systemPrompt || options?.system;
+
     if (!apiKey) {
-      throw new Error(`API key ausente para o provedor ${this.meta.label} (Anthropic)`);
+      // Fallback automático através do endpoint seguro /ai-proxy do Directus
+      const { directusRequest } = await import("@/integrations/directus/client");
+      const startTime = performance.now();
+      const payload: Record<string, unknown> = {
+        model: "claude-haiku-4-5",
+        max_tokens: maxTokens,
+        messages: [{ role: "user", content: prompt }],
+      };
+      if (systemPrompt) {
+        payload.system = systemPrompt;
+      }
+
+      const data = await directusRequest<{
+        model?: string;
+        content?: Array<{ type: string; text: string }>;
+        usage?: { input_tokens?: number; output_tokens?: number };
+      }>("/ai-proxy", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      const latency = Math.round(performance.now() - startTime);
+      let text = "";
+      if (Array.isArray(data?.content)) {
+        text = data.content
+          .map((c) => c.text || "")
+          .join("")
+          .trim();
+      }
+
+      const inputTokens = data?.usage?.input_tokens || 0;
+      const outputTokens = data?.usage?.output_tokens || 0;
+
+      return {
+        text,
+        tokens: inputTokens + outputTokens,
+        latency,
+        providerId: this.id,
+        providerLabel: this.meta.label,
+        model: data?.model || "claude-haiku-4-5",
+        raw: data,
+      };
     }
 
-    const model = options?.model || this.meta.default_model || "claude-3-5-sonnet-20241022";
-    const maxTokens = options?.maxTokens || 1024;
     const url = this.meta.base_url?.trim() || "https://api.anthropic.com/v1/messages";
-
-    const systemPrompt = options?.systemPrompt || options?.system;
 
     const body: Record<string, unknown> = {
       model,

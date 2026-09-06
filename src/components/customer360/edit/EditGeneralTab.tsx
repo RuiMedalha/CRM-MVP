@@ -180,6 +180,47 @@ export function EditGeneralTab({ organizationId, organization }: EditGeneralTabP
     }
   }, [organizationId, navigate]);
 
+  const handleNewProposal = useCallback(() => {
+    if (!organizationId) return;
+    const name = organization?.name || "";
+    const company = (organization as any)?.company_name || name;
+    const email = organization?.email || "";
+    const phone = organization?.phone || (organization as any)?.mobile_phone || "";
+    const query = new URLSearchParams({
+      contactId: String(organizationId),
+      customerId: String(organizationId),
+      ...(name ? { name, contactName: name } : {}),
+      ...(company ? { company } : {}),
+      ...(email ? { email } : {}),
+      ...(phone ? { phone } : {}),
+    });
+    navigate(`/propostas/nova?${query.toString()}`, {
+      state: {
+        prefill: {
+          contactId: organizationId,
+          contactName: name || undefined,
+          company: company || undefined,
+          email: email || undefined,
+          phone: phone || undefined,
+        },
+      },
+    });
+  }, [organizationId, organization, navigate]);
+
+  const handleNewQuotation = useCallback(() => {
+    if (!organizationId) return;
+    const name = organization?.name || "";
+    const company = (organization as any)?.company_name || name;
+    const query = new URLSearchParams({
+      customerId: String(organizationId),
+      contactId: String(organizationId),
+      create: "1",
+      ...(name ? { name } : {}),
+      ...(company ? { company } : {}),
+    });
+    navigate(`/orcamentos?${query.toString()}`);
+  }, [organizationId, organization, navigate]);
+
   if (!organizationId) {
     return <EntitySection title="Ficha Mestre"><div className="py-8 text-center text-sm text-muted-foreground">Selecciona uma organização.</div></EntitySection>;
   }
@@ -188,7 +229,16 @@ export function EditGeneralTab({ organizationId, organization }: EditGeneralTabP
     <div className="space-y-3">
       {/* Save bar + Archive */}
       <div className="flex items-center justify-between">
-        <SaveBar isDirty={isDirty} isSaving={isSaving} lastError={lastError} lastSuccess={lastSuccess} onSave={save} onCancel={reset} />
+        <SaveBar
+          isDirty={isDirty}
+          isSaving={isSaving}
+          lastError={lastError}
+          lastSuccess={lastSuccess}
+          onSave={save}
+          onCancel={reset}
+          onNewProposal={handleNewProposal}
+          onNewQuotation={handleNewQuotation}
+        />
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs">

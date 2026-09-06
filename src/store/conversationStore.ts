@@ -80,6 +80,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
           ? {
               ...c,
               lastMessage: content,
+              lastActivityAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               unreadCount: options?.incrementUnread
                 ? c.unreadCount + 1

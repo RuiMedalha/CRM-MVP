@@ -23,12 +23,15 @@ export type TelecofOperationalStatus =
 export const TELECOF_OPEN_STATUSES: TelecofOperationalStatus[] = [
   "new",
   "unhandled",
+  "missed",
   "in_progress",
+  "callback",
 ]
 
 export const TELECOF_ALL_STATUSES: TelecofOperationalStatus[] = [
   "new",
   "unhandled",
+  "missed",
   "in_progress",
   "resolved",
   "treated",
