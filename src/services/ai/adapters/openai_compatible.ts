@@ -1,4 +1,4 @@
-﻿import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
+import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
 import { withRetry } from "./utils";
 
 export class OpenAICompatibleAdapter implements AIProvider {
@@ -17,9 +17,31 @@ export class OpenAICompatibleAdapter implements AIProvider {
     prompt: string,
     options?: AICompletionOptions
   ): Promise<AICompletionResult> {
-    const rawBase = (this.meta.base_url || "").trim();
+    const isGemini = this.meta.type === "gemini" || this.meta.id === "default-gemini";
+    const apiKey =
+      this.meta.api_key?.trim() ||
+      (isGemini
+        ? (import.meta.env?.VITE_GEMINI_API_KEY as string) ||
+          (import.meta.env?.VITE_GEMINI_TOKEN as string)
+        : (import.meta.env?.VITE_GATEWAY_TOKEN as string) ||
+          (import.meta.env?.VITE_GATEWAY_KEY as string)) ||
+      "";
+
+    const rawBase =
+      (this.meta.base_url || "").trim() ||
+      (isGemini
+        ? (import.meta.env?.VITE_GEMINI_URL as string) ||
+          "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+        : (import.meta.env?.VITE_GATEWAY_URL as string)) ||
+      "";
+
     if (!rawBase) {
       throw new Error(`Base URL ausente para o provedor compatível ${this.meta.label}`);
+    }
+
+    const isOfficialGemini = rawBase.includes("generativelanguage.googleapis.com");
+    if (!apiKey && isOfficialGemini) {
+      throw new Error(`API key ausente para o provedor ${this.meta.label} (Google Gemini)`);
     }
 
     const cleanBase = rawBase.replace(/\/+$/, "");
@@ -27,7 +49,12 @@ export class OpenAICompatibleAdapter implements AIProvider {
       ? cleanBase
       : `${cleanBase}/chat/completions`;
 
-    const model = options?.model || this.meta.default_model || "default";
+    const model =
+      options?.model ||
+      this.meta.default_model ||
+      (isGemini
+        ? (import.meta.env?.VITE_GEMINI_MODEL as string) || "gemini-2.0-flash"
+        : (import.meta.env?.VITE_GATEWAY_MODEL as string) || "default");
     const systemPrompt = options?.systemPrompt || options?.system;
 
     const messages: Array<{ role: string; content: string }> = [];
@@ -52,8 +79,8 @@ export class OpenAICompatibleAdapter implements AIProvider {
       "Content-Type": "application/json",
     };
 
-    if (this.meta.api_key?.trim()) {
-      headers["Authorization"] = `Bearer ${this.meta.api_key.trim()}`;
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
     }
 
     return await withRetry(async () => {

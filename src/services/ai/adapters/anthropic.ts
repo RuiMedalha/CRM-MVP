@@ -17,10 +17,21 @@ export class AnthropicAdapter implements AIProvider {
     prompt: string,
     options?: AICompletionOptions
   ): Promise<AICompletionResult> {
-    const apiKey = this.meta.api_key?.trim();
-    const model = options?.model || this.meta.default_model || "claude-haiku-4-5";
+    const apiKey =
+      this.meta.api_key?.trim() ||
+      (import.meta.env?.VITE_ANTHROPIC_API_KEY as string) ||
+      "";
+    const model =
+      options?.model ||
+      this.meta.default_model ||
+      (import.meta.env?.VITE_ANTHROPIC_MODEL as string) ||
+      "claude-haiku-4-5";
     const maxTokens = options?.maxTokens || 1024;
     const systemPrompt = options?.systemPrompt || options?.system;
+    const rawUrl =
+      this.meta.base_url?.trim() ||
+      (import.meta.env?.VITE_ANTHROPIC_URL as string) ||
+      "https://api.anthropic.com/v1/messages";
 
     if (!apiKey) {
       // Fallback automático através do endpoint seguro /ai-proxy do Directus

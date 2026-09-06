@@ -1,4 +1,4 @@
-﻿import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
+import { AIProvider, AIProviderMeta, AIProviderType, AICompletionOptions, AICompletionResult } from "../types";
 import { withRetry } from "./utils";
 
 export class OpenAIAdapter implements AIProvider {
@@ -17,13 +17,28 @@ export class OpenAIAdapter implements AIProvider {
     prompt: string,
     options?: AICompletionOptions
   ): Promise<AICompletionResult> {
-    const apiKey = this.meta.api_key?.trim();
-    if (!apiKey) {
+    const apiKey =
+      this.meta.api_key?.trim() ||
+      (import.meta.env?.VITE_OPENAI_API_KEY as string) ||
+      (import.meta.env?.VITE_OPENAI_TOKEN as string) ||
+      "";
+
+    const url =
+      this.meta.base_url?.trim() ||
+      (import.meta.env?.VITE_OPENAI_URL as string) ||
+      "https://api.openai.com/v1/chat/completions";
+
+    const model =
+      options?.model ||
+      this.meta.default_model ||
+      (import.meta.env?.VITE_OPENAI_MODEL as string) ||
+      "gpt-4o";
+
+    const isOfficialOpenAI = url.includes("api.openai.com");
+    if (!apiKey && isOfficialOpenAI) {
       throw new Error(`API key ausente para o provedor ${this.meta.label} (OpenAI)`);
     }
 
-    const model = options?.model || this.meta.default_model || "gpt-4o";
-    const url = this.meta.base_url?.trim() || "https://api.openai.com/v1/chat/completions";
     const systemPrompt = options?.systemPrompt || options?.system;
 
     const messages: Array<{ role: string; content: string }> = [];
@@ -44,14 +59,18 @@ export class OpenAIAdapter implements AIProvider {
       body.temperature = options.temperature;
     }
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     return await withRetry(async () => {
       const startTime = performance.now();
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(body),
       });
 

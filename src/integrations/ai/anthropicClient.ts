@@ -24,21 +24,38 @@ async function getAIModel(): Promise<string> {
 }
 
 export async function generateWithAI(prompt: string): Promise<string> {
-  const model = await getAIModel();
+  // 1. Try unified AI router (MiniMax -> Claude -> Gemini -> GPT)
+  try {
+    const { aiRouter } = await import("@/services/ai/router");
+    const result = await aiRouter.completeWithFallback(prompt, {
+      maxTokens: 512,
+    });
+    if (result && result.text) {
+      return result.text;
+    }
+  } catch (err) {
+    console.warn("[generateWithAI] aiRouter failed, trying Directus /ai-proxy fallback", err);
+  }
 
-  // Go through Directus /ai-proxy endpoint — real AI token stays server-side
-  const { directusRequest } = await import("@/integrations/directus/client");
-  const data = await directusRequest<{ content?: { type: string; text: string }[] }>("/ai-proxy", {
-    method: "POST",
-    body: JSON.stringify({
-      model,
-      max_tokens: 512,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  // 2. Directus /ai-proxy endpoint fallback if router fails
+  try {
+    const model = await getAIModel();
+    const { directusRequest } = await import("@/integrations/directus/client");
+    const data = await directusRequest<{ content?: { type: string; text: string }[] }>("/ai-proxy", {
+      method: "POST",
+      body: JSON.stringify({
+        model,
+        max_tokens: 512,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
 
-  const textBlock = data?.content?.find((b) => b.type === "text");
-  return textBlock?.text || "";
+    const textBlock = data?.content?.find((b) => b.type === "text");
+    return textBlock?.text || "";
+  } catch (e) {
+    console.error("[generateWithAI] Directus /ai-proxy also failed:", e);
+    return "";
+  }
 }
 
 // ─── Pre-built prompts ──────────────────────────────────────────────────────

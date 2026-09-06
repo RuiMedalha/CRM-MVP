@@ -17,15 +17,32 @@ export class MinimaxAdapter implements AIProvider {
     prompt: string,
     options?: AICompletionOptions
   ): Promise<AICompletionResult> {
-    const apiKey = this.meta.api_key?.trim();
-    if (!apiKey) {
-      throw new Error(`API key ausente para o provedor ${this.meta.label} (MiniMax)`);
+    const apiKey =
+      this.meta.api_key?.trim() ||
+      (import.meta.env?.VITE_MINIMAX_API_KEY as string) ||
+      (import.meta.env?.VITE_MINIMAX_TOKEN as string) ||
+      "";
+
+    const rawUrl =
+      this.meta.base_url?.trim() ||
+      (import.meta.env?.VITE_MINIMAX_URL as string) ||
+      "https://api.minimax.io/v1/chat/completions";
+
+    const model =
+      options?.model ||
+      this.meta.default_model ||
+      (import.meta.env?.VITE_MINIMAX_MODEL as string) ||
+      "MiniMax-Text-01";
+
+    const systemPrompt = options?.systemPrompt || options?.system;
+
+    const isOfficialMinimax = rawUrl.includes("api.minimax.io") || rawUrl.includes("api.minimaxi.chat");
+    if (!apiKey && isOfficialMinimax) {
+      throw new Error(
+        `API key ausente para o provedor ${this.meta.label} (MiniMax). Configure a chave ou Gateway em Definições > Provedores IA.`
+      );
     }
 
-    const model = options?.model || this.meta.default_model || "MiniMax-Text-01";
-    const rawUrl = this.meta.base_url?.trim() || "https://api.minimax.io/v1/chat/completions";
-    const systemPrompt = options?.systemPrompt || options?.system;
-    
     // Check if it uses Anthropic-compatible format or OpenAI format
     const isAnthropicStyle = rawUrl.includes("/messages") || rawUrl.includes("anthropic");
 
@@ -42,15 +59,19 @@ export class MinimaxAdapter implements AIProvider {
         if (systemPrompt) body.system = systemPrompt;
         if (typeof options?.temperature === "number") body.temperature = options.temperature;
 
+        const headers: Record<string, string> = {
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+          "content-type": "application/json",
+        };
+        if (apiKey) {
+          headers["x-api-key"] = apiKey;
+          headers["Authorization"] = `Bearer ${apiKey}`;
+        }
+
         res = await fetch(rawUrl, {
           method: "POST",
-          headers: {
-            "x-api-key": apiKey,
-            Authorization: `Bearer ${apiKey}`,
-            "anthropic-version": "2023-06-01",
-            "anthropic-dangerous-direct-browser-access": "true",
-            "content-type": "application/json",
-          },
+          headers,
           body: JSON.stringify(body),
         });
       } else {
@@ -67,12 +88,16 @@ export class MinimaxAdapter implements AIProvider {
         if (typeof options?.maxTokens === "number") body.max_tokens = options.maxTokens;
         if (typeof options?.temperature === "number") body.temperature = options.temperature;
 
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (apiKey) {
+          headers["Authorization"] = `Bearer ${apiKey}`;
+        }
+
         res = await fetch(rawUrl, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify(body),
         });
       }

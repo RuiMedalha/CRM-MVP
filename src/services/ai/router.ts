@@ -1,4 +1,4 @@
-﻿import {
+import {
   AICompletionOptions,
   AICompletionResult,
   AIProvider,
@@ -106,22 +106,31 @@ export class AIRouterService implements AIRouter {
     const primaryId = preferredProviderId || settings.default_provider_id;
     const fallbackId = settings.fallback_provider_id;
 
-    // Constrói ordem de prioridade
+    // Constrói ordem de prioridade estrita: Primário (MiniMax) -> Fallback 1 (Claude) -> Fallback 2 (Gemini) -> Fallback 3 (GPT)
     const ordered: AIProviderMeta[] = [];
     
-    // 1. Provedor primário se existir e estiver ativo
+    // 1. Provedor primário se existir e estiver ativo (padrão: MiniMax)
     if (primaryId) {
       const p = enabledProviders.find((x) => x.id === primaryId);
       if (p) ordered.push(p);
     }
 
-    // 2. Provedor de fallback se configurado
+    // 2. Provedor de fallback se configurado (padrão: Claude)
     if (fallbackId && fallbackId !== primaryId) {
       const f = enabledProviders.find((x) => x.id === fallbackId);
       if (f && !ordered.some((x) => x.id === f.id)) ordered.push(f);
     }
 
-    // 3. Demais provedores habilitados
+    // 3. Fallbacks prioritários subsequentes (Gemini e GPT)
+    const standardFallbacks = ["default-gemini", "default-openai", "default-openrouter", "default-deepseek"];
+    for (const fbId of standardFallbacks) {
+      const ep = enabledProviders.find((x) => x.id === fbId);
+      if (ep && !ordered.some((x) => x.id === ep.id)) {
+        ordered.push(ep);
+      }
+    }
+
+    // 4. Demais provedores habilitados
     for (const ep of enabledProviders) {
       if (!ordered.some((x) => x.id === ep.id)) {
         ordered.push(ep);

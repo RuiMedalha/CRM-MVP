@@ -13,6 +13,21 @@ const CLAUDE_MODEL = "claude-sonnet-4-6";
 const SYSTEM_PROMPT = `És um assistente de vendas da HotelEquip, empresa portuguesa de equipamentos HORECA. Escreve em português de Portugal.`;
 
 async function callClaude(userPrompt: string): Promise<string | null> {
+  // 1. Try unified AI router (MiniMax -> Claude -> Gemini -> GPT)
+  try {
+    const { aiRouter } = await import("@/services/ai/router");
+    const result = await aiRouter.completeWithFallback(userPrompt, {
+      systemPrompt: SYSTEM_PROMPT,
+      maxTokens: 500,
+    });
+    if (result && result.text) {
+      return result.text;
+    }
+  } catch (err) {
+    console.warn("[quotationAI] aiRouter failed, trying direct Claude fallback", err);
+  }
+
+  // 2. Direct Anthropic API fallback if key is present
   if (!CLAUDE_API_KEY) return null;
   try {
     const res = await fetch(CLAUDE_API_URL, {
