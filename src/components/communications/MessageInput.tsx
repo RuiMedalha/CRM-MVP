@@ -19,7 +19,8 @@ import { useMessageStore } from "@/store/messageStore"
 import { useAuth } from "@/contexts/AuthContext"
 
 import { QuotedReplyBar } from "./QuotedReplyBar"
-import { MessageTemplatesPopover } from "./MessageTemplatesPopover"
+import { MessageTemplatesPopover, BUILT_IN_SNIPPETS } from "./MessageTemplatesPopover"
+import { cn } from "@/lib/utils"
 const FILE_ACCEPT = "image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
 
 function PendingPreviewIcon({ mediaType }: { mediaType: string }) {
@@ -64,6 +65,35 @@ export function MessageInput() {
   const isWhatsApp =
     conversation?.channel === "whatsapp" || conversation?.channel === "whatsapp_group"
   const hasPendingMedia = Boolean(pendingFile || pendingAudio)
+
+  // Slash commands rápidos (/iban, /fatura, /nif, /recuperar, /horario, /envio)
+  const [slashIndex, setSlashIndex] = useState(0)
+
+  const SNIPPET_SHORTCUTS = useMemo(
+    () => [
+      { key: "/iban", name: "IBAN & Transferência", text: BUILT_IN_SNIPPETS[1]?.content || "" },
+      { key: "/fatura", name: "Dados de Faturação", text: BUILT_IN_SNIPPETS[2]?.content || "" },
+      { key: "/nif", name: "Pedido de NIF", text: BUILT_IN_SNIPPETS[2]?.content || "" },
+      { key: "/recuperar", name: "Recuperação de Chamada", text: BUILT_IN_SNIPPETS[0]?.content || "" },
+      { key: "/horario", name: "Horário & Morada", text: BUILT_IN_SNIPPETS[3]?.content || "" },
+      { key: "/envio", name: "Envio & Tracking", text: BUILT_IN_SNIPPETS[4]?.content || "" },
+    ],
+    []
+  )
+
+  const isSlashMode = text.startsWith("/") && !text.includes("\n") && text.length <= 15
+  const matchingSlashCommands = useMemo(() => {
+    if (!isSlashMode) return []
+    const query = text.toLowerCase()
+    return SNIPPET_SHORTCUTS.filter(
+      (s) => s.key.startsWith(query) || s.name.toLowerCase().includes(query.slice(1))
+    )
+  }, [isSlashMode, text, SNIPPET_SHORTCUTS])
+
+  function insertSnippet(content: string) {
+    setText(content)
+    setSlashIndex(0)
+  }
 
   useEffect(() => {
     if (!pendingAudio) { setPendingAudioUrl(null); return }
@@ -289,7 +319,40 @@ export function MessageInput() {
           para 32px em master-detail split (1024x600 thread ~296px). Blocker #5
           do F-MOBILE-VALIDATION: o container herdava shrink-0 do pai + flex-1
           no input sem min-w-0, esmagando tudo para 33px. */}
-      <div className="flex min-w-0 items-end gap-2">
+      <div className="relative flex min-w-0 items-end gap-2">
+        {/* Menu flutuante de Slash Commands (/iban, /fatura, etc.) */}
+        {isSlashMode && matchingSlashCommands.length > 0 && (
+          <div className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-xl border border-border bg-popover/95 p-1.5 shadow-xl backdrop-blur-md max-w-md animate-in fade-in zoom-in-95 duration-100">
+            <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50 mb-1 flex items-center justify-between">
+              <span>Snippets Rápidos (Tab ou Enter)</span>
+              <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">Esc fecha</span>
+            </div>
+            <div className="space-y-0.5">
+              {matchingSlashCommands.map((item, idx) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => insertSnippet(item.text)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition",
+                    idx === slashIndex
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "hover:bg-muted text-foreground"
+                  )}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="font-mono font-bold text-[11px] rounded bg-muted/60 px-1 py-0.5 text-foreground">{item.key}</span>
+                    <span className="font-medium text-xs truncate">{item.name}</span>
+                  </div>
+                  <span className="text-[10px] opacity-70 truncate max-w-[140px] ml-2">
+                    {item.text.slice(0, 30)}…
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Botão de templates (disponível em todos os canais) */}
         <MessageTemplatesPopover
           channel={conversation?.channel}
@@ -331,13 +394,36 @@ export function MessageInput() {
           value={text}
           disabled={sending}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) void handleSend() }}
+          onKeyDown={(e) => {
+            if (isSlashMode && matchingSlashCommands.length > 0) {
+              if (e.key === "ArrowDown") {
+                e.preventDefault()
+                setSlashIndex((prev) => (prev + 1) % matchingSlashCommands.length)
+                return
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault()
+                setSlashIndex((prev) => (prev - 1 + matchingSlashCommands.length) % matchingSlashCommands.length)
+                return
+              }
+              if (e.key === "Enter" || e.key === "Tab") {
+                e.preventDefault()
+                insertSnippet(matchingSlashCommands[slashIndex]?.text || "")
+                return
+              }
+              if (e.key === "Escape") {
+                setText("")
+                return
+              }
+            }
+            if (e.key === "Enter" && !e.shiftKey) void handleSend()
+          }}
           placeholder={
             hasPendingMedia
               ? "Legenda opcional…"
               : isWhatsApp
-                ? "Responder via WhatsApp…"
-                : "Escrever mensagem…"
+                ? "Responder via WhatsApp (digite / para snippets)…"
+                : "Escrever mensagem (digite / para snippets)…"
           }
           aria-label={hasPendingMedia ? "Legenda do anexo" : "Escrever mensagem"} /* S1 BLOCKER a11y */
           className="min-h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"

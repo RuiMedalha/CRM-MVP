@@ -16,6 +16,7 @@ import { sendTextViaEvolution } from "@/integrations/evolution/client"
 import { patchHubCommunicationEvent } from "@/integrations/directus/hubCommunicationEvents"
 import { createInteraction } from "@/integrations/directus/interactions"
 import { useTelecofCallStore } from "@/store/telecofCallStore"
+import { normalizePhonePt } from "@/lib/phone"
 import type { TelecofCallEventRecord } from "@/types/telecof"
 
 interface Props {
@@ -72,10 +73,15 @@ export function TelecofMissedCallRecoveryModal({
       toast({ title: "Número de telefone inválido", variant: "destructive" })
       return
     }
+    const cleanNumber = normalizePhonePt(phone) || phone.replace(/\D/g, "")
+    if (!cleanNumber) {
+      toast({ title: "Número de telefone inválido para envio via WhatsApp", variant: "destructive" })
+      return
+    }
     setSending(true)
     try {
       // 1. Enviar mensagem de texto pelo Evolution API (instância activa 918)
-      await sendTextViaEvolution(phone, messageText.trim())
+      await sendTextViaEvolution(cleanNumber, messageText.trim())
 
       // 2. Marcar a chamada como tratada e registar que foi recuperada via WhatsApp
       const now = new Date().toISOString()

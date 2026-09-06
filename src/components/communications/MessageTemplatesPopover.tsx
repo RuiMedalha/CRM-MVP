@@ -32,7 +32,7 @@ function buttonsAsText(buttons: NonNullable<MessageTemplate["buttons"]>): string
   return "\n\n" + lines.join("\n")
 }
 
-const BUILT_IN_SNIPPETS: MessageTemplate[] = [
+export const BUILT_IN_SNIPPETS: MessageTemplate[] = [
   {
     id: "builtin-recovery",
     name: "📞 Recuperação de Chamada Não Atendida",

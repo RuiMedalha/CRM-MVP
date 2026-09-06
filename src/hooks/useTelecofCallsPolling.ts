@@ -86,6 +86,10 @@ export function useTelecofCallsPolling(): void {
     let isFirst = true
 
     async function tick() {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return
+      }
+
       if (!DIRECTUS_URL) {
         if (!cancelled) {
           setEvents([])
@@ -114,9 +118,21 @@ export function useTelecofCallsPolling(): void {
     void tick()
     const id = window.setInterval(() => { void tick() }, POLL_MS)
 
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void tick()
+      }
+    }
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange)
+    }
+
     return () => {
       cancelled = true
       window.clearInterval(id)
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange)
+      }
     }
   }, [inboxViewMode, setEvents, setLoading])
 }

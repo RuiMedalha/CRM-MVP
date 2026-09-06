@@ -2,7 +2,7 @@ export function normalizePhonePt(raw: string): string | null {
   let digits = raw.replace(/[\s+\-().]/g, "")
   if (digits.startsWith("00")) digits = digits.slice(2)
   if (!digits || !/^\d+$/.test(digits)) return null
-  if (digits.length === 9 && digits.startsWith("9")) return `351${digits}`
+  if (digits.length === 9 && (digits.startsWith("9") || digits.startsWith("2"))) return `351${digits}`
   return digits
 }
 

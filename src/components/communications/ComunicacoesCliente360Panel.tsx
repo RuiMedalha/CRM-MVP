@@ -38,16 +38,11 @@ import {
   createContact,
   patchContact,
 } from "@/integrations/directus/contacts";
-import { DIRECTUS_URL, DIRECTUS_ADMIN_TOKEN } from "@/integrations/directus/client";
+import { directusRequest } from "@/integrations/directus/client";
 import { createFollowUp } from "@/integrations/directus/follow-ups";
 import { useConversationOperations } from "@/hooks/useConversationOperations";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/types/conversation";
-
-const AUTH_HEADERS = {
-  Authorization: `Bearer ${DIRECTUS_ADMIN_TOKEN}`,
-  "Content-Type": "application/json",
-};
 
 /**
  * Extrai número de telefone de JIDs WA e outros formatos:
@@ -328,11 +323,9 @@ export function ComunicacoesCliente360Panel({
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const encoded = encodeURIComponent(q);
-        const res = await fetch(
-          `${DIRECTUS_URL}/items/contacts?search=${encoded}&limit=6&fields=id,company_name,contact_name,name,phone,email,nif,city`,
-          { headers: AUTH_HEADERS }
+        const data = await directusRequest<{ data: any[] }>(
+          `/items/contacts?search=${encoded}&limit=6&fields=id,company_name,contact_name,name,phone,email,nif,city`
         );
-        const data = await res.json();
         setContactResults(data?.data || []);
         setShowSearchDropdown(true);
       } catch {
@@ -353,15 +346,13 @@ export function ComunicacoesCliente360Panel({
     try {
       const cId = String(c.id);
       const companyName = String(c.company_name || c.name || c.contact_name || "").trim();
-      const resp = await fetch(`${DIRECTUS_URL}/items/conversations/${encodeURIComponent(conversationId)}`, {
+      await directusRequest(`/items/conversations/${encodeURIComponent(conversationId)}`, {
         method: "PATCH",
-        headers: AUTH_HEADERS,
         body: JSON.stringify({
           contact_id: cId,
           customer_name: companyName || undefined,
         }),
       });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       toast({ title: "Contacto associado!", description: `Conversa vinculada a ${companyName || `#${cId}`}.` });
       setShowSearchDropdown(false);
@@ -418,11 +409,9 @@ export function ComunicacoesCliente360Panel({
   const { data: agents = [] } = useQuery({
     queryKey: ["employees-list"],
     queryFn: async () => {
-      const r = await fetch(
-        `${DIRECTUS_URL}/items/employees?filter[is_active][_eq]=true&fields=id,full_name,email&limit=50`,
-        { headers: { Authorization: `Bearer ${DIRECTUS_ADMIN_TOKEN}` } },
+      const d = await directusRequest<{ data: { id: string; full_name: string; email: string }[] }>(
+        "/items/employees?filter[is_active][_eq]=true&fields=id,full_name,email&limit=50"
       );
-      const d = await r.json();
       return (d.data ?? []) as { id: string; full_name: string; email: string }[];
     },
     staleTime: 5 * 60_000,
@@ -447,12 +436,10 @@ export function ComunicacoesCliente360Panel({
         // Phase 1.B2: associar contacto criado à conversation de origem
         if (newContactId && conversationId) {
           try {
-            const linkResp = await fetch(`${DIRECTUS_URL}/items/conversations/${encodeURIComponent(conversationId)}`, {
+            await directusRequest(`/items/conversations/${encodeURIComponent(conversationId)}`, {
               method: "PATCH",
-              headers: AUTH_HEADERS,
               body: JSON.stringify({ contact_id: String(newContactId) }),
             });
-            if (!linkResp.ok) throw new Error(`HTTP ${linkResp.status}`);
           } catch (linkErr) {
             console.warn("[cliente360] falhou ao associar contacto à conversation", linkErr);
           }
@@ -485,9 +472,8 @@ export function ComunicacoesCliente360Panel({
     if (!privateNote.trim() || !conversationId) return;
     setSavingNote(true);
     try {
-      const resp = await fetch(`${DIRECTUS_URL}/items/conversation_notes`, {
+      await directusRequest(`/items/conversation_notes`, {
         method: "POST",
-        headers: AUTH_HEADERS,
         body: JSON.stringify({
           conversation_id: conversationId,
           content: privateNote,
@@ -495,7 +481,6 @@ export function ComunicacoesCliente360Panel({
           created_by: "crm",
         }),
       });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       // Activity Ledger — dual-write (fire-and-forget)
       import("@/integrations/directus/activities").then(({ createActivity }) =>
         createActivity({
@@ -541,12 +526,10 @@ export function ComunicacoesCliente360Panel({
     setAssignedAgent(agentId);
     if (!contactId) return;
     try {
-      const resp = await fetch(`${DIRECTUS_URL}/items/contacts/${contactId}`, {
+      await directusRequest(`/items/contacts/${contactId}`, {
         method: "PATCH",
-        headers: AUTH_HEADERS,
         body: JSON.stringify({ assigned_employee_id: agentId }),
       });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       toast({ title: "Agente atribuído" });
     } catch (err) {
       toast({ title: "Erro ao atribuir agente", description: String(err instanceof Error ? err.message : ""), variant: "destructive" });
