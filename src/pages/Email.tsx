@@ -17,8 +17,8 @@ import { Input } from "@/components/ui/input";
 
 // ─── Configurable categories ──────────────────────────────────────────────
 const EMAIL_CATEGORIES = [
-  { key: "foco_comercial", label: "⭐ Clientes & Negócios" },
   { key: "", label: "Todas (sem ruído)" },
+  { key: "foco_comercial", label: "⭐ Clientes & Negócios" },
   { key: "pedido_orcamento", label: "Pedidos de orçamento" },
   { key: "followup_cliente", label: "Follow-ups" },
   { key: "reclamacao", label: "Reclamações" },
@@ -57,7 +57,7 @@ export default function Email() {
   const [search, setSearch] = useState("");
   const [activeMailbox, setActiveMailbox] = useState(() => searchParams.get("mailbox") || "");
   const [activeStatus, setActiveStatus] = useState("");
-  const [activeCategory, setActiveCategory] = useState(() => searchParams.get("category") || "foco_comercial");
+  const [activeCategory, setActiveCategory] = useState(() => searchParams.get("category") || "");
 
   // Keep state in sync with URL search param changes
   useEffect(() => {
