@@ -26,6 +26,13 @@ export function useNewEmailNotifications(): void {
   const notifiedIds = useRef<Set<string>>(new Set());
   const urgentLastNotified = useRef<Record<string, number>>({});
 
+  const isPublicRoute = typeof window !== "undefined" && (
+    window.location.pathname.startsWith("/p/") ||
+    window.location.pathname.startsWith("/c/") ||
+    window.location.pathname.startsWith("/especificacao/") ||
+    window.location.pathname === "/auth"
+  );
+
   // Unassigned emails
   const { data: unassigned } = useQuery({
     queryKey: ["email-notifications-unassigned"],
@@ -35,7 +42,8 @@ export function useNewEmailNotifications(): void {
       );
       return res?.data ?? [];
     },
-    refetchInterval: CHECK_INTERVAL,
+    enabled: !isPublicRoute,
+    refetchInterval: isPublicRoute ? false : CHECK_INTERVAL,
     staleTime: CHECK_INTERVAL - 5000,
   });
 
@@ -48,7 +56,8 @@ export function useNewEmailNotifications(): void {
       );
       return res?.data ?? [];
     },
-    refetchInterval: CHECK_INTERVAL,
+    enabled: !isPublicRoute,
+    refetchInterval: isPublicRoute ? false : CHECK_INTERVAL,
     staleTime: CHECK_INTERVAL - 5000,
   });
 

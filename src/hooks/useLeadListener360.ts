@@ -40,6 +40,15 @@ export function useLeadListener360() {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && (
+      window.location.pathname.startsWith("/p/") ||
+      window.location.pathname.startsWith("/c/") ||
+      window.location.pathname.startsWith("/especificacao/") ||
+      window.location.pathname === "/auth"
+    )) {
+      return;
+    }
+
     let active = true;
     let interval: any = null;
 
