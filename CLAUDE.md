@@ -1,7 +1,7 @@
 # SPRINT FINAL — REGRAS ATIVAS (15/07/2026)
 
 1. NEWSLETTER INTOCÁVEL: proibido qualquer operação (leitura para envio, escrita, teste) sobre a coleção newsletter_subscriptions e sobre os campos newsletter_*, coupon_*, consentimento e subscribed_at de contacts.
-2. TESTES REAIS: emails de teste só para ruimedalha@hotelequip.pt; WhatsApp/SMS de teste só para 916542271. Nenhum outro destinatário/número, sem exceções.
+2. TESTES REAIS: emails de teste só para ruimedalha@hotelequip.pt; WhatsApp/SMS de teste só para 916542211. Nenhum outro destinatário/número, sem exceções.
 3. Registos de teste levam prefixo [TESTE] e são listados no relatório para limpeza.
 4. Schema Directus: alterações SEMPRE via docker exec db-hotelequip psql (nunca PATCH /fields), seguidas de POST /utils/cache/clear e 3 segundos de espera.
 5. Meilisearch: https://search.palamenta.com.pt, índice products_palamenta, chamado DIRETAMENTE via fetch (nunca via proxy Directus). Campos: title, thumbnail, images[], brand, sku, ean, categories[], short_description, price, stock_status, url.

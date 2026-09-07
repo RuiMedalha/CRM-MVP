@@ -92,7 +92,7 @@ async function buildHtml(html: string, quotation: any, company: CompanyData): Pr
   const replacements: Record<string, string> = {
     "{{COMPANY_NAME}}": company.name || "HotelEquip",
     "{{COMPANY_ADDRESS}}": company.address || "Rua Empresarial n8 A, 2510-752 Gaeiras",
-    "{{COMPANY_PHONE}}": company.phone || "916542271",
+    "{{COMPANY_PHONE}}": company.phone || "916542211",
     "{{COMPANY_EMAIL}}": company.email || "geral@hotelequip.pt",
     "{{COMPANY_NIF}}": company.vat_number || "PT515208566",
     "{{COMPANY_IBAN}}": company.iban || "PT50 0036 0548 99106007139 73",

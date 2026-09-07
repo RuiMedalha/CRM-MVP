@@ -1,4 +1,4 @@
-﻿import { directusRequest } from "./client";
+import { directusRequest } from "./client";
 import type { WhatsAppInstance, WhatsAppProvider, WhatsAppInstanceStatus } from "@/services/whatsapp/types";
 import { getAdapter } from "@/services/whatsapp";
 
@@ -6,28 +6,11 @@ const LOCAL_STORAGE_KEY = "crm_whatsapp_instances_v1";
 
 export const DEFAULT_WHATSAPP_INSTANCES: WhatsAppInstance[] = [
   {
-    id: "inst-evo-918",
-    tenant_id: null,
-    provider: "evolution",
-    phone_number: "+351918000000",
-    display_name: "HotelEquip Principal (Evolution)",
-    instance_id: "hotelequip-918",
-    phone_number_id: null,
-    access_token: null,
-    business_account_id: null,
-    webhook_url: "https://api.hotelequip.pt/webhook/evolution/hotelequip-918",
-    status: "connected",
-    last_seen_at: new Date().toISOString(),
-    enabled: true,
-    date_created: "2026-07-01T00:00:00.000Z",
-    date_updated: new Date().toISOString(),
-  },
-  {
     id: "inst-evo-916",
     tenant_id: null,
     provider: "evolution",
-    phone_number: "+351916542271",
-    display_name: "HotelEquip Suporte (Evolution)",
+    phone_number: "+351916542211",
+    display_name: "HotelEquip 916 (Evolution - 916 542 211)",
     instance_id: "hotelequip-916",
     phone_number_id: null,
     access_token: null,
@@ -37,6 +20,23 @@ export const DEFAULT_WHATSAPP_INSTANCES: WhatsAppInstance[] = [
     last_seen_at: new Date().toISOString(),
     enabled: true,
     date_created: "2026-07-15T00:00:00.000Z",
+    date_updated: new Date().toISOString(),
+  },
+  {
+    id: "inst-evo-918",
+    tenant_id: null,
+    provider: "evolution",
+    phone_number: "+351918346615",
+    display_name: "HotelEquip 918 (Evolution - 918 346 615)",
+    instance_id: "hotelequip-918",
+    phone_number_id: null,
+    access_token: null,
+    business_account_id: null,
+    webhook_url: "https://api.hotelequip.pt/webhook/evolution/hotelequip-918",
+    status: "connected",
+    last_seen_at: new Date().toISOString(),
+    enabled: true,
+    date_created: "2026-07-01T00:00:00.000Z",
     date_updated: new Date().toISOString(),
   },
   {

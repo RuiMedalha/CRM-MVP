@@ -664,7 +664,7 @@ export default function Definicoes() {
                   id="company_mbway_phone"
                   value={companyData.mbway_phone}
                   onChange={(e) => setCompanyData((prev) => ({ ...prev, mbway_phone: e.target.value }))}
-                  placeholder="ex: 916542271"
+                  placeholder="ex: 916542211"
                 />
               </div>
             </div>
