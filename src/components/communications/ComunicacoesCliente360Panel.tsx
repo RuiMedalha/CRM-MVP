@@ -53,7 +53,7 @@ import type { Conversation } from "@/types/conversation";
  */
 function extractWaPhone(raw: string | undefined): string {
   if (!raw) return "";
-  // Formato Meta Cloud API (913): "meta:913:351916542271"
+  // Formato Meta Cloud API (913): "meta:913:351916542211"
   const metaMatch = raw.match(/^meta:[^:]+:(\d{7,15})$/);
   if (metaMatch) return `+${metaMatch[1]}`;
   const withoutJid = raw.replace(/@.*$/, "").trim();

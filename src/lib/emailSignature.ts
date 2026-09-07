@@ -11,7 +11,7 @@ Assistência Técnica</p>
 <p>Rua Empresarial Nº 8 A<br>
 Zona Industrial Ponte Seca - Gaeiras<br>
 2510-752 Gaeiras - Óbidos</p>
-<p>Telemóvel: 916 542 271<br>
+<p>Telemóvel: 916 542 211<br>
 Email: geral@hotelequip.pt<br>
 Web: www.hotelequip.pt<br>
 NIF: 515 208 566</p>

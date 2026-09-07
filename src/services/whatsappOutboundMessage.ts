@@ -29,7 +29,7 @@ import type { MessageAttachment } from "@/types/communication"
 
 function extractPhoneFromConversation(conv: Conversation): string {
   if (conv.source) {
-    // Formato Meta Cloud API (913): "meta:913:351916542271"
+    // Formato Meta Cloud API (913): "meta:913:351916542211"
     const metaMatch = conv.source.match(/^meta:[^:]+:(\d{7,15})$/)
     if (metaMatch) return metaMatch[1]
     const jid = conv.source

@@ -24,7 +24,7 @@ const CHANNELS: Array<{
 }> = [
   { id: "whatsapp", label: "WhatsApp", description: "Todos os números unificados", icon: MessageCircle },
   { id: "wa918", label: "WA·918", description: "WhatsApp 918 346 615 (Evolution)", icon: MessageCircle, dotClass: "bg-emerald-500" },
-  { id: "waha", label: "WA·916", description: "WhatsApp 916 542 271 (Evolution)", icon: MessageCircle, dotClass: "bg-amber-500" },
+  { id: "waha", label: "WA·916", description: "WhatsApp 916 542 211 (Evolution)", icon: MessageCircle, dotClass: "bg-amber-500" },
   { id: "wa913", label: "WA·913", description: "WhatsApp 913 866 565 (WABA)", icon: MessageCircle, dotClass: "bg-primary" },
   { id: "telecof", label: "Telecof", description: "Central telefónica", icon: Phone },
   { id: "askme", label: "Chat do site", description: "Mensagens do website", icon: Globe },

@@ -227,8 +227,8 @@ export function ConversationList() {
             </p>
             <div className="space-y-1.5">
               {[
-                { key: "whatsapp_916", instance: "hotelequip-916", label: "WhatsApp 916 · Comercial", subtitle: "+351 916 542 271 (Evolution)" },
-                { key: "whatsapp_918", instance: "hotelequip-918", label: "WhatsApp 918 · Suporte", subtitle: "+351 918 000 000 (Evolution)" },
+                { key: "whatsapp_916", instance: "hotelequip-916", label: "WhatsApp 916 · Comercial", subtitle: "+351 916 542 211 (Evolution)" },
+                { key: "whatsapp_918", instance: "hotelequip-918", label: "WhatsApp 918 · Suporte", subtitle: "+351 918 346 615 (Evolution)" },
                 { key: "whatsapp_913", instance: "hotelequip-913", label: "WhatsApp 913 · Oficial WABA", subtitle: "+351 913 866 565 (Meta Cloud)" },
                 { key: "whatsapp", instance: undefined, label: "Todas as conversas WhatsApp", subtitle: "Ver todos os números unificados" },
               ].map((waOpt) => {

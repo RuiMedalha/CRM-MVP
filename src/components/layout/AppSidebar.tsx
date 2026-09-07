@@ -103,7 +103,7 @@ const navSections: NavSection[] = [
         badgeKey: "whatsapp",
         children: [
           { label: "Todos os números", path: "/comunicacoes?channel=whatsapp", badgeKey: "whatsapp" },
-          { label: "WA · 916 542 271", path: "/comunicacoes?channel=waha", dotClass: "bg-amber-500", badgeKey: "wa916" },
+          { label: "WA · 916 542 211", path: "/comunicacoes?channel=waha", dotClass: "bg-amber-500", badgeKey: "wa916" },
           { label: "WA · 918 346 615", path: "/comunicacoes?channel=wa918", dotClass: "bg-emerald-500", badgeKey: "wa918" },
           { label: "WA · 913 866 565", path: "/comunicacoes?channel=wa913", dotClass: "bg-primary", badgeKey: "wa913" },
           { label: "Grupos WA", path: "/comunicacoes?channel=grupos", dotClass: "bg-purple-500", badgeKey: "grupos" },
