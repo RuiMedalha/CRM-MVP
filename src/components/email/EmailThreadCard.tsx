@@ -108,7 +108,8 @@ export function EmailThreadCard({ thread, onClick, onAssign, showAssign, allThre
   const slaCountdown = getSlaCountdown(thread);
   const mailboxBadge = getMailboxBadge(thread.mailbox);
 
-  const dateLabel = thread.date_created ? formatReceivedDate(thread.date_created) : "";
+  const displayDate = thread.date_updated || thread.date_created;
+  const dateLabel = displayDate ? formatReceivedDate(displayDate) : "";
 
   // Duplicate detection
   const duplicate = allThreads ? findPotentialDuplicateThread(thread, allThreads) : null;

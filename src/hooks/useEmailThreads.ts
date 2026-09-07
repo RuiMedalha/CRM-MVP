@@ -16,6 +16,7 @@ export interface EmailThread {
   assigned_to: number | null;
   assigned_at: string | null;
   date_created: string;
+  date_updated: string | null;
   first_replied_at: string | null;
   contact_id: number | null;
   read_at: string | null;
@@ -46,7 +47,7 @@ export interface EmailFilters {
 
 const THREAD_FIELDS = [
   "id","subject","from_address","to_address","mailbox","category","status","urgency",
-  "sla_due_at","ai_summary","ai_draft","assigned_to","assigned_at","date_created",
+  "sla_due_at","ai_summary","ai_draft","assigned_to","assigned_at","date_created","date_updated",
   "first_replied_at","contact_id","read_at","lead_id"
 ].join(",");
 
@@ -54,7 +55,7 @@ function buildThreadParams(filters: EmailFilters): string {
   const parts: string[] = [
     `fields=${THREAD_FIELDS}`,
     "limit=100",
-    "sort=-date_created",
+    "sort=-date_updated,-date_created",
     "filter[status][_neq]=invalid", // Exclude invalid/malformed threads (null mailbox, etc)
   ];
 
