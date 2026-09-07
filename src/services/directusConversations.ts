@@ -37,7 +37,9 @@ function parseMessageAttachments(raw: unknown): MessageAttachment[] | undefined 
         ? String(att.mimeType)
         : att.mime_type
           ? String(att.mime_type)
-          : undefined,
+          : att.mimetype
+            ? String(att.mimetype)
+            : undefined,
       sizeBytes:
         typeof att.sizeBytes === "number"
           ? att.sizeBytes

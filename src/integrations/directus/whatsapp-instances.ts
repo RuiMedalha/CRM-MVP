@@ -63,7 +63,19 @@ function getStoredLocalInstances(): WhatsAppInstance[] {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const cleaned = parsed.map((inst: WhatsAppInstance) => {
+          if (inst.phone_number?.includes("271") || inst.display_name?.includes("271")) {
+            return {
+              ...inst,
+              phone_number: inst.phone_number.replace("271", "211"),
+              display_name: inst.display_name.replace("271", "211"),
+            };
+          }
+          return inst;
+        });
+        return cleaned;
+      }
     }
   } catch (e) {
     console.warn("Failed to load local WhatsApp instances:", e);
