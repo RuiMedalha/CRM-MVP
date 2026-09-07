@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
@@ -216,9 +216,9 @@ export default function AiSettings() {
                         <SelectValue placeholder="Selecione o provedor padrão..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {enabledProviders.map((p) => (
+                        {providers.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
-                            {p.label} ({p.type} · {p.default_model})
+                            {p.label} ({p.type} · {p.default_model}){p.enabled ? "" : " [Inativo]"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -245,9 +245,9 @@ export default function AiSettings() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Nenhum (usar ordem da lista)</SelectItem>
-                        {enabledProviders.map((p) => (
+                        {providers.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
-                            {p.label} ({p.type} · {p.default_model})
+                            {p.label} ({p.type} · {p.default_model}){p.enabled ? "" : " [Inativo]"}
                           </SelectItem>
                         ))}
                       </SelectContent>
