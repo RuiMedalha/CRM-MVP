@@ -24,6 +24,10 @@ interface Props {
   customerName?: string | null
   phone?: string | null
   onDone: () => void
+  title?: string
+  description?: string
+  isStageChange?: boolean
+  stageName?: string
 }
 
 export function QuickNextStepDialog({
@@ -35,6 +39,10 @@ export function QuickNextStepDialog({
   customerName,
   phone,
   onDone,
+  title: customTitle,
+  description: customDescription,
+  isStageChange = false,
+  stageName,
 }: Props) {
   const { user } = useAuth()
   const queryClient = useQueryClient()

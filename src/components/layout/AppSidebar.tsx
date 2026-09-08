@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Factory,
-  FileText,
   Inbox,
   Kanban,
   LayoutDashboard,
@@ -161,7 +160,6 @@ const navSections: NavSection[] = [
       { icon: Kanban, label: "Pipeline", path: "/pipeline" },
       { icon: UserCog, label: "Leads", path: "/leads" },
       { icon: SendHorizontal, label: "Propostas", path: "/propostas" },
-      { icon: FileText, label: "Orçamentos", path: "/orcamentos" },
       { icon: CalendarClock, label: "Agenda", path: "/agenda" },
     ],
   },
@@ -220,7 +218,7 @@ const SIDEBAR_COLLAPSED_KEY = "sidebar:v2:collapsed"
 const SIDEBAR_ACTIVE_SECTION_KEY = "sidebar:v2:active_section"
 const SIDEBAR_SUBMENUS_STATE_KEY = "sidebar:v2:submenus"
 
-export function AppSidebar() {
+export function AppSidebar({ activeProposalCount = 0 }: { activeProposalCount?: number } = {}) {
   const location = useLocation()
   const { signOut, user } = useAuth()
   const isSuperAdmin = isSuperAdminEmail(user?.email)
@@ -407,6 +405,7 @@ export function AppSidebar() {
     if (badgeKey === "telecof" || path?.includes("telecof")) return channelBadgeCounts.telecof
     if (badgeKey === "askme" || path?.includes("askme")) return channelBadgeCounts.askme
     if (badgeKey === "email" || path === "/email") return emailUnassignedCount ?? 0
+    if (path === "/propostas") return activeProposalCount
     return 0
   }
 
@@ -528,6 +527,8 @@ export function AppSidebar() {
                         const isSubOpen = openSubmenus[item.label] !== false
                         const hasActiveChild = item.children?.some((ch) => isActive(ch.path, true))
                         const active = isActive(item.path) || hasActiveChild
+                        // Sprint D: pulse em "Propostas" quando há visualizações activas
+                        const pulse = item.path === "/propostas" && badge > 0
 
                         if (collapsed) {
                           return (
@@ -542,6 +543,7 @@ export function AppSidebar() {
                                       active
                                         ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-xs"
                                         : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                                      pulse && "ring-2 ring-orange-500/70 animate-pulse",
                                     )}
                                   >
                                     <Icon className="h-4.5 w-4.5 shrink-0" />
@@ -580,6 +582,7 @@ export function AppSidebar() {
                                     : active
                                     ? "text-sidebar-foreground font-semibold hover:bg-sidebar-accent"
                                     : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground font-medium",
+                                  pulse && "ring-2 ring-orange-500/60 animate-pulse",
                                 )}
                               >
                                 <Icon className="h-4.5 w-4.5 shrink-0" />

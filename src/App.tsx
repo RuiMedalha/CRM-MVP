@@ -12,6 +12,7 @@ import { useLeadListener360 } from "@/hooks/useLeadListener360";
 import { useChannelSettingsSync } from "@/hooks/useChannelSettingsSync";
 import { useFollowUpNotifications } from "@/hooks/useFollowUpNotifications";
 import { useNewEmailNotifications } from "@/hooks/useNewEmailNotifications";
+import { useProposalViewAlerts } from "@/hooks/useProposalViewAlerts";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { Loader2 } from "lucide-react";
 
@@ -43,6 +44,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const DeveloperTools = lazy(() => import("./pages/DeveloperTools"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 const Propostas = lazy(() => import("./pages/Propostas"));
+// Sprint F: /orcamentos unificado em /propostas — mantemos o módulo Orcamentos
+// só para servir de fallback lazy em caso de URL legacy sem o `replace`.
 const QuotationForm = lazy(() => import("./pages/QuotationForm"));
 const ProposalDetail = lazy(() => import("./pages/ProposalDetail"));
 const PublicQuotation = lazy(() => import("./pages/PublicQuotation"));
@@ -84,6 +87,10 @@ const AppContent = () => {
   // inline. Manter este hook activo causaria toasts duplicados com o sino.
   // useFollowUpNotifications();
   useNewEmailNotifications();
+  // Sprint D: alerta "Proposta Aberta Agora!" estilo PandaDoc/Brevo.
+  // Subscreve a `quotations.last_viewed_at` e dispara toasts para visualizações
+  // activas nos últimos 60s. Mantém lista singleton para badge do sidebar.
+  useProposalViewAlerts();
   const { incomingLead, isVisible: leadVisible, dismissLead } = useLeadListener360();
 
   return (
@@ -109,6 +116,7 @@ const AppContent = () => {
         <Route path="/carrinhos" element={<ProtectedRoute><Carrinhos /></ProtectedRoute>} />
         <Route path="/canais" element={<ProtectedRoute><Canais /></ProtectedRoute>} />
         <Route path="/orcamentos" element={<ProtectedRoute><Orcamentos /></ProtectedRoute>} />
+        <Route path="/orcamentos/*" element={<ProtectedRoute><Navigate to="/propostas?tipo=orcamento" replace /></ProtectedRoute>} />
         <Route path="/propostas" element={<ProtectedRoute><Propostas /></ProtectedRoute>} />
         <Route path="/propostas/nova" element={<ProtectedRoute><QuotationForm /></ProtectedRoute>} />
         <Route path="/propostas/:id" element={<ProtectedRoute><QuotationForm /></ProtectedRoute>} />

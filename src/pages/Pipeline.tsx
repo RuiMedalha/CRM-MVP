@@ -36,6 +36,7 @@ import { listFollowUps } from "@/integrations/directus/follow-ups";
 import { QuickNextStepDialog } from "@/components/common/QuickNextStepDialog";
 import { SavedFiltersPopover } from "@/components/SavedFiltersPopover";
 import type { PipelineStageRow } from "@/integrations/directus/pipelines";
+import { PipelineFunnel } from "@/components/pipeline/PipelineFunnel";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useCrossTabBus } from "@/store/crossTabBus";
 import { useAuth } from "@/contexts/AuthContext";
@@ -116,6 +117,33 @@ export default function Pipeline() {
     }
     return map;
   }, [openFollowUps]);
+
+  // Activity-Based Selling: "última atividade" por deal = max(date_created, último follow-up).
+  // Proxy porque DealRow ainda não tem stage_entered_at/last_activity_at.
+  const lastActivityByDealId = useMemo(() => {
+    const map = new Map<string, string>();
+    const upd = (id: string, iso?: string | null) => {
+      if (!iso) return;
+      const cur = map.get(id);
+      if (!cur || new Date(iso).getTime() > new Date(cur).getTime()) {
+        map.set(id, iso);
+      }
+    };
+    if (openFollowUps) {
+      for (const fu of openFollowUps) {
+        const dealId = typeof fu.deal_id === "object" ? fu.deal_id?.id : fu.deal_id;
+        if (!dealId) continue;
+        // date_updated é mais fidedigno que date_created para "atividade"
+        upd(dealId, fu.date_updated ?? fu.date_created);
+      }
+    }
+    if (deals) {
+      for (const d of deals) upd(String(d.id), d.date_created);
+    }
+    return map;
+  }, [openFollowUps, deals]);
+
+  // isRottenDeal, getRottenCount, getColumnProgress são declarados abaixo (após getDealsByStage).
 
   const [nextStepDeal, setNextStepDeal] = useState<{
     id: string;
@@ -219,6 +247,35 @@ export default function Pipeline() {
         (sum, deal) => sum + Number((deal as any).total_amount || 0),
         0,
       );
+    },
+    [getDealsByStage],
+  );
+
+  // Heurística "podre": follow-up overdue OU >7d desde última atividade
+  const isRottenDeal = useCallback(
+    (dealId: string, dateCreated?: string | null) => {
+      const fu = followUpsByDealId.get(dealId);
+      if (fu?.isOverdue) return true;
+      const last = lastActivityByDealId.get(dealId) ?? dateCreated;
+      if (!last) return false;
+      const days = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+      return days > 7;
+    },
+    [followUpsByDealId, lastActivityByDealId],
+  );
+
+  const getRottenCount = useCallback(
+    (stage: PipelineStageRow) =>
+      getDealsByStage(stage).filter((d) => isRottenDeal(String(d.id), d.date_created)).length,
+    [getDealsByStage, isRottenDeal],
+  );
+
+  // Capacidade alvo por coluna (heurístico fixo): 10 negócios
+  const COLUMN_TARGET = 10;
+  const getColumnProgress = useCallback(
+    (stage: PipelineStageRow) => {
+      const count = getDealsByStage(stage).length;
+      return Math.min(100, Math.round((count / COLUMN_TARGET) * 100));
     },
     [getDealsByStage],
   );
@@ -404,6 +461,27 @@ export default function Pipeline() {
           </div>
         )}
 
+        {/* Funnel Visual + Insights (acima do Kanban) */}
+        {effectiveStages.length > 0 && (
+          <PipelineFunnel
+            stages={effectiveStages}
+            deals={filteredDeals}
+            onStageClick={(stageId) => {
+              const el = document.querySelector(
+                `[data-pipeline-column-id="${CSS.escape(stageId)}"]`,
+              ) as HTMLElement | null;
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                // Flash visual para o utilizador ver qual coluna foi alvo
+                el.classList.add("ring-2", "ring-primary/40");
+                setTimeout(() => {
+                  el.classList.remove("ring-2", "ring-primary/40");
+                }, 1200);
+              }
+            }}
+          />
+        )}
+
         {/* Pipeline Columns */}
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="flex gap-3 p-3 min-h-0 h-full">
@@ -431,6 +509,9 @@ export default function Pipeline() {
               {effectiveStages.map((stage) => {
                 const columnDeals = getDealsByStage(stage);
                 const columnTotal = getColumnTotal(stage);
+                const rottenCount = getRottenCount(stage);
+                const progressPct = getColumnProgress(stage);
+                const avgPerDeal = columnDeals.length > 0 ? columnTotal / columnDeals.length : 0;
                 const isCollapsed = collapsedColumns.includes(stage.id);
 
                 if (isCollapsed) {
@@ -460,7 +541,11 @@ export default function Pipeline() {
                 }
 
                 return (
-                  <div key={stage.id} className="flex-shrink-0 w-64 lg:w-72">
+                  <div
+                    key={stage.id}
+                    data-pipeline-column-id={stage.id}
+                    className="flex-shrink-0 w-64 lg:w-72 transition-shadow rounded-lg"
+                  >
                     <Card className={cn("h-full", getStageColor(stage))}>
                       <CardHeader className="pb-2 px-3 pt-3">
                         <div className="flex items-center justify-between">
@@ -469,6 +554,15 @@ export default function Pipeline() {
                             <Badge variant="secondary" className="text-xs px-1.5 py-0">
                               {columnDeals.length}
                             </Badge>
+                            {rottenCount > 0 && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 bg-red-100 text-red-700 border-red-300 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800"
+                                title={`${rottenCount} negócio(s) podre(s) (>7d sem atividade ou follow-up em atraso)`}
+                              >
+                                ⚠ {rottenCount}
+                              </Badge>
+                            )}
                           </CardTitle>
                           <Button
                             variant="ghost"
@@ -480,13 +574,49 @@ export default function Pipeline() {
                             <ChevronLeft className="h-3 w-3" />
                           </Button>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <div
+                          className="flex items-center gap-1 text-xs text-muted-foreground"
+                          title={`${columnDeals.length} negócio(s) • ${avgPerDeal.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })} médio por negócio`}
+                        >
                           <Euro className="h-3 w-3" />
-                          {columnTotal.toLocaleString("pt-PT", {
-                            style: "currency",
-                            currency: "EUR",
-                          })}
+                          <span className="text-sm font-semibold text-primary">
+                            {columnTotal.toLocaleString("pt-PT", {
+                              style: "currency",
+                              currency: "EUR",
+                            })}
+                          </span>
                         </div>
+                        {/* Barra de progresso simples: capacidade alvo de 10 negócios */}
+                        <div className="mt-1.5 h-1 w-full rounded-full bg-muted/60 overflow-hidden" aria-hidden>
+                          <div
+                            className={cn(
+                              "h-full transition-all",
+                              progressPct < 50
+                                ? "bg-emerald-500"
+                                : progressPct < 90
+                                  ? "bg-amber-500"
+                                  : "bg-red-500",
+                            )}
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                        {/* % conversão da etapa anterior → esta (lead→qualificação, qualificação→proposta, ...) */}
+                        {(() => {
+                          const idx = effectiveStages.findIndex((s) => s.id === stage.id);
+                          if (idx <= 0) return null;
+                          const prev = effectiveStages[idx - 1];
+                          const prevCount = getDealsByStage(prev).length;
+                          if (prevCount === 0) return null;
+                          const pct = Math.round((columnDeals.length / prevCount) * 100);
+                          return (
+                            <div
+                              className="mt-1 text-[10px] font-medium text-muted-foreground"
+                              title={`${columnDeals.length} negócio(s) em ${stage.name} · ${prevCount} na etapa anterior (${prev.name})`}
+                            >
+                              {pct}% conversão {prev.name} → {stage.name}
+                            </div>
+                          );
+                        })()}
                       </CardHeader>
 
                       <Droppable droppableId={stage.id}>
@@ -519,7 +649,26 @@ export default function Pipeline() {
                                     >
                                       <DealCard
                                         deal={deal as any}
-                                        onClick={() => setSelectedDealId(deal.id)}
+                                        lastActivityAt={lastActivityByDealId.get(String(deal.id)) ?? null}
+                                        onClick={() => {
+                                          // Activity-Based Selling: abrir QuickNextStepDialog se não há
+                                          // próximo passo E idade >5 dias (Pipedrive style).
+                                          const fu = followUpsByDealId.get(String(deal.id));
+                                          const lastIso = lastActivityByDealId.get(String(deal.id)) ?? deal.date_created;
+                                          const ageDays = lastIso
+                                            ? Math.floor((Date.now() - new Date(lastIso).getTime()) / 86400000)
+                                            : 0;
+                                          if (!fu && ageDays > 5) {
+                                            setNextStepDeal({
+                                              id: String(deal.id),
+                                              title: deal.title || "Negócio",
+                                              contactId: deal.customer_id,
+                                              customerName: deal.customer?.company_name,
+                                            });
+                                            return;
+                                          }
+                                          setSelectedDealId(String(deal.id));
+                                        }}
                                         isDragging={snapshot.isDragging}
                                         nextFollowUp={followUpsByDealId.get(deal.id) || null}
                                         onAddNextStep={() =>

@@ -3,14 +3,19 @@ import { AppSidebar } from "./AppSidebar";
 import { BottomNav } from "./BottomNav";
 import { TopBar } from "./TopBar";
 import { QuickActions } from "@/components/QuickActions";
+import * as React from "react";
 import WavoipWebphone from "@/components/communications/WavoipWebphone";
 import { TelecofBanner } from "@/components/communications/TelecofBanner";
 import { ActiveCallBar } from "@/components/communications/ActiveCallBar";
 import { NotificationToastStack } from "@/components/communications/NotificationToastStack";
+import { ProposalViewToastStack } from "@/components/notifications/ProposalViewToast";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
 import { useActivityFeedMonitor } from "@/hooks/useActivityFeedMonitor";
 import { useCommunicationNotifications } from "@/hooks/useCommunicationNotifications";
 import { useConversationPolling } from "@/hooks/useConversationPolling";
+import { useActiveProposalViews } from "@/hooks/useActiveProposalViews";
+
+type ActiveViewId = string | number;
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -29,6 +34,17 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
   useCommunicationNotifications();
   // Polling de conversas e grupos ativo globalmente para sincronização de mensagens
   useConversationPolling();
+  // Sprint D: lista singleton de "propostas abertas agora" (alimentada por
+  // useProposalViewAlerts em App.tsx). Usada pela stack de toasts e pode ser
+  // usada no futuro por um dashboard dedicado.
+  const { activeViews, setActiveViews, activeCount } = useActiveProposalViews();
+  const handleDismissProposalView = React.useCallback(
+    (id: ActiveViewId) => {
+      const next = activeViews.filter((v) => String(v.quotation_id) !== String(id));
+      setActiveViews(next);
+    },
+    [activeViews, setActiveViews],
+  );
   if (embed) {
     return (
       <div ref={ref} className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-background">
@@ -43,7 +59,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
     return (
       <div ref={ref} className="flex h-[100dvh] w-full overflow-hidden bg-background">
         <WavoipWebphone />
-        <AppSidebar />
+        <AppSidebar activeProposalCount={activeCount} />
         <main className="crm-layout-main flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
           <TopBar />
           <TelecofBanner />
@@ -53,6 +69,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
         <BottomNav />
         <QuickActions />
         <NotificationToastStack />
+        <ProposalViewToastStack views={activeViews} onDismiss={handleDismissProposalView} />
         <GlobalSearch />
       </div>
     );
@@ -61,7 +78,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
   return (
     <div ref={ref} className="flex h-[100dvh] w-full bg-background overflow-hidden">
       <WavoipWebphone />
-      <AppSidebar />
+      <AppSidebar activeProposalCount={activeCount} />
       <main className="crm-layout-main flex min-h-0 min-w-0 flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
         <TopBar />
         <TelecofBanner />
@@ -79,6 +96,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
       <BottomNav />
       <QuickActions />
       <NotificationToastStack />
+      <ProposalViewToastStack views={activeViews} onDismiss={handleDismissProposalView} />
       <GlobalSearch />
     </div>
   );

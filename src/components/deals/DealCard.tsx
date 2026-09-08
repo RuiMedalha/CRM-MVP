@@ -20,28 +20,51 @@ interface DealCardProps {
     quotations?: { id: string; pdf_link: string | null; status: string }[] | null;
   };
   nextFollowUp?: DealNextFollowUp | null;
+  lastActivityAt?: string | null;
   onAddNextStep?: () => void;
   onClick: () => void;
   isDragging: boolean;
 }
 
-function getDaysAge(dateCreated?: string | null): number | null {
-  if (!dateCreated) return null;
-  const created = new Date(dateCreated);
-  if (isNaN(created.getTime())) return null;
+// Heurística: "dias desde última atividade na etapa".
+// Sem `stage_entered_at` / `last_activity_at` no DealRow, usamos como proxy o
+// mais recente entre date_created, date_updated e último follow-up em aberto.
+// O parent (Pipeline) já agrega `lastActivityAt` para cada deal e passa aqui.
+function getDaysSince(iso?: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
   const now = new Date();
-  return Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+// Cores mais vivas para reforçar leitura (verde <3d, âmbar 4-7d, vermelho >7d)
 function getAgeColor(days: number): string {
-  if (days <= 7) return "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40";
-  if (days <= 30) return "text-amber-600 bg-amber-50 dark:bg-amber-950/40";
-  return "text-red-600 bg-red-50 dark:bg-red-950/40";
+  if (days <= 3) return "text-white bg-emerald-600 border border-emerald-700 dark:bg-emerald-500 dark:border-emerald-400";
+  if (days <= 7) return "text-white bg-amber-500 border border-amber-600 dark:bg-amber-500 dark:border-amber-400";
+  return "text-white bg-red-600 border border-red-700 dark:bg-red-500 dark:border-red-400";
 }
 
-export function DealCard({ deal, nextFollowUp, onAddNextStep, onClick, isDragging }: DealCardProps) {
+// Border-top vermelho pulsante quando há follow-up overdue OU >7 dias sem atividade
+function getStagnationBorder(daysSinceActivity: number | null, hasOverdueFollowUp: boolean): string {
+  if (hasOverdueFollowUp) return "border-t-2 border-t-red-600 animate-pulse ring-1 ring-red-500/40";
+  if (daysSinceActivity !== null && daysSinceActivity > 7) return "border-t-2 border-t-red-500 animate-pulse";
+  if (daysSinceActivity !== null && daysSinceActivity > 3) return "border-t-2 border-t-amber-500";
+  return "border-t-2 border-t-transparent";
+}
+
+export function DealCard({ deal, nextFollowUp, lastActivityAt, onAddNextStep, onClick, isDragging }: DealCardProps) {
   const pdfQuotation = deal.quotations?.find(q => q.pdf_link);
-  const daysAge = getDaysAge(deal.date_created);
+  // Idade baseada em "última atividade" (proxy), com fallback para date_created
+  const daysSinceActivity = getDaysSince(lastActivityAt) ?? getDaysSince(deal.date_created);
+  const isStagnant = nextFollowUp?.isOverdue || (daysSinceActivity !== null && daysSinceActivity > 7);
+  const stagnationReason = nextFollowUp?.isOverdue
+    ? "Próximo passo em atraso — reabra ou reagende"
+    : daysSinceActivity !== null && daysSinceActivity > 7
+      ? `Sem atividade há ${daysSinceActivity}d — agende o próximo passo`
+      : daysSinceActivity !== null && daysSinceActivity > 3
+        ? `Negócio a estagnar há ${daysSinceActivity}d — agende o próximo passo`
+        : null;
 
   const handlePdfClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -53,11 +76,15 @@ export function DealCard({ deal, nextFollowUp, onAddNextStep, onClick, isDraggin
   return (
     <Card
       onClick={onClick}
+      title={stagnationReason ?? undefined}
       className={cn(
         "cursor-pointer transition-all bg-card select-none",
+        getStagnationBorder(daysSinceActivity, !!nextFollowUp?.isOverdue),
         isDragging
           ? "shadow-lg ring-2 ring-primary/50 rotate-2 scale-105"
-          : "hover:shadow-md hover:scale-[1.02]"
+          : isStagnant
+            ? "hover:shadow-md hover:scale-[1.02]"
+            : "hover:shadow-md hover:scale-[1.02]"
       )}
     >
       <CardContent className="p-3">
@@ -94,10 +121,13 @@ export function DealCard({ deal, nextFollowUp, onAddNextStep, onClick, isDraggin
                   currency: "EUR",
                 })}
               </div>
-              {daysAge !== null && (
-                <span className={cn("inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium", getAgeColor(daysAge))}>
+              {daysSinceActivity !== null && (
+                <span
+                  className={cn("inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold", getAgeColor(daysSinceActivity))}
+                  title={stagnationReason ?? `${daysSinceActivity} dia(s) desde a última atividade`}
+                >
                   <Clock className="h-2.5 w-2.5" />
-                  {daysAge}d
+                  {daysSinceActivity}d
                 </span>
               )}
             </div>

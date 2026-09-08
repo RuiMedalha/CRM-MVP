@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CalendarClock, Check, Phone, Mail, MessageCircle, Plus, Search, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getEmployeeByEmail } from "@/integrations/directus/employees";
@@ -18,7 +19,8 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useCrossTabBus } from "@/store/crossTabBus";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { CalendarView } from "@/components/agenda/CalendarView";
 
 function typeLabel(t: string) {
   if (t === "call") return "Chamada";
@@ -45,10 +47,12 @@ function getFirstDayOfMonth(date: Date): number {
 export default function Agenda() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [search, setSearch] = useState("");
   const [openCreate, setOpenCreate] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [activeTab, setActiveTab] = useState<"list" | "calendar">("calendar");
 
   const newLeads = useCrossTabBus((s) => s.newLeads);
 
@@ -129,12 +133,11 @@ export default function Agenda() {
   const items = list.data || [];
   const isLoading = list.isLoading || employeeQuery.isLoading;
 
-  // Calendar data
+  // ===== Vista Lista: grelha mensal =====
   const daysInMonth = getDaysInMonth(currentDate);
   const firstDay = getFirstDayOfMonth(currentDate);
   const monthYear = currentDate.toLocaleDateString("pt-PT", { month: "long", year: "numeric" });
 
-  // Map follow-ups by date
   const followUpsByDate = useMemo(() => {
     const map: Record<string, any[]> = {};
     items.forEach((fu: any) => {
@@ -149,11 +152,9 @@ export default function Agenda() {
 
   const calendarDays = useMemo(() => {
     const days = [];
-    // Empty cells before first day
     for (let i = 0; i < firstDay; i++) {
       days.push(null);
     }
-    // Days of month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(day);
     }
@@ -174,6 +175,43 @@ export default function Agenda() {
   };
 
   const dayOfWeekNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+
+  // Handlers para o CalendarView
+  const handleCalendarComplete = async (fu: any) => {
+    await patch.mutateAsync({
+      id: String(fu.id),
+      patch: { status: "done", completed_at: new Date().toISOString() } as any,
+    });
+  };
+
+  const handleCalendarReschedule = async (fu: any, newDueAt: Date) => {
+    await patch.mutateAsync({
+      id: String(fu.id),
+      patch: { due_at: newDueAt.toISOString() } as any,
+    });
+  };
+
+  const handleCalendarCreate = async (input: { type: string; title: string; notes: string; due_at: string }) => {
+    if (!meEmp?.id) {
+      throw new Error("Sem funcionário");
+    }
+    const created = await create.mutateAsync({
+      status: "open",
+      type: input.type,
+      title: input.title || null,
+      due_at: new Date(input.due_at).toISOString(),
+      notes: input.notes || null,
+      assigned_employee_id: meEmp.id,
+      created_by_employee_id: meEmp.id,
+    } as any);
+    if (created) {
+      emit("create", created, "follow_ups", { userName: user?.email });
+    }
+  };
+
+  const handleOpenDeal = (dealId: string) => {
+    if (dealId) navigate(`/leads?deal=${dealId}`);
+  };
 
   return (
     <AppLayout>
@@ -216,165 +254,178 @@ export default function Agenda() {
           </div>
         )}
 
-        {/* Calendar Grid */}
-        <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* Calendar Panel */}
-          <Card className="min-w-0 lg:col-span-1">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <Button variant="ghost" size="icon" onClick={prevMonth}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-sm font-semibold capitalize text-center flex-1">{monthYear}</h2>
-                <Button variant="ghost" size="icon" onClick={nextMonth}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Calendar wrapper: min-width 640px garante que cada célula (640/7=~91px)
-                  tem tamanho usável; overflow-x-auto permite scroll horizontal se a
-                  coluna do layout (lg:col-span-1 em lg:grid-cols-3) for mais estreita
-                  que 640px. Sem isto, botões de dia ficam com 23x25px (blocker #4
-                  do F-MOBILE-VALIDATION). */}
-              <div className="min-w-[640px] overflow-x-auto">
-                {/* Weekday headers */}
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {dayOfWeekNames.map((day) => (
-                    <div key={day} className="text-center text-xs font-semibold text-muted-foreground py-1">
-                      {day}
-                    </div>
-                  ))}
-                </div>
+        {/* Tabs: Lista / Calendário */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "list" | "calendar")}>
+          <TabsList>
+            <TabsTrigger value="list">Lista</TabsTrigger>
+            <TabsTrigger value="calendar">Calendário</TabsTrigger>
+          </TabsList>
 
-                {/* Calendar days */}
-                <div className="grid grid-cols-7 gap-1">
-                {calendarDays.map((day, idx) => {
-                  if (day === null) {
-                    return <div key={`empty-${idx}`} className="aspect-square" />;
-                  }
-
-                  const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-                  const dateStr = dayDate.toLocaleDateString("pt-PT");
-                  const dayFollowUps = followUpsByDate[dateStr] || [];
-                  const isToday =
-                    dayDate.toDateString() === new Date().toDateString();
-                  const isSelected =
-                    selectedDate?.toDateString() === dayDate.toDateString();
-                  const hasOverdue = dayFollowUps.some(
-                    (fu: any) => fu.due_at && new Date(fu.due_at).getTime() < Date.now()
-                  );
-
-                  return (
-                    <button
-                      key={day}
-                      onClick={() => selectDay(day)}
-                      /* Grelha densa: a área de toque de 44px do bloco coarse em
-                         index.css sobrepor-se-ia ao dia vizinho (tracks de ~36px
-                         a 360px) e faria abrir o dia errado. A célula já é
-                         aspect-square e cresce com o ecrã. */
-                      data-no-touch-pad
-                      className={cn(
-                        "aspect-square rounded-lg border text-xs font-medium transition-colors relative flex flex-col items-center justify-center p-1",
-                        isToday && "border-primary bg-primary/10",
-                        isSelected && "bg-primary text-primary-foreground",
-                        !isToday && !isSelected && "border-border hover:bg-muted",
-                        hasOverdue && !isSelected && "border-destructive/50"
-                      )}
-                    >
-                      <span>{day}</span>
-                      {dayFollowUps.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground mt-0.5">
-                          {dayFollowUps.length} item{dayFollowUps.length > 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* List + Details Panel */}
-          <div className="min-w-0 lg:col-span-2 space-y-4">
-            {/* Search */}
-            <div className="w-full min-w-0 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Pesquisar…"
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Follow-ups List */}
-            <div className="grid gap-3">
-              {isLoading ? (
-                [...Array(6)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-              ) : items.length === 0 ? (
-                <Card>
-                  <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                    Sem follow-ups.
-                  </CardContent>
-                </Card>
-              ) : (
-                items.map((fu: any) => {
-                  const due = fu.due_at ? new Date(fu.due_at) : null;
-                  const overdue = due ? due.getTime() < Date.now() : false;
-                  const contactName = fu.contact_id?.company_name || fu.contact_id?.id || null;
-                  const qNo = fu.quotation_id?.quotation_number || fu.quotation_id?.id || null;
-                  return (
-                    <Card key={String(fu.id)} className={overdue ? "w-full min-w-0 border-destructive/40" : "w-full min-w-0 border"}>
-                      <CardContent className="p-4 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            {typeIcon(String(fu.type || "task"))}
-                            <div className="font-medium truncate">
-                              {fu.title || typeLabel(String(fu.type || "task"))}
-                            </div>
-                            {overdue ? <Badge variant="destructive">Atrasado</Badge> : <Badge variant="secondary">Aberto</Badge>}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-3">
-                            <span>{due ? due.toLocaleString("pt-PT") : "—"}</span>
-                            {contactName ? <span className="truncate">Cliente: {String(contactName)}</span> : null}
-                            {qNo ? <span className="truncate">Orçamento: {String(qNo)}</span> : null}
-                          </div>
-                          {fu.notes ? (
-                            <div className="text-xs text-muted-foreground mt-2 whitespace-pre-wrap">
-                              {String(fu.notes).slice(0, 180)}
-                            </div>
-                          ) : null}
+          {/* ===== Tab: Lista (vista actual) ===== */}
+          <TabsContent value="list" className="mt-4">
+            <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
+              <Card className="min-w-0 lg:col-span-1">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <Button variant="ghost" size="icon" onClick={prevMonth}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <h2 className="text-sm font-semibold capitalize text-center flex-1">{monthYear}</h2>
+                    <Button variant="ghost" size="icon" onClick={nextMonth}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="min-w-[640px] overflow-x-auto">
+                    <div className="grid grid-cols-7 gap-1 mb-2">
+                      {dayOfWeekNames.map((day) => (
+                        <div key={day} className="text-center text-xs font-semibold text-muted-foreground py-1">
+                          {day}
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            try {
-                              await patch.mutateAsync({
-                                id: String(fu.id),
-                                patch: { status: "done", completed_at: new Date().toISOString() } as any,
-                              });
-                              toast({ title: "Concluído" });
-                            } catch (e: any) {
-                              toast({ title: "Erro", description: String(e?.message || e), variant: "destructive" });
-                            }
-                          }}
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          Feito
-                        </Button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1">
+                      {calendarDays.map((day, idx) => {
+                        if (day === null) {
+                          return <div key={`empty-${idx}`} className="aspect-square" />;
+                        }
+
+                        const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                        const dateStr = dayDate.toLocaleDateString("pt-PT");
+                        const dayFollowUps = followUpsByDate[dateStr] || [];
+                        const isToday =
+                          dayDate.toDateString() === new Date().toDateString();
+                        const isSelected =
+                          selectedDate?.toDateString() === dayDate.toDateString();
+                        const hasOverdue = dayFollowUps.some(
+                          (fu: any) => fu.due_at && new Date(fu.due_at).getTime() < Date.now()
+                        );
+
+                        return (
+                          <button
+                            key={day}
+                            onClick={() => selectDay(day)}
+                            data-no-touch-pad
+                            className={cn(
+                              "aspect-square rounded-lg border text-xs font-medium transition-colors relative flex flex-col items-center justify-center p-1",
+                              isToday && "border-primary bg-primary/10",
+                              isSelected && "bg-primary text-primary-foreground",
+                              !isToday && !isSelected && "border-border hover:bg-muted",
+                              hasOverdue && !isSelected && "border-destructive/50"
+                            )}
+                          >
+                            <span>{day}</span>
+                            {dayFollowUps.length > 0 && (
+                              <span className="text-[10px] text-muted-foreground mt-0.5">
+                                {dayFollowUps.length} item{dayFollowUps.length > 1 ? "s" : ""}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="min-w-0 lg:col-span-2 space-y-4">
+                <div className="w-full min-w-0 max-w-md">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Pesquisar…"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-3">
+                  {isLoading ? (
+                    [...Array(6)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
+                  ) : items.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                        Sem follow-ups.
                       </CardContent>
                     </Card>
-                  );
-                })
-              )}
+                  ) : (
+                    items.map((fu: any) => {
+                      const due = fu.due_at ? new Date(fu.due_at) : null;
+                      const overdue = due ? due.getTime() < Date.now() : false;
+                      const contactName = fu.contact_id?.company_name || fu.contact_id?.id || null;
+                      const qNo = fu.quotation_id?.quotation_number || fu.quotation_id?.id || null;
+                      return (
+                        <Card key={String(fu.id)} className={overdue ? "w-full min-w-0 border-destructive/40" : "w-full min-w-0 border"}>
+                          <CardContent className="p-4 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                {typeIcon(String(fu.type || "task"))}
+                                <div className="font-medium truncate">
+                                  {fu.title || typeLabel(String(fu.type || "task"))}
+                                </div>
+                                {overdue ? <Badge variant="destructive">Atrasado</Badge> : <Badge variant="secondary">Aberto</Badge>}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-3">
+                                <span>{due ? due.toLocaleString("pt-PT") : "—"}</span>
+                                {contactName ? <span className="truncate">Cliente: {String(contactName)}</span> : null}
+                                {qNo ? <span className="truncate">Orçamento: {String(qNo)}</span> : null}
+                              </div>
+                              {fu.notes ? (
+                                <div className="text-xs text-muted-foreground mt-2 whitespace-pre-wrap">
+                                  {String(fu.notes).slice(0, 180)}
+                                </div>
+                              ) : null}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  await patch.mutateAsync({
+                                    id: String(fu.id),
+                                    patch: { status: "done", completed_at: new Date().toISOString() } as any,
+                                  });
+                                  toast({ title: "Concluído" });
+                                } catch (e: any) {
+                                  toast({ title: "Erro", description: String(e?.message || e), variant: "destructive" });
+                                }
+                              }}
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Feito
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          {/* ===== Tab: Calendário (FullCalendar) ===== */}
+          <TabsContent value="calendar" className="mt-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Calendário de follow-ups</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CalendarView
+                  items={items}
+                  onComplete={handleCalendarComplete}
+                  onReschedule={handleCalendarReschedule}
+                  onCreate={handleCalendarCreate}
+                  onOpenDeal={handleOpenDeal}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>

@@ -248,16 +248,81 @@ export function Customer360Actions({ contactId, contactName, contactCompany, con
   return (
     <>
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 -mx-1 px-1 sm:flex-wrap sm:overflow-visible sm:pb-0 scrollbar-none">
-        <ActionBtn icon={FileText} label="Nova proposta" onClick={handleNewProposal} variant="purple" />
-        <ActionBtn icon={Calculator} label="Novo orçamento" onClick={handleNewQuotation} variant="amber" />
-        <ActionBtn icon={Phone} label="Ligar" onClick={handleCall} variant="green" />
-        <ActionBtn icon={MessageCircle} label="WhatsApp" onClick={handleWhatsApp} variant="green" />
-        <ActionBtn icon={Mail} label="Email" onClick={handleEmail} variant="blue" />
-        <ActionBtn icon={Target} label="Nova oportunidade" onClick={() => setDealOpen(true)} />
-        <ActionBtn icon={StickyNote} label="Nova nota" onClick={() => setNoteOpen(true)} />
-        <ActionBtn icon={CheckSquare} label="Nova tarefa" onClick={() => setTaskOpen(true)} />
-        <ActionBtn icon={MapPin} label="Agendar visita" onClick={() => { setTaskType("visit"); setTaskOpen(true); }} />
-        <ActionBtn icon={Wrench} label="Assistência" onClick={() => setAssistOpen(true)} />
+        <ActionBtn
+          icon={FileText}
+          label="Nova proposta"
+          onClick={handleNewProposal}
+          variant="purple"
+          disabled={!contactId}
+          disabledReason={!contactId ? "Seleciona um contacto" : undefined}
+        />
+        <ActionBtn
+          icon={Calculator}
+          label="Novo orçamento"
+          onClick={handleNewQuotation}
+          variant="amber"
+          disabled={!contactId}
+          disabledReason={!contactId ? "Seleciona um contacto" : undefined}
+        />
+        <ActionBtn
+          icon={Phone}
+          label="Ligar"
+          onClick={handleCall}
+          variant="green"
+          disabled={!contactPhone}
+          disabledReason={!contactPhone ? "Telefone não preenchido" : undefined}
+        />
+        <ActionBtn
+          icon={MessageCircle}
+          label="WhatsApp"
+          onClick={handleWhatsApp}
+          variant="green"
+          disabled={!contactPhone}
+          disabledReason={!contactPhone ? "Telefone não preenchido" : undefined}
+        />
+        <ActionBtn
+          icon={Mail}
+          label="Email"
+          onClick={handleEmail}
+          variant="blue"
+          disabled={!contactEmail}
+          disabledReason={!contactEmail ? "Email não preenchido" : undefined}
+        />
+        <ActionBtn
+          icon={Target}
+          label="Nova oportunidade"
+          onClick={() => setDealOpen(true)}
+          disabled={!contactId}
+          disabledReason={!contactId ? "Seleciona um contacto" : undefined}
+        />
+        <ActionBtn
+          icon={StickyNote}
+          label="Nova nota"
+          onClick={() => setNoteOpen(true)}
+          disabled={!contactId}
+          disabledReason={!contactId ? "Seleciona um contacto" : undefined}
+        />
+        <ActionBtn
+          icon={CheckSquare}
+          label="Nova tarefa"
+          onClick={() => setTaskOpen(true)}
+          disabled={!contactId}
+          disabledReason={!contactId ? "Seleciona um contacto" : undefined}
+        />
+        <ActionBtn
+          icon={MapPin}
+          label="Agendar visita"
+          onClick={() => { setTaskType("visit"); setTaskOpen(true); }}
+          disabled={!contactId}
+          disabledReason={!contactId ? "Seleciona um contacto" : undefined}
+        />
+        <ActionBtn
+          icon={Wrench}
+          label="Assistência"
+          onClick={() => setAssistOpen(true)}
+          disabled={!contactId}
+          disabledReason={!contactId ? "Seleciona um contacto" : undefined}
+        />
       </div>
 
       {/* Nova nota dialog */}
@@ -403,7 +468,21 @@ const VARIANT_CLASSES = {
   default: "text-muted-foreground bg-card hover:text-foreground hover:bg-muted/70 border-border/80 shadow-xs",
 } as const;
 
-function ActionBtn({ icon: Icon, label, onClick, variant = "default" }: { icon: typeof Phone; label: string; onClick?: () => void; variant?: keyof typeof VARIANT_CLASSES }) {
+function ActionBtn({
+  icon: Icon,
+  label,
+  onClick,
+  variant = "default",
+  disabled,
+  disabledReason,
+}: {
+  icon: typeof Phone;
+  label: string;
+  onClick?: () => void;
+  variant?: keyof typeof VARIANT_CLASSES;
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
   return (
     <Button
       variant="ghost"
@@ -413,6 +492,9 @@ function ActionBtn({ icon: Icon, label, onClick, variant = "default" }: { icon: 
         VARIANT_CLASSES[variant]
       )}
       onClick={onClick}
+      disabled={disabled}
+      title={disabled ? disabledReason : label}
+      aria-disabled={disabled || undefined}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
       <span>{label}</span>

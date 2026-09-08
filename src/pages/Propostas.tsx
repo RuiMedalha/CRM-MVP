@@ -1,12 +1,12 @@
-import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { listQuotations, duplicateQuotation } from "@/integrations/directus/quotations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import {
   Table,
@@ -16,7 +16,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { Plus, Search, Eye, Copy, MoreHorizontal, Loader2, MessageCircle, ExternalLink } from "lucide-react";
+import { Plus, Search, Eye, Copy, MoreHorizontal, Loader2, MessageCircle, ExternalLink, FileText, Sparkles } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { QuotationCreator } from "@/components/quotations/QuotationCreator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useContacts } from "@/hooks/useContacts";
+import type { ContactItem } from "@/integrations/directus/contacts";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+const TYPE_TABS = [
+  { value: "all", label: "Todas" },
+  { value: "proposal", label: "Propostas Interativas" },
+  { value: "quotation", label: "Orçamentos Rápidos" },
+];
 
 const STATUS_TABS = [
   { value: "all", label: "Todas" },
@@ -45,28 +64,66 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   expired: { label: "Expirada", className: "bg-gray-50 text-gray-500 dark:bg-gray-900 dark:text-gray-400" },
 };
 
+function detectDocType(q: any): "proposal" | "quotation" {
+  const num = String(q.quotation_number || "");
+  if (num.startsWith("ORC-")) return "quotation";
+  if (num.startsWith("PRP-")) return "proposal";
+  return q.document_type === "quotation" ? "quotation" : "proposal";
+}
+
 export default function Propostas() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [openCreateChooser, setOpenCreateChooser] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
+  const [createFor, setCreateFor] = useState<{ id: string; name: string } | null>(null);
+
+  // Tipo de documento: "todas" | "proposta" | "orcamento" — lê da query string ?tipo=
+  const tipoParam = searchParams.get("tipo");
+  const docTypeFilter: "all" | "proposal" | "quotation" =
+    tipoParam === "orcamento"
+      ? "quotation"
+      : tipoParam === "proposta"
+        ? "proposal"
+        : "all";
+
+  // Sincroniza ?tipo= na URL sempre que o utilizador muda o filtro
+  useEffect(() => {
+    const current = searchParams.get("tipo");
+    const desired = docTypeFilter === "all" ? null : docTypeFilter;
+    if ((current ?? null) !== desired) {
+      const next = new URLSearchParams(searchParams);
+      if (desired) next.set("tipo", desired);
+      else next.delete("tipo");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docTypeFilter]);
 
   const { data: quotations = [], isLoading } = useQuery({
     queryKey: ["propostas", searchQuery],
     queryFn: () => listQuotations({ search: searchQuery, limit: 200 }),
   });
 
-  // Filter to proposals only (PRP- prefix or document_type === 'proposal' excluding ORC-)
-  const proposals = quotations
-    .filter((q: any) =>
-      (q.quotation_number || "").startsWith("PRP-") || (q.document_type === "proposal" && !(q.quotation_number || "").startsWith("ORC-"))
-    )
+  // Sem fragmentação: lista única, filtrada por tipo (proposta/orcamento) e por status
+  const items = (quotations as any[])
+    .map((q: any) => ({ ...q, _docType: detectDocType(q) }))
     .sort((a: any, b: any) => Number(b.id || 0) - Number(a.id || 0));
 
+  const byType = docTypeFilter === "all"
+    ? items
+    : items.filter((q: any) => q._docType === docTypeFilter);
+
   const filtered = activeTab === "all"
-    ? proposals
-    : proposals.filter((q: any) => q.status === activeTab);
+    ? byType
+    : byType.filter((q: any) => q.status === activeTab);
+
+  const contactsQuery = useContacts(openCreateChooser ? contactSearch : "");
+  const contacts = (contactsQuery.data || []) as ContactItem[];
 
   const handleDuplicate = useCallback(async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -96,21 +153,62 @@ export default function Propostas() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-xl md:text-2xl font-semibold">Propostas</h1>
-          <Button onClick={() => navigate("/propostas/nova")}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Nova Proposta
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Nova
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem onSelect={() => navigate("/propostas/nova")}>
+                <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Proposta Interativa Completa</span>
+                  <span className="text-xs text-muted-foreground">Wizard 8 passos</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setOpenCreateChooser(true)}>
+                <FileText className="h-4 w-4 mr-2 text-amber-500" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Orçamento Rápido</span>
+                  <span className="text-xs text-muted-foreground">1 folha, cliente + itens</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Search */}
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Pesquisar propostas..."
+            placeholder="Pesquisar propostas e orçamentos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
           />
+        </div>
+
+        {/* Type tabs (Sprint F: Todas / Propostas Interativas / Orçamentos Rápidos) */}
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          {TYPE_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => {
+                if (tab.value === "all") setSearchParams({}, { replace: true });
+                else setSearchParams({ tipo: tab.value }, { replace: true });
+              }}
+              className={cn(
+                "px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors",
+                docTypeFilter === tab.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Status tabs */}
@@ -120,10 +218,10 @@ export default function Propostas() {
               key={tab.value}
               onClick={() => setActiveTab(tab.value)}
               className={cn(
-                "px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors",
+                "px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors border border-transparent",
                 activeTab === tab.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  ? "bg-secondary text-secondary-foreground border-border"
+                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
               )}
             >
               {tab.label}
@@ -143,6 +241,7 @@ export default function Propostas() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Tipo</TableHead>
                   <TableHead>Nº</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="text-right">Total</TableHead>
@@ -176,6 +275,19 @@ export default function Propostas() {
                       className="cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() => navigate(`/propostas/${q.id}/detalhe`)}
                     >
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] font-semibold uppercase tracking-wide",
+                            q._docType === "quotation"
+                              ? "border-amber-500/40 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30"
+                              : "border-primary/40 text-primary bg-primary/5"
+                          )}
+                        >
+                          {q._docType === "quotation" ? "ORÇ" : "PROP"}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="font-mono text-sm font-medium">
                         {q.quotation_number || "—"}
                       </TableCell>
@@ -256,6 +368,90 @@ export default function Propostas() {
           )}
         </Card>
       </div>
+
+      {/* Dialog: escolher cliente para criar Orçamento Rápido */}
+      <Dialog open={openCreateChooser} onOpenChange={setOpenCreateChooser}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Novo Orçamento Rápido</DialogTitle>
+            <DialogDescription className="sr-only">
+              Seleciona um cliente e cria um novo orçamento de 1 folha.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar por empresa, NIF, telefone, email…"
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <ScrollArea className="h-[50vh] pr-2">
+              <div className="space-y-2">
+                {contactsQuery.isLoading ? (
+                  [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
+                ) : contacts.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                      Sem resultados
+                    </CardContent>
+                  </Card>
+                ) : (
+                  contacts.slice(0, 100).map((c) => {
+                    const name = String(c.company_name || c.contact_name || c.id);
+                    return (
+                      <Card key={String(c.id)} className="border">
+                        <CardContent className="p-4 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{name}</div>
+                            <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-2">
+                              {c.nif ? <span>NIF: {String(c.nif)}</span> : null}
+                              {c.phone ? <span>Tel: {String(c.phone)}</span> : null}
+                              {c.email ? <span className="truncate">{String(c.email)}</span> : null}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setOpenCreateChooser(false);
+                              setCreateFor({ id: String(c.id), name });
+                            }}
+                          >
+                            Criar
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Orcamento Rápido creator (1 folha) */}
+      {createFor ? (
+        <QuotationCreator
+          open={!!createFor}
+          onOpenChange={(open) => {
+            if (!open) setCreateFor(null);
+          }}
+          contactId={createFor.id}
+          contactName={createFor.name}
+          onComplete={() => {
+            setCreateFor(null);
+            queryClient.invalidateQueries({ queryKey: ["propostas"] });
+          }}
+        />
+      ) : null}
     </AppLayout>
   );
 }
