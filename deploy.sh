@@ -9,8 +9,8 @@ echo "🏗️  A fazer build..."
 npm run build
 
 echo "📦 A fazer upload para o servidor..."
-# Copiar dist para o servidor via scp
-scp -r dist/* root@84.247.142.28:/var/www/crm.hotelequip.pt/
+# Copiar dist para o servidor via scp (pasta real servida pelo Nginx: /var/www/crm/dist)
+scp -r dist/* root@84.247.142.28:/var/www/crm/dist/
 
 echo "✅ Deploy concluído!"
 echo "🌐 CRM disponível em https://crm.hotelequip.pt"
