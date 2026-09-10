@@ -385,6 +385,7 @@ export default function Leads() {
             promoting={promoting}
             onPromote={handlePromote}
             onTimeline={setTimelineLead}
+            onBreakdown={setBreakdownLead}
             newLeadIds={newLeadIds}
           />
         )}
@@ -466,10 +467,11 @@ interface LeadsVirtualListProps {
   promoting: string | number | null;
   onPromote: (lead: LeadRow) => void;
   onTimeline: (lead: LeadRow) => void;
+  onBreakdown?: (lead: LeadRow) => void;
   newLeadIds?: Set<string>;
 }
 
-function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, newLeadIds }: LeadsVirtualListProps) {
+function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, onBreakdown, newLeadIds }: LeadsVirtualListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   // Detecta landscape phone para usar row compacta. Sem isto, 499 cards
   // a 96px dão 47904px de altura virtualizada; em landscape cabem só 6
@@ -567,11 +569,21 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, newLeadIds 
                               </span>
                             )}
                           </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                            {displayPhone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" /> {displayPhone}</span>}
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            {displayPhone && <span className="flex items-center gap-0.5 text-foreground/80 font-medium"><Phone className="h-3 w-3 text-primary/70" /> {displayPhone}</span>}
                             {displayEmail && <span className="flex min-w-0 max-w-full items-center gap-0.5 truncate"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{displayEmail}</span></span>}
+                            {(lead.city || (lead.lead_data?.city as string)) && (
+                              <span className="flex items-center gap-0.5">
+                                📍 {lead.city || (lead.lead_data?.city as string)}
+                              </span>
+                            )}
+                            {(lead.lead_data?.requested_items as string) && (
+                              <span className="flex items-center gap-0.5 text-amber-800 dark:text-amber-300 font-medium truncate max-w-md" title={lead.lead_data.requested_items as string}>
+                                🛒 {lead.lead_data.requested_items as string}
+                              </span>
+                            )}
                             {lead.date_created && (
-                              <span>{format(new Date(lead.date_created), "d MMM HH:mm", { locale: pt })}</span>
+                              <span className="text-[11px] opacity-70">{format(new Date(lead.date_created), "d MMM HH:mm", { locale: pt })}</span>
                             )}
                           </div>
                         </>
@@ -581,7 +593,7 @@ function LeadsVirtualList({ leads, promoting, onPromote, onTimeline, newLeadIds 
                   {/* Badge de Score (Card 7) — mobile-first, click para ver breakdown */}
                   <ScoreBadge
                     score={lead.score ?? 0}
-                    onClick={(e) => { e.stopPropagation(); setBreakdownLead(lead); }}
+                    onClick={(e) => { e.stopPropagation(); onBreakdown?.(lead); }}
                   />
                   <Button
                     size="sm"

@@ -36,6 +36,7 @@ import { CommunicationsPanel, type CommunicationEntry } from "@/components/custo
 import { TimelinePanel } from "@/components/customer360/TimelinePanel";
 import { EditGeneralTab } from "@/components/customer360/edit/EditGeneralTab";
 import { CreateContactForm } from "@/components/customer360/edit/CreateContactForm";
+import { CustomerDossierPanel } from "@/components/customer360/CustomerDossierPanel";
 import { Customer360Hub, addRecentContact } from "@/components/customer360/Customer360Hub";
 import { FollowUpsPanel } from "@/components/customer360/FollowUpsPanel";
 import { NewsletterBanner } from "@/components/customer360/NewsletterBanner";
@@ -123,6 +124,7 @@ export default function Customer360Shell() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const [resolvingSearch, setResolvingSearch] = useState(false);
   const { data, isLoading, error } = useCustomer360(id === "novo" ? undefined : id);
   const [activeTab, setActiveTab] = useState<TabId>("geral");
@@ -168,7 +170,7 @@ export default function Customer360Shell() {
     if (!id) return;
     const org = c360?.organization;
     const orgName = org?.name || "";
-    const orgComp = org?.company_name || orgName;
+    const orgComp = (org as any)?.company_name || orgName;
     const orgEmail = org?.email || "";
     const orgPhone = org?.phone || org?.mobile_phone || "";
     const query = new URLSearchParams({
@@ -196,7 +198,7 @@ export default function Customer360Shell() {
     if (!id) return;
     const org = c360?.organization;
     const orgName = org?.name || "";
-    const orgComp = org?.company_name || orgName;
+    const orgComp = (org as any)?.company_name || orgName;
     const query = new URLSearchParams({
       customerId: String(id),
       contactId: String(id),
@@ -221,13 +223,76 @@ export default function Customer360Shell() {
   if (isHubMode) return <Navigate to="/contactos" replace />;
 
   if (isCreateMode) {
+    const leadIdParam = searchParams.get("leadId");
     const prefill = {
       name: searchParams.get("name") || undefined,
       company_name: searchParams.get("company_name") || undefined,
+      contact_person: searchParams.get("contact_person") || undefined,
       phone: searchParams.get("phone") || undefined,
+      mobile_phone: searchParams.get("mobile_phone") || undefined,
       email: searchParams.get("email") || undefined,
+      city: searchParams.get("city") || undefined,
+      postal_code: searchParams.get("postal_code") || undefined,
+      address: searchParams.get("address") || undefined,
+      nif: searchParams.get("nif") || undefined,
+      source: searchParams.get("source") || undefined,
+      website: searchParams.get("website") || undefined,
+      leadId: leadIdParam || undefined,
     };
-    return <AppLayout><CreateContactForm prefill={prefill} /></AppLayout>;
+
+    // Se existir leadId, renderiza a Ficha de Enriquecimento de Lead Completa (estilo Telecof Workspace)
+    if (leadIdParam) {
+      return (
+        <AppLayout>
+          <div className="p-4 sm:p-6 space-y-4 max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                    Lead #{leadIdParam}
+                  </span>
+                  <h1 className="text-xl font-bold tracking-tight text-foreground">
+                    {prefill.company_name || prefill.name || "Ficha de Prospeção"}
+                  </h1>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Regista notas, agenda acompanhamentos ou promove esta Lead a Contacto oficial e Oportunidade.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Coluna 1: Formulário de dados cadastrais preenchido */}
+              <div className="lg:col-span-7">
+                <CreateContactForm prefill={prefill} defaultMode="both" />
+              </div>
+
+              {/* Coluna 2: Dossiê Contínuo do Telecof (Notas, Follow-ups, Ações Rápidas) */}
+              <div className="lg:col-span-5 space-y-4">
+                <CustomerDossierPanel
+                  leadId={leadIdParam}
+                  variant="telecof"
+                  showConversionOnLead={true}
+                  allowFollowUp={true}
+                  defaultSource="email_inbound"
+                  onActivity={() => {
+                    queryClient.invalidateQueries({ queryKey: ["lead-context-form", leadIdParam] });
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </AppLayout>
+      );
+    }
+
+    return (
+      <AppLayout>
+        <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+          <CreateContactForm prefill={prefill} />
+        </div>
+      </AppLayout>
+    );
   }
 
   if (id && isLoading) return <AppLayout><div className="flex items-center justify-center min-h-[500px]"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></AppLayout>;
@@ -347,7 +412,7 @@ export default function Customer360Shell() {
             <Customer360Actions
               contactId={id}
               contactName={org.name}
-              contactCompany={org.company_name || org.name}
+              contactCompany={(org as any).company_name || org.name}
               contactPhone={org.phone || org.mobile_phone}
               contactEmail={org.email}
             />

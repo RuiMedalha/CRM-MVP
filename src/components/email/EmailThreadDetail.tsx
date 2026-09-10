@@ -2,9 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { format } from "date-fns/format";
 import { pt } from "date-fns/locale";
-import { ArrowLeft, UserPlus, CheckCircle2, User, Copy, Bot, Reply, X, ExternalLink, ChevronDown, ShieldAlert } from "lucide-react";
+import { ArrowLeft, UserPlus, CheckCircle2, User, Copy, Bot, Reply, X, ExternalLink, ChevronDown, ShieldAlert, Image as ImageIcon, Link as LinkIcon, Edit3, Phone, Building2, Mail, MapPin, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useEmailMessages } from "@/hooks/useEmailThreads";
 import type { EmailThread, EmailMessage } from "@/hooks/useEmailThreads";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +19,9 @@ import { EmailProductSuggestions } from "./EmailProductSuggestions";
 import { LeadTimelineModal } from "@/components/contacts/LeadTimelineModal";
 import { createInteraction } from "@/integrations/directus/interactions";
 import { useMeilisearch } from "@/hooks/useMeilisearch";
+import { extractContactHeuristics } from "@/lib/emailContactExtraction";
+import { buildContactCreationUrl } from "@/lib/buildContactCreationUrl";
+import { RefreshCw } from "lucide-react";
 
 /**
  * Renders email body intelligently:
@@ -87,6 +93,55 @@ function stripTags(html: string): string {
     .trim();
 }
 
+function resolveEmailHtmlImages(
+  rawHtml: string,
+  attachments?: { file: string; filename: string; mimetype?: string; size?: number }[] | null
+): string {
+  if (!rawHtml) return "";
+  const directusUrl = import.meta.env.VITE_DIRECTUS_URL || "https://api.hotelequip.pt";
+
+  // Filtrar anexos que correspondam a ficheiros de imagem
+  const imageAttachments = (attachments || []).filter((att) => {
+    if (!att.file) return false;
+    const fn = (att.filename || "").toLowerCase();
+    const mt = (att.mimetype || "").toLowerCase();
+    return (
+      mt.startsWith("image/") ||
+      fn.endsWith(".png") ||
+      fn.endsWith(".jpg") ||
+      fn.endsWith(".jpeg") ||
+      fn.endsWith(".gif") ||
+      fn.endsWith(".webp") ||
+      fn.endsWith(".bmp")
+    );
+  });
+
+  let processedHtml = rawHtml;
+
+  // 1. Mapeamento por nome de ficheiro exato ou parcial na referência cid:
+  imageAttachments.forEach((att) => {
+    const fileUrl = `${directusUrl}/assets/${att.file}`;
+    const cleanFn = (att.filename || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (cleanFn) {
+      const regex = new RegExp(`src=["']cid:[^"']*?${cleanFn}[^"']*?["']`, "gi");
+      processedHtml = processedHtml.replace(regex, `src="${fileUrl}"`);
+    }
+  });
+
+  // 2. Mapeamento sequencial para CIDs residuais (ex: Outlook gera UUIDs aleatórios no CID)
+  let imgIdx = 0;
+  processedHtml = processedHtml.replace(/src=["']cid:([^"']+)["']/gi, (match) => {
+    if (imgIdx < imageAttachments.length) {
+      const fileUrl = `${directusUrl}/assets/${imageAttachments[imgIdx].file}`;
+      imgIdx++;
+      return `src="${fileUrl}"`;
+    }
+    return match;
+  });
+
+  return processedHtml;
+}
+
 function EmailBody({ message }: { message: EmailMessage }) {
   const [showQuote, setShowQuote] = useState(false);
   const rawHtml = message.body_html || "";
@@ -94,20 +149,21 @@ function EmailBody({ message }: { message: EmailMessage }) {
 
   // ─── Case 1: has HTML — render sanitized + collapse quote ─────────
   if (rawHtml.trim().length > 0) {
-    const quoteIdx = findQuoteStart(rawHtml);
-    const safeHtml = DOMPurify.sanitize(rawHtml, {
-      ADD_ATTR: ["target"],
+    const resolvedHtml = resolveEmailHtmlImages(rawHtml, message.attachments);
+    const quoteIdx = findQuoteStart(resolvedHtml);
+    const domPurifyOptions = {
+      ADD_TAGS: ["img"],
+      ADD_ATTR: ["src", "alt", "title", "width", "height", "style", "target", "loading", "class"],
       FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
       FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
-    });
+    };
+    const safeHtml = DOMPurify.sanitize(resolvedHtml, domPurifyOptions);
 
     if (quoteIdx > 0) {
-      // Split: before-quote is HTML, quote is HTML.
-      // Sanitize each half separately so DOMPurify doesn't get confused by partial tags.
-      const before = DOMPurify.sanitize(safeHtml.slice(0, quoteIdx));
-      const quote = DOMPurify.sanitize(safeHtml.slice(quoteIdx));
+      const before = DOMPurify.sanitize(safeHtml.slice(0, quoteIdx), domPurifyOptions);
+      const quote = DOMPurify.sanitize(safeHtml.slice(quoteIdx), domPurifyOptions);
       return (
-        <div className="email-content">
+        <div className="email-content [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_img]:shadow-sm">
           <div dangerouslySetInnerHTML={{ __html: before }} />
           <button
             type="button"
@@ -127,7 +183,7 @@ function EmailBody({ message }: { message: EmailMessage }) {
     }
 
     return (
-      <div className="email-content">
+      <div className="email-content [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_img]:shadow-sm">
         <div dangerouslySetInnerHTML={{ __html: safeHtml }} />
       </div>
     );
@@ -303,6 +359,7 @@ export function EmailThreadDetail({ thread, currentEmployeeId, onBack, onAssign,
   const [existingLead, setExistingLead] = useState<{ id: string | number; display_name?: string; email?: string; lead_data?: Record<string, unknown> | null } | null>(null);
   type ExtractedContactInfo = {
     name?: string | null; company_name?: string | null; phone?: string | null;
+    nif?: string | null; razao_social?: string | null; iban?: string | null;
     address?: string | null; city?: string | null; postal_code?: string | null;
     website?: string | null; request_type?: string | null; requested_items?: string | null;
     contact_role?: string | null; fullBodyText?: string;
@@ -311,6 +368,44 @@ export function EmailThreadDetail({ thread, currentEmployeeId, onBack, onAssign,
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewDismissed, setPreviewDismissed] = useState(false);
   const extractionRanForThread = useRef<string | null>(null);
+
+  // Modal de edição manual de dados antes de criar Lead
+  const [isEditContactOpen, setIsEditContactOpen] = useState(false);
+  const [editForm, setEditForm] = useState<{
+    name: string;
+    company_name: string;
+    phone: string;
+    city: string;
+    nif: string;
+    requested_items: string;
+  }>({ name: "", company_name: "", phone: "", city: "", nif: "", requested_items: "" });
+
+  // Modal de associar a cliente existente
+  const [isLinkContactOpen, setIsLinkContactOpen] = useState(false);
+  const [searchContactQuery, setSearchContactQuery] = useState("");
+  const [contactSearchResults, setContactSearchResults] = useState<Array<{ id: string | number; company_name?: string; contact_name?: string; email?: string; phone?: string }>>([]);
+  const [searchingContacts, setSearchingContacts] = useState(false);
+  const [linkingContact, setLinkingContact] = useState(false);
+
+  // Limpeza e reset imediato de todos os estados locais ao mudar de thread/email
+  // Impede que dados de um remetente anterior (nome, preview, rascunhos) vazem para o novo email
+  useEffect(() => {
+    setContact(null);
+    setContactLoading(true);
+    setContactNotFound(false);
+    setExistingLead(null);
+    setCreatedLeadId(null);
+    setCreatedLeadName("");
+    setPreview(null);
+    setPreviewLoading(false);
+    setPreviewDismissed(false);
+    setShowReply(false);
+    setReplyText(thread.ai_draft || "");
+    setAssignedTo(thread.assigned_to);
+    setIsEditContactOpen(false);
+    setIsLinkContactOpen(false);
+    extractionRanForThread.current = null;
+  }, [thread.id]);
 
   // Load agents from employees collection (consistent with useCurrentEmployee)
   useEffect(() => {
@@ -340,27 +435,99 @@ export function EmailThreadDetail({ thread, currentEmployeeId, onBack, onAssign,
   useEffect(() => {
     if (!contactNotFound || contactLoading || thread.from_address === undefined) return;
 
-    const setLeadFromResult = (lead: { id: string | number; display_name?: string; email?: string; lead_data?: Record<string, unknown> | null } | null) => {
-      if (lead) setExistingLead(lead);
+    const setLeadFromResult = (lead: any | null) => {
+      if (lead) {
+        setExistingLead(lead);
+        const ld = (lead.lead_data || {}) as Record<string, unknown>;
+        const personName = (ld.contact_name as string) || lead.contact_name || lead.display_name || null;
+        const phone = (ld.phone as string) || lead.contact_phone || lead.phone || null;
+        const mobilePhone = (ld.mobile_phone as string) || lead.mobile_phone || null;
+        const city = (ld.city as string) || lead.city || null;
+        const postalCode = (ld.postal_code as string) || lead.postal_code || null;
+        const address = (ld.address as string) || lead.address || null;
+        const nif = (ld.nif as string) || lead.nif || null;
+        const companyName = (ld.company_name as string) || (personName && lead.display_name && lead.display_name !== personName ? lead.display_name : null);
+
+        // Se a lead existente na base de dados tiver lacunas (ex: sem morada, sem cidade ou sem nome de pessoa),
+        // analisa a assinatura do email atual para preencher o que falta
+        const inboundMsgs = (messages ?? []).filter((m) => m.direction === "inbound");
+        const msgText = inboundMsgs.length > 0 ? inboundMsgs[inboundMsgs.length - 1]?.body_text || "" : "";
+        const fromSign = msgText ? extractContactHeuristics(msgText, thread.from_address, thread.subject || "") : {};
+
+        const finalName = (personName && personName !== lead.display_name) ? personName : (fromSign.name || personName);
+        const finalCompany = companyName || fromSign.company_name || lead.display_name || null;
+        const finalPhone = phone || fromSign.phone || null;
+        const finalAddress = address || fromSign.address || null;
+        const finalCity = city || fromSign.city || null;
+        const finalPostalCode = postalCode || fromSign.postal_code || null;
+        const finalNif = nif || fromSign.nif || null;
+
+        // Preenche o preview imediatamente com os dados enriquecidos
+        setPreview({
+          name: finalName,
+          company_name: finalCompany,
+          razao_social: (ld.razao_social as string) || fromSign.razao_social || null,
+          nif: finalNif,
+          phone: mobilePhone ? `${finalPhone || ''} / ${mobilePhone}`.trim().replace(/^\/|\/$/g, '') : finalPhone,
+          address: finalAddress,
+          city: finalCity,
+          postal_code: finalPostalCode,
+          requested_items: (ld.requested_items as string) || fromSign.requested_items || lead.notes || null,
+          contact_role: (ld.contact_role as string) || fromSign.contact_role || null,
+          request_type: (ld.request_type as string) || fromSign.request_type || null,
+        });
+
+        // Se encontrámos dados adicionais que não estavam na Lead, atualiza a Lead em background
+        if (lead.id && (!lead.contact_name || !lead.city || !lead.address) && (fromSign.name || fromSign.city || fromSign.address || fromSign.phone)) {
+          const patchPayload: Record<string, unknown> = {};
+          if (!lead.contact_name && fromSign.name) patchPayload.contact_name = fromSign.name;
+          if (!lead.city && fromSign.city) patchPayload.city = fromSign.city;
+          if (!lead.postal_code && fromSign.postal_code) patchPayload.postal_code = fromSign.postal_code;
+          if (!lead.address && fromSign.address) patchPayload.address = fromSign.address;
+          if (!lead.contact_phone && fromSign.phone) patchPayload.contact_phone = fromSign.phone;
+          if (Object.keys(patchPayload).length > 0) {
+            directusRequest(`/items/leads/${lead.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify(patchPayload),
+            }).catch(() => {});
+          }
+        }
+      }
     };
+
+    const LEAD_FIELDS = 'id,display_name,email,contact_name,contact_phone,mobile_phone,city,postal_code,address,nif,notes,lead_data';
 
     // Prioridade 1: lead_id gravado na thread (sem ambiguidade)
     if (thread.lead_id) {
-      directusRequest<{ data: { id: string | number; display_name?: string; email?: string; lead_data?: Record<string, unknown> | null } }>(
-        `/items/leads/${thread.lead_id}?fields=id,display_name,email,lead_data`
+      directusRequest<{ data: any }>(
+        `/items/leads/${thread.lead_id}?fields=${LEAD_FIELDS}`
       ).then((res) => {
         setLeadFromResult(res?.data ?? null);
       }).catch(() => { /* silently fall through to email search */ });
       return;
     }
 
-    // Prioridade 2: busca por email (ambígua quando há várias leads com o mesmo email de teste;
-    // sort=-date_created apanha a mais recente em vez de uma ao acaso)
+    // Prioridade 2: busca por email (com todos os campos preenchidos)
     const email = encodeURIComponent(thread.from_address);
-    directusRequest<{ data: Array<{ id: string | number; display_name?: string; email?: string; lead_data?: Record<string, unknown> | null }> }>(
-      `/items/leads?filter[email][_eq]=${email}&filter[status][_neq]=discarded&sort=-date_created&limit=1&fields=id,display_name,email,lead_data`
+    directusRequest<{ data: Array<any> }>(
+      `/items/leads?filter[email][_eq]=${email}&filter[status][_neq]=discarded&sort=-date_created&limit=1&fields=${LEAD_FIELDS}`
     ).then((res) => {
-      setLeadFromResult(res?.data?.[0] ?? null);
+      if (res?.data?.[0]) {
+        setLeadFromResult(res.data[0]);
+      } else {
+        // Prioridade 3: Correlação por domínio corporativo (ex: everton.henn@zenithcaffe.pt encontra lead compras@zenithcaffe.pt)
+        const domain = thread.from_address.split("@")[1]?.toLowerCase();
+        const genericDomains = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "sapo.pt", "live.com", "icloud.com"];
+        if (domain && !genericDomains.includes(domain)) {
+          directusRequest<{ data: Array<any> }>(
+            `/items/leads?filter[email][_ends_with]=@${encodeURIComponent(domain)}&filter[status][_neq]=discarded&sort=-date_created&limit=1&fields=${LEAD_FIELDS}`
+          ).then((domainRes) => {
+            if (domainRes?.data?.[0]) {
+              setLeadFromResult(domainRes.data[0]);
+            }
+          }).catch(() => {});
+        }
+      }
     }).catch(() => { /* silently fail — fallback apenas */ });
   }, [contactNotFound, contactLoading, thread.from_address, thread.lead_id]);
 
@@ -386,36 +553,126 @@ export function EmailThreadDetail({ thread, currentEmployeeId, onBack, onAssign,
     }
   };
 
-  const extractContactInfo = async (): Promise<ExtractedContactInfo> => {
-    let extracted: ExtractedContactInfo = {};
+  const extractContactInfo = async (forceRefresh = false): Promise<ExtractedContactInfo> => {
+    // 1. Se a lead já existe na base de dados, usa os dados existentes e NUNCA chama a IA novamente
+    if (existingLead && !forceRefresh) {
+      const ld = (existingLead.lead_data || {}) as Record<string, unknown>;
+      return {
+        name: (ld.contact_name as string) || (existingLead as any).contact_name || existingLead.display_name || null,
+        company_name: (ld.company_name as string) || null,
+        phone: (ld.phone as string) || (existingLead as any).contact_phone || null,
+        city: (ld.city as string) || (existingLead as any).city || null,
+        postal_code: (ld.postal_code as string) || (existingLead as any).postal_code || null,
+        address: (ld.address as string) || (existingLead as any).address || null,
+        nif: (ld.nif as string) || (existingLead as any).nif || null,
+        requested_items: (ld.requested_items as string) || (existingLead as any).notes || null,
+        request_type: (ld.request_type as string) || null,
+      };
+    }
+
+    // 2. Cache local por thread: se este email já foi analisado antes, devolve da cache (0ms, 0 chamadas à IA)
+    const cacheKey = `crm_email_extracted_${thread.id}`;
+    if (!forceRefresh) {
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch { /* ignorar */ }
+    }
+
     let fullBodyText = "";
+    // 3. Obter o texto do email recebido (inbound) ou primeiro email da thread
+    const inboundMsgs = (messages ?? []).filter((m) => m.direction === "inbound");
+    const targetMsg = inboundMsgs.length > 0 ? inboundMsgs[inboundMsgs.length - 1] : (messages ?? [])[0];
+
+    fullBodyText = targetMsg?.body_text || "";
+    // Se body_text estiver vazio, converte o body_html para texto simples
+    if (!fullBodyText.trim() && targetMsg?.body_html) {
+      fullBodyText = targetMsg.body_html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    }
+
+    // 4. Executar extração heurística instantânea (0ms, infalível para telefones, moradas, CP e assinaturas)
+    const heuristic = extractContactHeuristics(fullBodyText, thread.from_address, thread.subject || "");
+    let extracted: ExtractedContactInfo = { ...heuristic, fullBodyText };
+
+    // 5. Tentar enriquecer com IA se o texto existir
     try {
-      fullBodyText = (messages ?? []).filter((m) => m.direction === "inbound").pop()?.body_text || "";
-      const text = fullBodyText.slice(0, 2000);
-      if (text) {
+      let text = fullBodyText;
+      if (fullBodyText.length > 5000) {
+        text = fullBodyText.slice(0, 2500) + "\n\n[...assinado no rodapé...]\n\n" + fullBodyText.slice(-2500);
+      }
+      if (text.trim().length > 20) {
         const { generateWithAI } = await import("@/integrations/ai/anthropicClient");
         const raw = await generateWithAI(
-          `Deste email, extrai (1) os dados de contacto de QUEM O ENVIOU (nunca da Hotelequip, que é quem recebe), (2) o que a pessoa pretende, e (3) que tipo de relação tem esta pessoa com a Hotelequip. Devolve APENAS um objeto JSON válido, sem explicação nem markdown, com estas chaves (usa null se não encontrares): name (nome COMPLETO da pessoa — a linha inteira do nome próprio, sem cortar palavras), company_name (nome da empresa/entidade — a linha seguinte, o nome comercial; NUNCA misturar palavras da linha do nome com a linha da empresa nem vice-versa), phone (telefone), address (morada completa), city (localidade), postal_code (código postal), website, request_type (um de: "orcamento", "encomenda", "proposta", "reclamacao", "assistencia_tecnica", "informacao", "outro"), requested_items (lista curta e objetiva, separada por vírgulas, dos equipamentos/produtos/serviços mencionados — texto livre, não JSON aninhado), contact_role (um de: "cliente" — está a pedir/comprar algo à Hotelequip; "fornecedor" — está a vender/oferecer algo à Hotelequip, ex: envia fatura, catálogo, proposta de fornecimento; "parceiro"; ou null se não for claro).
+          `Deste email, analisa com extrema atenção a mensagem E ESPECIALMENTE A ASSINATURA / RODAPÉ do remetente (onde costumam vir os dados fiscais e de faturação da empresa).
 
-Regra crítica para name/company_name: se a assinatura tem uma linha com o nome da pessoa e outra linha com o nome da empresa, cada campo recebe a sua linha COMPLETA. Exemplo: "João Teste Sprint\nRestaurante Teste Lda" → name="João Teste Sprint", company_name="Restaurante Teste Lda". NUNCA partir palavras entre os dois campos.
+Extrai as seguintes informações de QUEM ENVIOU (nunca da Hotelequip):
+1. Dados de Identificação:
+   - name: Nome COMPLETO da pessoa (linha do nome próprio, sem cortar palavras)
+   - company_name: Nome comercial da empresa ou entidade
+   - razao_social: Razão social / Denominação jurídica completa se mencionada
+   - phone: Telefone ou telemóvel (ex: +351 9XX XXX XXX)
+
+2. Dados de Faturação / Fiscais (procurar na assinatura e rodapés):
+   - nif: NIF, NIPC ou VAT de Portugal/UE (9 dígitos)
+   - address: Morada da sede ou entrega (rua, número, andar)
+   - city: Localidade ou concelho
+   - postal_code: Código postal (ex: "1000-017", "2460-837")
+   - iban: IBAN (se presente)
+   - website: Website profissional
+
+3. Contexto Comercial:
+   - request_type: "orcamento" | "encomenda" | "proposta" | "reclamacao" | "assistencia_tecnica" | "informacao" | "outro"
+   - requested_items: Lista clara e objetiva de produtos/equipamentos pretendidos (texto livre separado por vírgulas)
+   - contact_role: "cliente" | "fornecedor" | "parceiro"
+
+Devolve APENAS um objeto JSON válido, sem texto adicional nem markdown, com as chaves: name, company_name, razao_social, nif, phone, address, city, postal_code, iban, website, request_type, requested_items, contact_role. Usa null se não encontrares um campo.
 
 Email:
 """${text}"""`
         );
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
-        if (jsonMatch) extracted = JSON.parse(jsonMatch[0]);
+        if (jsonMatch) {
+          const aiData = JSON.parse(jsonMatch[0]);
+          // Fazer merge: a IA complementa e substitui campos válidos
+          extracted = {
+            ...extracted,
+            name: aiData.name || extracted.name,
+            company_name: aiData.company_name || extracted.company_name,
+            razao_social: aiData.razao_social || extracted.razao_social,
+            phone: aiData.phone || extracted.phone,
+            nif: aiData.nif || extracted.nif,
+            address: aiData.address || extracted.address,
+            city: aiData.city || extracted.city,
+            postal_code: aiData.postal_code || extracted.postal_code,
+            iban: aiData.iban || extracted.iban,
+            website: aiData.website || extracted.website,
+            request_type: aiData.request_type || extracted.request_type,
+            requested_items: aiData.requested_items || extracted.requested_items,
+            contact_role: aiData.contact_role || extracted.contact_role,
+          };
+        }
       }
-    } catch { /* IA indisponível — segue com o fallback no momento da criação */ }
-    return { ...extracted, fullBodyText };
+    } catch { /* IA indisponível ou lenta — mantém os dados heurísticos que já foram extraídos */ }
+
+    // Guardar na cache da sessão para este email nunca mais chamar a IA
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify(extracted));
+    } catch { /* ignorar */ }
+
+    return extracted;
   };
 
-  // Corre a extração automaticamente assim que se confirma que o remetente
-  // não tem contacto associado — mostra logo uma pré-visualização em vez de
-  // exigir um clique "às cegas". Só corre uma vez por thread.
-  // ⚠️ Não faz extract se já existe uma lead (fallback funcionou).
+  // Corre a extração automaticamente assim que as mensagens e o contacto estiverem prontos
   useEffect(() => {
-    if (!contactNotFound || contactLoading || existingLead) return;
+    // Aguardar que a pesquisa de contacto termine E que as mensagens do email estejam carregadas!
+    if (!contactNotFound || contactLoading || existingLead || messagesLoading) return;
     if (extractionRanForThread.current === thread.id) return;
+
+    // Só corre se houver pelo menos uma mensagem carregada ou se já não estiver em loading
+    if (!messages || messages.length === 0) return;
+
     extractionRanForThread.current = thread.id;
     setPreviewLoading(true);
     extractContactInfo()
@@ -423,7 +680,7 @@ Email:
       .catch(() => setPreview(null))
       .finally(() => setPreviewLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contactNotFound, contactLoading, existingLead, thread.id]);
+  }, [contactNotFound, contactLoading, existingLead, messagesLoading, messages, thread.id]);
 
   const createContactFromExtraction = async (extracted: ExtractedContactInfo) => {
     setCreating(true);
@@ -439,16 +696,17 @@ Email:
         display_name: companyName,
         email: thread.from_address,
         phone: extracted.phone || undefined,
+        nif: extracted.nif || undefined,
         source: 'email',
-        status: 'incoming',
+        status: 'new',
         // Campos de topo — é daqui que Leads.tsx e LeadPopup360 leem directamente
-        // (confirmado no schema: city/postal_code/website existem como colunas
-        // reais em "leads"; "address" não existe a esse nível, só em lead_data).
         city: extracted.city || undefined,
         postal_code: extracted.postal_code || undefined,
         website: extracted.website || undefined,
         notes: (() => {
           const parts: string[] = [];
+          if (extracted.nif) parts.push(`NIF: ${extracted.nif}`);
+          if (extracted.razao_social) parts.push(`Razão Social: ${extracted.razao_social}`);
           if (extracted.request_type) parts.push(`Tipo: ${extracted.request_type}`);
           if (extracted.requested_items) parts.push(`Itens: ${extracted.requested_items}`);
           if (extracted.contact_role) parts.push(`Papel: ${extracted.contact_role}`);
@@ -456,7 +714,10 @@ Email:
         })(),
         lead_data: {
           company_name: extracted.company_name || companyName || undefined,
+          razao_social: extracted.razao_social || undefined,
           contact_name: contactName || undefined,
+          nif: extracted.nif || undefined,
+          iban: extracted.iban || undefined,
           phone: extracted.phone || undefined,
           address: extracted.address || undefined,
           city: extracted.city || undefined,
@@ -494,6 +755,106 @@ Email:
   const handleCreateContact = async () => {
     const extracted = preview ?? await extractContactInfo();
     await createContactFromExtraction(extracted);
+  };
+
+  const handleOpenEditModal = () => {
+    const fallbackNome = thread.from_address.split('@')[0].replace(/[._-]/g, ' ');
+    setEditForm({
+      name: preview?.name || '',
+      company_name: preview?.company_name || fallbackNome,
+      phone: preview?.phone || '',
+      city: preview?.city || '',
+      nif: preview?.nif || '',
+      requested_items: preview?.requested_items || '',
+    });
+    setIsEditContactOpen(true);
+  };
+
+  const handleSaveEditedLead = async () => {
+    setCreating(true);
+    try {
+      const companyName = editForm.company_name.trim() || editForm.name.trim() || thread.from_address;
+      const leadPayload: Record<string, unknown> = {
+        display_name: companyName,
+        email: thread.from_address,
+        phone: editForm.phone.trim() || undefined,
+        nif: editForm.nif.trim() || undefined,
+        source: 'email',
+        status: 'new',
+        city: editForm.city.trim() || undefined,
+        notes: (() => {
+          const parts: string[] = [];
+          if (editForm.nif.trim()) parts.push(`NIF: ${editForm.nif.trim()}`);
+          if (editForm.requested_items.trim()) parts.push(`Itens: ${editForm.requested_items.trim()}`);
+          return parts.length > 0 ? parts.join(' | ') : undefined;
+        })(),
+        lead_data: {
+          company_name: editForm.company_name.trim() || undefined,
+          contact_name: editForm.name.trim() || undefined,
+          phone: editForm.phone.trim() || undefined,
+          city: editForm.city.trim() || undefined,
+          nif: editForm.nif.trim() || undefined,
+          requested_items: editForm.requested_items.trim() || undefined,
+          email_thread_id: thread.id,
+          subject: thread.subject || undefined,
+        },
+      };
+
+      const res = await directusRequest<{ data: { id: string; display_name?: string; email?: string } }>('/items/leads', {
+        method: 'POST',
+        body: JSON.stringify(leadPayload),
+      });
+      const created = res?.data;
+      if (created) {
+        setCreatedLeadId(String(created.id));
+        setCreatedLeadName(companyName);
+        setContactNotFound(false);
+        setIsEditContactOpen(false);
+        toast({ title: 'Lead criada com sucesso!', description: 'Podes acompanhá-la na página de Leads.' });
+      }
+    } catch {
+      toast({ title: 'Erro ao criar lead', variant: 'destructive' });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleSearchContacts = async (query: string) => {
+    setSearchContactQuery(query);
+    if (query.trim().length < 2) {
+      setContactSearchResults([]);
+      return;
+    }
+    setSearchingContacts(true);
+    try {
+      const res = await directusRequest<{ data: Array<{ id: string | number; company_name?: string; contact_name?: string; email?: string; phone?: string }> }>(
+        `/items/contacts?search=${encodeURIComponent(query.trim())}&limit=8&fields=id,company_name,contact_name,email,phone`
+      );
+      setContactSearchResults(res?.data || []);
+    } catch {
+      setContactSearchResults([]);
+    } finally {
+      setSearchingContacts(false);
+    }
+  };
+
+  const handleLinkExistingContact = async (c: { id: string | number; company_name?: string; contact_name?: string; email?: string; phone?: string }) => {
+    setLinkingContact(true);
+    try {
+      await directusRequest(`/items/email_threads/${thread.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ contact_id: c.id }),
+      });
+      setContact({ id: String(c.id), company_name: c.company_name, contact_name: c.contact_name, email: c.email, phone: c.phone });
+      setContactNotFound(false);
+      setIsLinkContactOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['email-threads'] });
+      toast({ title: 'Cliente associado!', description: `A conversa foi associada a ${c.company_name || c.contact_name || c.email}.` });
+    } catch {
+      toast({ title: 'Erro ao associar cliente', variant: 'destructive' });
+    } finally {
+      setLinkingContact(false);
+    }
   };
 
   const urgency = URGENCY_CONFIG[thread.urgency] ?? URGENCY_CONFIG.normal;
@@ -669,38 +1030,256 @@ Email:
           window.innerHeight ~993px). */}
       <div className="flex-1 min-h-0 overflow-auto space-y-3 mb-4">
 
-      {/* Pré-visualização automática de dados de contacto (email sem contacto associado) */}
-      {contactNotFound && !contact && !previewDismissed && (previewLoading || preview) && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 mb-4">
-          <div className="flex items-center gap-1.5 mb-2 text-sm font-medium text-amber-800">
-            ✨ {previewLoading ? "A analisar email…" : "Detectámos"}
-          </div>
-          {previewLoading ? (
-            <p className="text-sm text-amber-900/70">A extrair dados de contacto e pedido do email…</p>
-          ) : preview ? (
-            <div className="space-y-1 text-sm text-amber-900/90 mb-3">
-              {(preview.name || preview.company_name) && (
-                <p><strong>{preview.name || preview.company_name}</strong>{preview.name && preview.company_name && preview.name !== preview.company_name ? ` · ${preview.company_name}` : ""}</p>
-              )}
-              <p className="flex flex-wrap gap-x-3 text-xs text-amber-800/80">
-                {preview.phone && <span>📞 {preview.phone}</span>}
-                {preview.address && <span>🏠 {preview.address}</span>}
-                {preview.city && <span>📍 {preview.city}{preview.postal_code ? ` ${preview.postal_code}` : ""}</span>}
-                {preview.contact_role && <span>🏷️ {preview.contact_role === 'cliente' ? 'Cliente' : preview.contact_role === 'fornecedor' ? 'Fornecedor' : 'Parceiro'}</span>}
-              </p>
-              {preview.requested_items && (
-                <p className="text-xs text-amber-800/80">🛒 {preview.requested_items}</p>
-              )}
+      {/* Card estruturado de identificação de novo contacto / lead */}
+      {!contact && !previewDismissed && (contactNotFound || existingLead) && (
+        <div className={cn(
+          "rounded-xl border p-4 mb-4 shadow-sm",
+          existingLead
+            ? "border-blue-200/80 bg-blue-50/60 dark:bg-blue-950/20 dark:border-blue-900/40"
+            : "border-amber-200/80 bg-amber-50/70 dark:bg-amber-950/20 dark:border-amber-900/40"
+        )}>
+          <div className={cn(
+            "flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b",
+            existingLead ? "border-blue-200/60 dark:border-blue-900/30" : "border-amber-200/60 dark:border-amber-900/30"
+          )}>
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-lg font-bold text-xs",
+                existingLead
+                  ? "bg-blue-500/15 text-blue-800 dark:text-blue-300"
+                  : "bg-amber-500/15 text-amber-800 dark:text-amber-300"
+              )}>
+                {existingLead ? "📋" : "✨"}
+              </div>
+              <div>
+                <h3 className={cn(
+                  "text-sm font-semibold leading-tight",
+                  existingLead ? "text-blue-950 dark:text-blue-200" : "text-amber-900 dark:text-amber-200"
+                )}>
+                  {existingLead ? `Lead já registada no CRM (#${existingLead.id})` : "Novo potencial cliente detetado"}
+                </h3>
+                <p className={cn(
+                  "text-[11px]",
+                  existingLead ? "text-blue-800/80 dark:text-blue-400/90" : "text-amber-800/80 dark:text-amber-400/90"
+                )}>
+                  {previewLoading
+                    ? "A analisar a assinatura e texto do email com IA…"
+                    : existingLead
+                      ? "Os dados deste remetente já foram extraídos e registados como Lead no CRM:"
+                      : "Este email não está registado no CRM. Revê os dados detetados e escolhe o que fazer:"}
+                </p>
+              </div>
             </div>
-          ) : null}
-          {!previewLoading && (
-            <div className="flex gap-2">
-              <Button size="sm" className="gap-1.5 h-7 text-xs" disabled={creating} onClick={() => preview && createContactFromExtraction(preview)}>
-                {creating ? 'A criar…' : 'Aceitar e criar contacto'}
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] text-amber-800 dark:text-amber-300 hover:text-foreground hover:bg-amber-100/50"
+                disabled={previewLoading}
+                onClick={() => {
+                  setPreviewLoading(true);
+                  extractContactInfo()
+                    .then((r) => setPreview(r))
+                    .finally(() => setPreviewLoading(false));
+                }}
+                title="Forçar nova análise da assinatura e do texto do email"
+              >
+                <RefreshCw className={cn("h-3 w-3 mr-1", previewLoading && "animate-spin")} />
+                Reanalisar
               </Button>
-              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => setPreviewDismissed(true)}>
-                Ignorar
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                onClick={() => setPreviewDismissed(true)}
+              >
+                <X className="h-3 w-3 mr-1" /> Ignorar
               </Button>
+            </div>
+          </div>
+
+          {previewLoading ? (
+            <div className="py-4 flex items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-600 border-t-transparent" />
+              A detetar nome, empresa, telefone e artigos pretendidos…
+            </div>
+          ) : (
+            <div className="py-3 space-y-2.5">
+              {/* Grelha de campos detetados */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                <div className="rounded-lg bg-background/80 p-2 border border-amber-200/50 dark:border-amber-900/30">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">Contacto / Pessoa</span>
+                  <span className="font-medium text-foreground truncate block">
+                    {preview?.name || preview?.company_name || thread.from_address.split('@')[0].replace(/[._-]/g, ' ') || "—"}
+                  </span>
+                </div>
+
+                <div className="rounded-lg bg-background/80 p-2 border border-amber-200/50 dark:border-amber-900/30">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">Empresa / Entidade</span>
+                  <span className="font-medium text-foreground truncate block">
+                    {preview?.company_name || (preview?.name ? "A confirmar" : "—")}
+                  </span>
+                </div>
+
+                <div className="rounded-lg bg-background/80 p-2 border border-amber-200/50 dark:border-amber-900/30">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">Correio Eletrónico</span>
+                  <span className="font-medium text-foreground truncate block" title={thread.from_address}>
+                    {thread.from_address}
+                  </span>
+                </div>
+
+                {preview?.phone && (
+                  <div className="rounded-lg bg-background/80 p-2 border border-amber-200/50 dark:border-amber-900/30">
+                    <span className="text-[10px] text-muted-foreground block uppercase font-medium">Telefone</span>
+                    <span className="font-medium text-foreground truncate block">{preview.phone}</span>
+                  </div>
+                )}
+
+                {preview?.city && (
+                  <div className="rounded-lg bg-background/80 p-2 border border-amber-200/50 dark:border-amber-900/30">
+                    <span className="text-[10px] text-muted-foreground block uppercase font-medium">Localidade</span>
+                    <span className="font-medium text-foreground truncate block">
+                      {preview.city} {preview.postal_code ? `(${preview.postal_code})` : ''}
+                    </span>
+                  </div>
+                )}
+
+                {preview?.nif && (
+                  <div className="rounded-lg bg-background/80 p-2 border border-emerald-300/70 dark:border-emerald-800/40 bg-emerald-50/40 dark:bg-emerald-950/20">
+                    <span className="text-[10px] text-emerald-800 dark:text-emerald-300 block uppercase font-semibold">NIF / Faturação</span>
+                    <span className="font-mono font-semibold text-emerald-900 dark:text-emerald-200 block">
+                      🧾 {preview.nif}
+                    </span>
+                  </div>
+                )}
+
+                {preview?.contact_role && (
+                  <div className="rounded-lg bg-background/80 p-2 border border-amber-200/50 dark:border-amber-900/30">
+                    <span className="text-[10px] text-muted-foreground block uppercase font-medium">Relação</span>
+                    <span className="font-medium text-foreground capitalize block">
+                      {preview.contact_role}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {preview?.razao_social && preview.razao_social !== preview.company_name && (
+                <div className="rounded-lg bg-background/80 p-2 border border-amber-200/50 dark:border-amber-900/30 text-xs">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">Razão Social Registada</span>
+                  <span className="font-medium text-foreground">🏢 {preview.razao_social}</span>
+                </div>
+              )}
+
+              {preview?.requested_items && (
+                <div className="rounded-lg bg-background/80 p-2.5 border border-amber-200/50 dark:border-amber-900/30 text-xs">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium mb-0.5">Equipamentos / Pedido identificado</span>
+                  <p className="text-amber-900 dark:text-amber-200 font-medium leading-relaxed">
+                    🛒 {preview.requested_items}
+                  </p>
+                </div>
+              )}
+
+              {/* Ações com botões explicativos */}
+              <div className="pt-2 flex flex-wrap items-center gap-2">
+                {existingLead ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-1.5 h-8 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                      onClick={() => {
+                        const ld = (existingLead.lead_data || {}) as Record<string, unknown>;
+                        const params = buildContactCreationUrl({
+                          id: existingLead.id,
+                          contact_name: preview?.name || (ld.contact_name as string) || (existingLead as any).contact_name || existingLead.display_name,
+                          company_name: preview?.company_name || (ld.company_name as string) || undefined,
+                          phone: preview?.phone || (ld.phone as string) || (existingLead as any).contact_phone || (existingLead as any).phone,
+                          mobile_phone: (existingLead as any).mobile_phone || (preview as any)?.mobile_phone,
+                          email: existingLead.email || thread.from_address,
+                          address: preview?.address || (ld.address as string) || (existingLead as any).address,
+                          city: preview?.city || (ld.city as string) || (existingLead as any).city,
+                          postal_code: preview?.postal_code || (ld.postal_code as string) || (existingLead as any).postal_code,
+                          nif: preview?.nif || (ld.nif as string) || (existingLead as any).nif,
+                          source: 'email_inbound',
+                          lead_data: existingLead.lead_data,
+                        }, { includeLeadId: true, includeNif: true });
+                        window.location.href = `/customer360-shell/novo?${params.toString()}`;
+                      }}
+                      title="Abre a ficha completa de enriquecimento do cliente com todos os dados preenchidos"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Abrir Ficha de Cliente (#{existingLead.id})
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 h-8 text-xs border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200 hover:bg-blue-100/50"
+                      onClick={() => setShowLeadTimeline(true)}
+                      title="Abre o histórico de atividades e eventos desta Lead"
+                    >
+                      Timeline
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 h-8 text-xs border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200 hover:bg-blue-100/50"
+                      onClick={() => {
+                        setSearchContactQuery("");
+                        setContactSearchResults([]);
+                        setIsLinkContactOpen(true);
+                      }}
+                      title="Ligar esta conversa a outro contacto já existente"
+                    >
+                      <LinkIcon className="h-3.5 w-3.5" />
+                      Associar a cliente
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-1.5 h-8 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                      disabled={creating}
+                      onClick={() => preview && createContactFromExtraction(preview)}
+                      title="Regista uma Lead com estes dados para acompanhamento e criação de proposta"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {creating ? 'A registar Lead…' : '✓ Aceitar e Criar Lead'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 h-8 text-xs border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 hover:bg-amber-100/50"
+                      onClick={handleOpenEditModal}
+                      title="Abre formulário para ajustar o nome, empresa ou telefone antes de criar"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      Editar dados
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 h-8 text-xs border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 hover:bg-amber-100/50"
+                      onClick={() => {
+                        setSearchContactQuery("");
+                        setContactSearchResults([]);
+                        setIsLinkContactOpen(true);
+                      }}
+                      title="Se este email pertencer a uma empresa que já tens no CRM, liga a conversa a ela"
+                    >
+                      <LinkIcon className="h-3.5 w-3.5" />
+                      Associar a cliente existente
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -728,7 +1307,7 @@ Email:
       )}
 
       {/* Product suggestions for quotation requests */}
-      {(thread as Record<string, unknown>).category === "pedido_orcamento" && (
+      {thread.category === "pedido_orcamento" && (
         <EmailProductSuggestions
           subject={thread.subject}
           bodyText={(messages ?? []).filter(m => m.direction === "inbound").pop()?.body_text || ""}
@@ -778,7 +1357,7 @@ Email:
                     incoming: (messages ?? []).filter(m => m.direction === "inbound").pop()?.body_text || "",
                     subject: thread.subject,
                     customerName: thread.from_address,
-                    category: (thread as Record<string, unknown>).category as string,
+                    category: thread.category || "",
                   });
                   const html = result.replace(/\n/g, "<br>") + "<br><br>" + getEmailSignature();
                   setReplyText(html);
@@ -976,6 +1555,158 @@ Email:
           leadData={existingLead?.lead_data ?? null}
         />
       )}
+
+      {/* Modal: Editar dados antes de criar Lead */}
+      <Dialog open={isEditContactOpen} onOpenChange={setIsEditContactOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Edit3 className="h-4 w-4 text-primary" />
+              Confirmar dados do novo contacto
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Ajusta as informações detetadas antes de criar a Lead para seguimento comercial.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <div className="space-y-1">
+              <Label className="text-[11px] font-medium">Nome do Contacto / Pessoa</Label>
+              <Input
+                placeholder="Ex: João Silva"
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] font-medium">Nome da Empresa / Estabelecimento</Label>
+              <Input
+                placeholder="Ex: Restaurante O Pescador Lda"
+                value={editForm.company_name}
+                onChange={(e) => setEditForm((f) => ({ ...f, company_name: e.target.value }))}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-medium">NIF / NIPC (Faturação)</Label>
+                <Input
+                  placeholder="Ex: 501 234 567"
+                  value={editForm.nif}
+                  onChange={(e) => setEditForm((f) => ({ ...f, nif: e.target.value }))}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] font-medium">Telefone / Telemóvel</Label>
+                <Input
+                  placeholder="Ex: 912 345 678"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] font-medium">Localidade / Morada</Label>
+              <Input
+                placeholder="Ex: Leiria"
+                value={editForm.city}
+                onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] font-medium">Equipamentos / Artigos Solicitados</Label>
+              <Input
+                placeholder="Ex: Forno convector, bancada inox"
+                value={editForm.requested_items}
+                onChange={(e) => setEditForm((f) => ({ ...f, requested_items: e.target.value }))}
+                className="h-8 text-xs"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditContactOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" size="sm" disabled={creating} onClick={handleSaveEditedLead} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {creating ? 'A gravar…' : 'Gravar e Criar Lead'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Associar a cliente existente */}
+      <Dialog open={isLinkContactOpen} onOpenChange={setIsLinkContactOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <LinkIcon className="h-4 w-4 text-primary" />
+              Associar email a cliente existente
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Pesquisa por nome da empresa, contacto, NIF ou email para ligar esta conversa a uma ficha existente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <Input
+              placeholder="Pesquisar cliente (nome, empresa, NIF)..."
+              value={searchContactQuery}
+              onChange={(e) => handleSearchContacts(e.target.value)}
+              className="h-9 text-xs"
+              autoFocus
+            />
+
+            <div className="max-h-60 overflow-y-auto space-y-1.5 divide-y divide-border/40">
+              {searchingContacts && (
+                <p className="text-xs text-muted-foreground py-3 text-center">A pesquisar clientes…</p>
+              )}
+              {!searchingContacts && searchContactQuery.trim().length >= 2 && contactSearchResults.length === 0 && (
+                <p className="text-xs text-muted-foreground py-3 text-center">Nenhum cliente encontrado com esse termo.</p>
+              )}
+              {contactSearchResults.map((c) => (
+                <div
+                  key={c.id}
+                  className="pt-1.5 first:pt-0 flex items-center justify-between gap-2 hover:bg-muted/50 p-2 rounded-lg transition-colors"
+                >
+                  <div className="min-w-0 text-xs">
+                    <p className="font-medium text-foreground truncate">
+                      {c.company_name || c.contact_name || "Sem nome"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {c.contact_name && c.company_name ? `${c.contact_name} · ` : ""}
+                      {c.email || c.phone || ""}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={linkingContact}
+                    className="h-7 text-xs shrink-0"
+                    onClick={() => handleLinkExistingContact(c)}
+                  >
+                    Associar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setIsLinkContactOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1011,40 +1742,89 @@ function MessageBubble({ message }: { message: EmailMessage }) {
           </span>
         )}
         <p className="text-xs text-muted-foreground mb-1">{message.from_address}</p>
-        {/* Attachments — above body for visibility */}
+        {/* Attachments — above body for visibility com pré-visualização de imagens */}
         {message.attachments && message.attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
-            {message.attachments.map((att, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={async () => {
-                  if (!att.file) return;
-                  try {
-                    const url = `${import.meta.env.VITE_DIRECTUS_URL || "https://api.hotelequip.pt"}/assets/${att.file}`;
-                    const token = localStorage.getItem("directus_access_token") || "";
-                    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                    const blob = await resp.blob();
-                    const blobUrl = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = blobUrl;
-                    a.download = att.filename || "anexo";
-                    a.click();
-                    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-                  } catch {
-                    window.open(`${import.meta.env.VITE_DIRECTUS_URL || "https://api.hotelequip.pt"}/assets/${att.file}`, "_blank");
-                  }
-                }}
-                className="inline-flex items-center gap-2 rounded-md border border-blue-200 dark:border-blue-800 bg-card dark:bg-blue-950/40 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer shadow-sm"
-              >
-                <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                <span>{att.filename || "Anexo"}</span>
-                {att.size ? <span className="text-blue-500 dark:text-blue-400">({Math.round(att.size / 1024)}KB)</span> : null}
-              </button>
-            ))}
+          <div className="mb-3 p-2.5 rounded-lg bg-muted/40 border border-border/80 space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <ImageIcon className="h-3.5 w-3.5 text-primary" />
+              Anexos e Imagens ({message.attachments.length})
+            </p>
+            <div className="flex flex-wrap gap-2.5">
+              {message.attachments.map((att, i) => {
+                const fn = (att.filename || "").toLowerCase();
+                const isImg = fn.endsWith(".png") || fn.endsWith(".jpg") || fn.endsWith(".jpeg") || fn.endsWith(".gif") || fn.endsWith(".webp") || fn.endsWith(".bmp");
+                const directusUrl = import.meta.env.VITE_DIRECTUS_URL || "https://api.hotelequip.pt";
+                const assetUrl = `${directusUrl}/assets/${att.file}`;
+
+                if (isImg) {
+                  return (
+                    <div
+                      key={i}
+                      className="group relative flex flex-col items-center rounded-lg border border-border bg-card p-1.5 shadow-sm hover:border-primary/50 transition-all"
+                    >
+                      <a
+                        href={assetUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block overflow-hidden rounded bg-muted/30"
+                        title="Clique para ver imagem em tamanho real"
+                      >
+                        <img
+                          src={`${assetUrl}?key=system-small-cover`}
+                          alt={att.filename || "Imagem"}
+                          className="h-20 w-24 object-cover transition-transform group-hover:scale-105"
+                          onError={(e) => {
+                            // Se o thumbnail com preset falhar, tenta o asset original
+                            (e.target as HTMLImageElement).src = assetUrl;
+                          }}
+                        />
+                      </a>
+                      <div className="mt-1 flex w-24 items-center justify-between gap-1 px-0.5 text-[10px]">
+                        <span className="truncate text-muted-foreground font-medium" title={att.filename}>
+                          {att.filename || "imagem"}
+                        </span>
+                        {att.size && (
+                          <span className="text-[9px] text-muted-foreground/80 shrink-0">
+                            {Math.round(att.size / 1024)}K
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={async () => {
+                      if (!att.file) return;
+                      try {
+                        const token = localStorage.getItem("directus_access_token") || "";
+                        const resp = await fetch(assetUrl, { headers: { Authorization: `Bearer ${token}` } });
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                        const blob = await resp.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = blobUrl;
+                        a.download = att.filename || "anexo";
+                        a.click();
+                        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                      } catch {
+                        window.open(assetUrl, "_blank");
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60 transition-colors cursor-pointer shadow-sm"
+                  >
+                    <svg className="h-4 w-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <span className="truncate max-w-[140px]">{att.filename || "Anexo"}</span>
+                    {att.size ? <span className="text-muted-foreground text-[10px]">({Math.round(att.size / 1024)}KB)</span> : null}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
         <EmailBody message={message} />

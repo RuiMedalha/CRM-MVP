@@ -409,6 +409,7 @@ export default function Email() {
     }
     return (
       <EmailThreadDetail
+        key={selectedThread.id}
         thread={selectedThread}
         currentEmployeeId={employee?.id ?? null}
         onBack={() => setSelectedThread(null)}

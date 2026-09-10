@@ -1,6 +1,6 @@
 import type { LeadItem } from "@/integrations/directus/leads";
 
-const POPUP_EXCLUDED_SOURCES = new Set(["central"]);
+const POPUP_EXCLUDED_SOURCES = new Set(["central", "email", "newsletter", "site", "manual", "csv_import"]);
 const POPUP_EXCLUDED_TYPES = new Set(["call"]);
 
 /** Idade máxima (segundos) para mostrar popup de lead incoming. */

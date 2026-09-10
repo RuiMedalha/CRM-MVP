@@ -13,6 +13,7 @@ export interface ContactCreationSource {
   display_name?: string | null;
   company_name?: string | null;
   email?: string | null;
+  address?: string | null;
   city?: string | null;
   postal_code?: string | null;
   website?: string | null;
@@ -55,9 +56,13 @@ export function buildContactCreationUrl(
   // Email
   if (source.email) params.set("email", String(source.email));
 
-  // Location
-  if (source.city) params.set("city", String(source.city));
-  if (source.postal_code) params.set("postal_code", String(source.postal_code));
+  // Address / Location
+  const address = source.address || (leadData as any)?.address;
+  if (address) params.set("address", String(address));
+  const city = source.city || (leadData as any)?.city;
+  if (city) params.set("city", String(city));
+  const postalCode = source.postal_code || (leadData as any)?.postal_code;
+  if (postalCode) params.set("postal_code", String(postalCode));
 
   // Web
   if (source.website) params.set("website", String(source.website));

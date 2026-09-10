@@ -77,6 +77,11 @@ export interface CustomerDossierSnapshot {
   /** Negócios abertos (status ∉ {ganho, perdido}). */
   openDeals: DealRow[];
   openDealsCount: number;
+  /** Conversas por email trocadas com este cliente/lead */
+  emailThreads: Array<{ id: string; subject: string; from_address: string; date_created: string; status?: string }>;
+  emailThreadsCount: number;
+  /** Pessoas conhecidas na mesma empresa / domínio */
+  associatedPeople: Array<{ name: string; email?: string; phone?: string; role?: string }>;
   /** Utilizador autenticado é admin/gestor (ou role desconhecida → false). */
   isSupervisor: boolean;
 }
@@ -199,6 +204,9 @@ export function useCustomerDossier({
         recentInteractions: [],
         openDeals: [],
         openDealsCount: 0,
+        emailThreads: [],
+        emailThreadsCount: 0,
+        associatedPeople: [],
         isSupervisor,
       };
 
@@ -276,6 +284,31 @@ export function useCustomerDossier({
         );
       }
 
+      // 3) Emails associados à Lead ou ao Contacto
+      tasks.push(
+        (async () => {
+          try {
+            const emailFilters: string[] = [];
+            if (lId) emailFilters.push(`filter[_or][0][lead_id][_eq]=${encodeURIComponent(lId)}`);
+            if (cId) emailFilters.push(`filter[_or][1][contact_id][_eq]=${encodeURIComponent(cId)}`);
+            const filterQuery = emailFilters.length > 0 ? `?${emailFilters.join("&")}&limit=10&sort=-date_created&fields=id,subject,from_address,date_created,status` : "";
+            if (filterQuery) {
+              const emailRes = await directusRequest<{ data: any[] }>(`/items/email_threads${filterQuery}`);
+              if (emailRes?.data) {
+                result.emailThreads = emailRes.data.map((t) => ({
+                  id: String(t.id),
+                  subject: t.subject || "(sem assunto)",
+                  from_address: t.from_address || "",
+                  date_created: t.date_created || "",
+                  status: t.status,
+                }));
+                result.emailThreadsCount = result.emailThreads.length;
+              }
+            }
+          } catch { /* silencioso */ }
+        })(),
+      );
+
       await Promise.all(tasks);
       return result;
     },
@@ -287,6 +320,9 @@ export function useCustomerDossier({
     recentInteractions: [],
     openDeals: [],
     openDealsCount: 0,
+    emailThreads: [],
+    emailThreadsCount: 0,
+    associatedPeople: [],
     isSupervisor,
   };
 
@@ -444,9 +480,8 @@ export function useCustomerDossier({
       // 3) Marcar contacto com origem (best-effort — campo pode não existir)
       try {
         await patchContact(contactIdFinal, {
-          // @ts-expect-error: source_lead_id é opcional e tolerado pelo schema
           source_lead_id: lId,
-        });
+        } as any);
       } catch {
         /* silencioso — campo pode não existir */
       }

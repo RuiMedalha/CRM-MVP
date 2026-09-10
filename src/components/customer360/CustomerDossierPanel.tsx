@@ -280,6 +280,58 @@ export function CustomerDossierPanel({
         </div>
       )}
 
+      {/* Contexto comercial da Lead (Equipamentos / Artigos detetados pela IA) */}
+      {dossier.lead && ((dossier.lead.lead_data as any)?.requested_items || dossier.lead.notes) && (
+        <section className="rounded-xl border border-amber-300/80 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900/40 p-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+              <span>🛒</span> Pedido / Equipamentos Pretendidos
+            </p>
+            {(dossier.lead.lead_data as any)?.request_type && (
+              <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">
+                {(dossier.lead.lead_data as any).request_type}
+              </span>
+            )}
+          </div>
+          <p className="text-xs font-medium text-amber-950 dark:text-amber-100 leading-relaxed">
+            {(dossier.lead.lead_data as any)?.requested_items || dossier.lead.notes}
+          </p>
+        </section>
+      )}
+
+      {/* Emails trocados com este cliente / lead */}
+      {dossier.emailThreadsCount > 0 && (
+        <section className="rounded-xl border border-blue-200/70 bg-blue-50/40 dark:bg-blue-950/20 dark:border-blue-900/40 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+              <Mail className="h-3.5 w-3.5 text-blue-600" /> Conversas por Email ({dossier.emailThreadsCount})
+            </p>
+          </div>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {dossier.emailThreads.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center justify-between gap-2 p-2 rounded-lg bg-card/90 border border-border/60 hover:border-blue-300 transition-colors text-xs"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground truncate" title={t.subject}>
+                    {t.subject}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {t.from_address} · {t.date_created ? new Date(t.date_created).toLocaleDateString("pt-PT") : ""}
+                  </p>
+                </div>
+                <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-[11px] shrink-0 hover:text-primary">
+                  <Link to={`/email?thread=${t.id}`} title="Abrir conversa completa">
+                    Abrir
+                  </Link>
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Negócios abertos */}
       {dossier.openDealsCount > 0 && (
         <section

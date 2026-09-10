@@ -4,7 +4,7 @@
  * Suporta prefill via URL params.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { directusRequest } from "@/integrations/directus/client";
@@ -93,6 +93,25 @@ export function CreateContactForm({
     business_type: "",
     assigned_to: "",
   });
+
+  // Sincroniza e preenche o formulário quando os dados da Lead ou prefill chegam da API/URL
+  useEffect(() => {
+    const ld = (leadContext?.lead_data || {}) as Record<string, unknown>;
+    setForm((prev) => ({
+      ...prev,
+      company_name: prev.company_name || prefill?.company_name || prefill?.name || (ld.company_name as string) || leadContext?.display_name || "",
+      contact_person: prev.contact_person || prefill?.contact_person || (ld.contact_name as string) || leadContext?.contact_name || "",
+      phone: prev.phone || prefill?.phone || (ld.phone as string) || "",
+      mobile_phone: prev.mobile_phone || prefill?.mobile_phone || (ld.mobile_phone as string) || leadContext?.mobile_phone || "",
+      email: prev.email || prefill?.email || (ld.email as string) || "",
+      source: prev.source || prefill?.source || (defaultMode === "lead" ? "manual" : ""),
+      nif: prev.nif || prefill?.nif || (ld.nif as string) || "",
+      website: prev.website || prefill?.website || (ld.website as string) || leadContext?.website || "",
+      address: prev.address || prefill?.address || (ld.address as string) || leadContext?.address || "",
+      postal_code: prev.postal_code || prefill?.postal_code || (ld.postal_code as string) || "",
+      city: prev.city || prefill?.city || (ld.city as string) || "",
+    }));
+  }, [prefill, leadContext, defaultMode]);
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -365,12 +384,22 @@ export function CreateContactForm({
           />
         </div>
       </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Morada / Endereço</Label>
+        <Input
+          value={form.address}
+          onChange={(e) => handleChange("address", e.target.value)}
+          placeholder="Rua, Avenida, Número, Andar"
+          className="h-10 text-sm md:h-8"
+        />
+      </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div>
           <Label className="text-xs text-muted-foreground">Cidade</Label>
           <Input
             value={form.city}
             onChange={(e) => handleChange("city", e.target.value)}
+            placeholder="Ex: Lisboa, Leiria"
             className="h-10 text-sm md:h-8"
           />
         </div>
